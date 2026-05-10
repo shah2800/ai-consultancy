@@ -1856,7 +1856,7 @@ export default function LeadProfile() {
       <div className="lead-profile-chat" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--bg)", minHeight: 0, minWidth: 0 }}>
 
         {/* Chat header */}
-        <div className="lead-profile-chat-header" style={{ padding: isMobileView ? "10px 12px" : "14px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "var(--shadow-sm)", transform: isMobileView && isChatActivelyScrolling ? "translateY(-12px)" : "translateY(0)", opacity: isMobileView && isChatActivelyScrolling ? 0.9 : 1, transition: "transform 0.34s ease, opacity 0.28s ease" }}>
+        <div className="lead-profile-chat-header" style={{ padding: isMobileView ? "10px 12px" : "14px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "var(--shadow-sm)", transform: isMobileView && isChatActivelyScrolling ? "translateY(-18px)" : "translateY(0)", opacity: isMobileView && isChatActivelyScrolling ? 0.9 : 1, transition: "transform 0.34s ease, opacity 0.28s ease" }}>
           {isMobileView ? (
             <div
               className="lead-profile-mobile-summary-trigger"
@@ -2053,7 +2053,7 @@ export default function LeadProfile() {
             right: isMobileView ? 0 : undefined,
             bottom: 0,
             zIndex: isMobileView ? 95 : 5,
-            transform: isMobileView && isChatActivelyScrolling ? "translateY(14px)" : "translateY(0)",
+            transform: isMobileView && isChatActivelyScrolling ? "translateY(20px)" : "translateY(0)",
             transition: "transform 0.34s ease",
           }}
         >
