@@ -133,7 +133,7 @@ export default function Navbar({ onNavigate }) {
     let interval = null;
     const startPolling = () => {
       if (interval) return;
-      interval = setInterval(fetchBadge, 10000);
+      interval = setInterval(fetchBadge, 15000);
     };
     const stopPolling = () => {
       if (!interval) return;

@@ -441,7 +441,7 @@ export default function Dashboard() {
     };
     const startPolling = () => {
       if (interval) return;
-      interval = setInterval(refresh, 10000);
+      interval = setInterval(refresh, 15000);
     };
     const stopPolling = () => {
       if (!interval) return;

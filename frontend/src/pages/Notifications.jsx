@@ -145,7 +145,7 @@ export default function Notifications() {
     };
     const startPolling = () => {
       if (interval) return;
-      interval = setInterval(refresh, 6000);
+      interval = setInterval(refresh, 10000);
     };
     const stopPolling = () => {
       if (!interval) return;
