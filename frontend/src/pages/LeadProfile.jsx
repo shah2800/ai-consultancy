@@ -871,6 +871,16 @@ export default function LeadProfile() {
   }, []);
 
   useEffect(() => {
+    const main = document.querySelector(".app-shell__main");
+    if (!main) return undefined;
+    const prevOverflow = main.style.overflow;
+    main.style.overflow = "hidden";
+    return () => {
+      main.style.overflow = prevOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
     if (window.innerWidth > 900) return undefined;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = mobileSidebarOpen ? "hidden" : prevOverflow || "";
@@ -1888,7 +1898,7 @@ export default function LeadProfile() {
       <div className="lead-profile-chat" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--bg)", minHeight: 0, minWidth: 0 }}>
 
         {/* Chat header */}
-        <div className="lead-profile-chat-header" style={{ padding: isMobileView ? "10px 12px" : "14px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "var(--shadow-sm)", transform: isMobileView && isChatActivelyScrolling ? "translateY(-18px)" : "translateY(0)", opacity: isMobileView && isChatActivelyScrolling ? 0.9 : 1, transition: "transform 0.34s ease, opacity 0.28s ease" }}>
+        <div className="lead-profile-chat-header" style={{ padding: isMobileView ? "10px 12px" : "14px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "var(--shadow-sm)", transform: isMobileView && isChatActivelyScrolling ? "translateY(-24px)" : "translateY(0)", opacity: isMobileView && isChatActivelyScrolling ? 0.92 : 1, transition: "transform 0.38s ease, opacity 0.3s ease" }}>
           {isMobileView ? (
             <div
               className="lead-profile-mobile-summary-trigger"
@@ -1986,7 +1996,7 @@ export default function LeadProfile() {
                 scrollChromeTimerRef.current = setTimeout(() => {
                   scrollChromeActiveRef.current = false;
                   setIsChatActivelyScrolling(false);
-                }, 300);
+                }, 320);
               }
             }}
             className="chat-scroll-panel lead-chat-messages-scroll"
@@ -2098,8 +2108,8 @@ export default function LeadProfile() {
             right: isMobileView ? 0 : undefined,
             bottom: 0,
             zIndex: isMobileView ? 95 : 5,
-            transform: isMobileView && isChatActivelyScrolling ? "translateY(20px)" : "translateY(0)",
-            transition: "transform 0.34s ease",
+            transform: isMobileView && isChatActivelyScrolling ? "translateY(27px)" : "translateY(0)",
+            transition: "transform 0.38s ease",
           }}
         >
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
