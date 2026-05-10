@@ -3,6 +3,7 @@ import api from "../api/api";
 import { useNavigate } from "react-router-dom";
 import { useProgressiveRevealOneTier } from "../hooks/useProgressiveReveal";
 import SkeletonPulse from "../components/SkeletonPulse";
+import { getAdaptivePollInterval } from "../utils/performance";
 
 function NotificationsPageSkeleton() {
   return (
@@ -137,6 +138,7 @@ export default function Notifications() {
 
   useEffect(() => {
     load();
+    const pollMs = getAdaptivePollInterval(10000);
 
     let interval = null;
     const refresh = () => {
@@ -145,7 +147,7 @@ export default function Notifications() {
     };
     const startPolling = () => {
       if (interval) return;
-      interval = setInterval(refresh, 10000);
+      interval = setInterval(refresh, pollMs);
     };
     const stopPolling = () => {
       if (!interval) return;

@@ -4,6 +4,7 @@ import SkeletonPulse from "../components/SkeletonPulse";
 import { useParams, useNavigate } from "react-router-dom";
 import { inferPhoneOrigin } from "../utils/phoneCountry";
 import { formatLastActivity } from "../utils/lastActivity";
+import { getAdaptivePollInterval } from "../utils/performance";
 import { roleFromToken, userIdFromToken } from "../utils/jwt";
 
 const STATUS_CONFIG = {
@@ -569,6 +570,24 @@ function InboundWhatsAppMediaPreview({ msg, inboundKind, meta }) {
   return null;
 }
 
+function chatMessageRenderSignature(msg) {
+  return [
+    msg?._id || "",
+    msg?.role || "",
+    msg?.at || "",
+    msg?.text || "",
+    msg?.content || "",
+    msg?.inboundType || "",
+    msg?.mimeType || "",
+    msg?.mediaUrl || "",
+    msg?.mediaFilename || "",
+    msg?.whatsappMediaId || "",
+    msg?.whatsappDeliveryStatus || "",
+    msg?.whatsappDeliveryError || "",
+    msg?.whatsappDeliveryChannel || "",
+  ].join("|");
+}
+
 const ChatBubble = memo(function ChatBubble({ msg }) {
   const isUser = msg.role === "user";
   const isAI = msg.role === "assistant" || msg.role === "ai";
@@ -721,7 +740,7 @@ const ChatBubble = memo(function ChatBubble({ msg }) {
       </div>
     </div>
   );
-});
+}, (prev, next) => chatMessageRenderSignature(prev.msg) === chatMessageRenderSignature(next.msg));
 
 export default function LeadProfile() {
   const { id } = useParams();
@@ -730,6 +749,8 @@ export default function LeadProfile() {
   const chatScrollRef = useRef(null);
   const shouldAutoScrollRef = useRef(true);
   const scrollChromeTimerRef = useRef(null);
+  const scrollChromeActiveRef = useRef(false);
+  const showScrollDownBtnRef = useRef(false);
 
   /** True when the thread is scrolled up — show jump-to-bottom control */
   const [showScrollDownBtn, setShowScrollDownBtn] = useState(false);
@@ -740,7 +761,10 @@ export default function LeadProfile() {
     if (!el) return;
     shouldAutoScrollRef.current = true;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-    setShowScrollDownBtn(false);
+    if (showScrollDownBtnRef.current) {
+      showScrollDownBtnRef.current = false;
+      setShowScrollDownBtn(false);
+    }
   }, []);
 
   const [lead, setLead] = useState(null);
@@ -786,12 +810,16 @@ export default function LeadProfile() {
       if (scrollChromeTimerRef.current) {
         clearTimeout(scrollChromeTimerRef.current);
       }
+      scrollChromeActiveRef.current = false;
     };
   }, []);
 
   useEffect(() => {
     if (!isMobileView) {
-      setIsChatActivelyScrolling(false);
+      if (scrollChromeActiveRef.current) {
+        scrollChromeActiveRef.current = false;
+        setIsChatActivelyScrolling(false);
+      }
       if (scrollChromeTimerRef.current) {
         clearTimeout(scrollChromeTimerRef.current);
         scrollChromeTimerRef.current = null;
@@ -886,6 +914,7 @@ export default function LeadProfile() {
 
   useEffect(() => {
     load();
+    const pollMs = getAdaptivePollInterval(10000);
 
     let interval = null;
     const refresh = () => {
@@ -894,7 +923,7 @@ export default function LeadProfile() {
     };
     const startPolling = () => {
       if (interval) return;
-      interval = setInterval(refresh, 10000);
+      interval = setInterval(refresh, pollMs);
     };
     const stopPolling = () => {
       if (!interval) return;
@@ -946,7 +975,10 @@ export default function LeadProfile() {
     const el = chatScrollRef.current;
     if (el) {
       el.scrollTo({ top: el.scrollHeight, behavior: "auto" });
-      setShowScrollDownBtn(false);
+      if (showScrollDownBtnRef.current) {
+        showScrollDownBtnRef.current = false;
+        setShowScrollDownBtn(false);
+      }
     } else {
       chatEndRef.current?.scrollIntoView({ block: "end", behavior: "auto" });
     }
@@ -1938,13 +1970,21 @@ export default function LeadProfile() {
               const distanceFromBottom =
                 el.scrollHeight - (el.scrollTop + el.clientHeight);
               shouldAutoScrollRef.current = distanceFromBottom < 80;
-              setShowScrollDownBtn(distanceFromBottom > 100);
+              const shouldShowScrollDown = distanceFromBottom > 100;
+              if (shouldShowScrollDown !== showScrollDownBtnRef.current) {
+                showScrollDownBtnRef.current = shouldShowScrollDown;
+                setShowScrollDownBtn(shouldShowScrollDown);
+              }
               if (isMobileView) {
-                setIsChatActivelyScrolling(true);
+                if (!scrollChromeActiveRef.current) {
+                  scrollChromeActiveRef.current = true;
+                  setIsChatActivelyScrolling(true);
+                }
                 if (scrollChromeTimerRef.current) {
                   clearTimeout(scrollChromeTimerRef.current);
                 }
                 scrollChromeTimerRef.current = setTimeout(() => {
+                  scrollChromeActiveRef.current = false;
                   setIsChatActivelyScrolling(false);
                 }, 300);
               }
@@ -1962,7 +2002,12 @@ export default function LeadProfile() {
                 </button>
               </div>
             ) : chatThreadReady ? (
-              messages.map((msg, i) => <ChatBubble key={i} msg={msg} />)
+              messages.map((msg, i) => (
+                <ChatBubble
+                  key={msg?._id || msg?.whatsappMediaId || `${msg?.at || "t"}-${msg?.role || "r"}-${i}`}
+                  msg={msg}
+                />
+              ))
             ) : (
               <LeadChatThreadSkeleton />
             )}

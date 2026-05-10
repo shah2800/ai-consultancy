@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useSearchParams, Link, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import api from "./api/api";
+import { canPrefetchRoutes, runWhenIdle } from "./utils/performance";
 
 const Login = lazy(() => import("./pages/Login"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -139,6 +140,19 @@ function Layout({ children }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    if (!canPrefetchRoutes()) return undefined;
+    const cancel = runWhenIdle(() => {
+      // Warm common route chunks after first paint.
+      import("./pages/Dashboard");
+      import("./pages/Leads");
+      import("./pages/LeadProfile");
+      import("./pages/Notifications");
+      import("./pages/Analytics");
+    }, 1400);
+    return cancel;
+  }, []);
+
   return (
     <BrowserRouter>
       <Suspense

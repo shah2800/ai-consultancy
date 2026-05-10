@@ -1,10 +1,11 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, memo } from "react";
 import api from "../api/api";
 import ExportLeadsModal from "../components/ExportLeadsModal";
 import WeeklyReportModal from "../components/WeeklyReportModal";
 import { useNavigate } from "react-router-dom";
 import { useProgressiveRevealOneTier } from "../hooks/useProgressiveReveal";
 import SkeletonPulse from "../components/SkeletonPulse";
+import { getAdaptivePollInterval } from "../utils/performance";
 
 const STATUS_CONFIG = {
   new:       { color: "var(--new)", bg: "var(--new-bg)", label: "New" },
@@ -93,8 +94,7 @@ function MetricCard({ label, value, sub, onClick, accent, icon }) {
   );
 }
 
-function TopLeadRow({ lead, rank, onClick }) {
-  const [hovered, setHovered] = useState(false);
+const TopLeadRow = memo(function TopLeadRow({ lead, rank, onClick }) {
   const initials = (lead.name || "WhatsApp User")
     .split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
 
@@ -109,15 +109,13 @@ function TopLeadRow({ lead, rank, onClick }) {
   return (
     <div
       onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
       style={{
         display: "flex",
         alignItems: "center",
         gap: 12,
         padding: "10px 14px",
         borderRadius: 8,
-        background: hovered ? "var(--surface-2)" : "transparent",
+        background: "transparent",
         cursor: "pointer",
         transition: "background 0.12s ease",
         borderBottom: "1px solid var(--border-subtle)",
@@ -161,7 +159,7 @@ function TopLeadRow({ lead, rank, onClick }) {
       </div>
     </div>
   );
-}
+});
 
 function CountryBar({ data }) {
   const total = Object.values(data).reduce((s, v) => s + v, 0);
@@ -433,6 +431,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     load();
+    const pollMs = getAdaptivePollInterval(15000);
 
     let interval = null;
     const refresh = () => {
@@ -441,7 +440,7 @@ export default function Dashboard() {
     };
     const startPolling = () => {
       if (interval) return;
-      interval = setInterval(refresh, 15000);
+      interval = setInterval(refresh, pollMs);
     };
     const stopPolling = () => {
       if (!interval) return;

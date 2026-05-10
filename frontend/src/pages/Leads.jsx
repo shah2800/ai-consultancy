@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useDeferredValue } from "react";
 import api from "../api/api";
 import { useProgressiveRevealOneTier } from "../hooks/useProgressiveReveal";
 import SkeletonPulse from "../components/SkeletonPulse";
@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { inferPhoneOrigin } from "../utils/phoneCountry";
 import { formatLastActivity } from "../utils/lastActivity";
 import { userIdFromToken } from "../utils/jwt";
+import { getAdaptivePollInterval } from "../utils/performance";
 
 const STATUS_CONFIG = {
   all: { label: "All", color: "var(--text-2)", bg: "var(--surface-2)" },
@@ -147,6 +148,7 @@ export default function Leads() {
 
   const status = searchParams.get("status") || "all";
   const sortMode = searchParams.get("sort") === "priority" ? "priority" : "recent";
+  const deferredSearch = useDeferredValue(search);
 
   const fetchLeads = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -166,6 +168,7 @@ export default function Leads() {
 
   useEffect(() => {
     fetchLeads();
+    const pollMs = getAdaptivePollInterval(15000);
 
     let interval = null;
     const refresh = () => {
@@ -174,7 +177,7 @@ export default function Leads() {
     };
     const startPolling = () => {
       if (interval) return;
-      interval = setInterval(refresh, 15000);
+      interval = setInterval(refresh, pollMs);
     };
     const stopPolling = () => {
       if (!interval) return;
@@ -225,8 +228,8 @@ export default function Leads() {
   };
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return leads;
-    const q = search.toLowerCase();
+    if (!deferredSearch.trim()) return leads;
+    const q = deferredSearch.toLowerCase();
     const qDial = q.replace(/^\+/, "").replace(/\s/g, "");
     return leads.filter((l) => {
       const o = inferPhoneOrigin(l.phone);
@@ -242,7 +245,7 @@ export default function Leads() {
             String(o.nationalNumber || "").includes(qDial)))
       );
     });
-  }, [leads, search]);
+  }, [leads, deferredSearch]);
 
   const tablePaintReady = useProgressiveRevealOneTier(
     !loading,
@@ -266,7 +269,7 @@ export default function Leads() {
   };
 
   const subtitle =
-    search.trim() && filtered.length !== leads.length
+    deferredSearch.trim() && filtered.length !== leads.length
       ? `${filtered.length} match${filtered.length !== 1 ? "es" : ""} · ${leads.length} in "${STATUS_CONFIG[status]?.label || status}"`
       : `${leads.length} lead${leads.length !== 1 ? "s" : ""} · ${STATUS_CONFIG[status]?.label || "All"} · ${sortMode === "priority" ? "AI priority" : "Recent activity"}`;
 

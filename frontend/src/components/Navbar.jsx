@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import api from "../api/api";
 import { roleFromToken, emailFromToken } from "../utils/jwt";
+import { getAdaptivePollInterval } from "../utils/performance";
 
 function currentRoleFromToken() {
   return roleFromToken(localStorage.getItem("token"));
@@ -117,6 +118,7 @@ export default function Navbar({ onNavigate }) {
 
   // Fetch notification count on mount, every 60s, and when a lead marks notifications read
   useEffect(() => {
+    const pollMs = getAdaptivePollInterval(15000);
     const fetchBadge = async () => {
       if (document.visibilityState !== "visible") return;
       try {
@@ -133,7 +135,7 @@ export default function Navbar({ onNavigate }) {
     let interval = null;
     const startPolling = () => {
       if (interval) return;
-      interval = setInterval(fetchBadge, 15000);
+      interval = setInterval(fetchBadge, pollMs);
     };
     const stopPolling = () => {
       if (!interval) return;
