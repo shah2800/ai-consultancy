@@ -729,9 +729,11 @@ export default function LeadProfile() {
   const chatEndRef = useRef(null);
   const chatScrollRef = useRef(null);
   const shouldAutoScrollRef = useRef(true);
+  const scrollChromeTimerRef = useRef(null);
 
   /** True when the thread is scrolled up — show jump-to-bottom control */
   const [showScrollDownBtn, setShowScrollDownBtn] = useState(false);
+  const [isChatActivelyScrolling, setIsChatActivelyScrolling] = useState(false);
 
   const scrollToBottomSmooth = useCallback(() => {
     const el = chatScrollRef.current;
@@ -778,6 +780,24 @@ export default function LeadProfile() {
   /** String while typing so you can clear the field and enter e.g. 21 */
   const [aiLeadLimitStr, setAiLeadLimitStr] = useState("100");
   const [aiControlSaving, setAiControlSaving] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (scrollChromeTimerRef.current) {
+        clearTimeout(scrollChromeTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileView) {
+      setIsChatActivelyScrolling(false);
+      if (scrollChromeTimerRef.current) {
+        clearTimeout(scrollChromeTimerRef.current);
+        scrollChromeTimerRef.current = null;
+      }
+    }
+  }, [isMobileView]);
 
   const load = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLeadLoading(true);
@@ -1081,8 +1101,6 @@ export default function LeadProfile() {
       setSending(false);
     }
   };
-
-  const handleKey = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
 
   const changeStatus = async (newStatus) => {
     setStatusUpdating(true);
@@ -1838,7 +1856,7 @@ export default function LeadProfile() {
       <div className="lead-profile-chat" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--bg)", minHeight: 0, minWidth: 0 }}>
 
         {/* Chat header */}
-        <div className="lead-profile-chat-header" style={{ padding: "14px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "var(--shadow-sm)" }}>
+        <div className="lead-profile-chat-header" style={{ padding: isMobileView ? "10px 12px" : "14px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "var(--shadow-sm)", transform: isMobileView && isChatActivelyScrolling ? "translateY(-12px)" : "translateY(0)", opacity: isMobileView && isChatActivelyScrolling ? 0.9 : 1, transition: "transform 0.34s ease, opacity 0.28s ease" }}>
           {isMobileView ? (
             <div
               className="lead-profile-mobile-summary-trigger"
@@ -1858,14 +1876,11 @@ export default function LeadProfile() {
                 </div>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div className="lead-profile-mobile-summary-name">{displayName}</div>
-                  <div className="lead-profile-mobile-summary-meta">
-                    {lead.phone} · {(STATUS_CONFIG[lead.status] || STATUS_CONFIG.new).label}
-                  </div>
-                  <div className="lead-profile-mobile-summary-ai">
-                    AI replies today: {aiCountToday}/{shownReplyCap}
-                  </div>
                 </div>
-                <span className="lead-profile-mobile-summary-chevron" aria-hidden>›</span>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                  <StatusBadge status={lead.status} />
+                  <span className="lead-profile-mobile-summary-chevron" aria-hidden>›</span>
+                </div>
               </div>
             </div>
           ) : null}
@@ -1924,9 +1939,18 @@ export default function LeadProfile() {
                 el.scrollHeight - (el.scrollTop + el.clientHeight);
               shouldAutoScrollRef.current = distanceFromBottom < 80;
               setShowScrollDownBtn(distanceFromBottom > 100);
+              if (isMobileView) {
+                setIsChatActivelyScrolling(true);
+                if (scrollChromeTimerRef.current) {
+                  clearTimeout(scrollChromeTimerRef.current);
+                }
+                scrollChromeTimerRef.current = setTimeout(() => {
+                  setIsChatActivelyScrolling(false);
+                }, 300);
+              }
             }}
             className="chat-scroll-panel lead-chat-messages-scroll"
-            style={{ flex: 1, minHeight: 0, padding: "20px 24px" }}
+            style={{ flex: 1, minHeight: 0, padding: isMobileView ? "20px 24px 96px" : "20px 24px 88px" }}
           >
             {messages.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px 20px" }}>
@@ -2017,7 +2041,22 @@ export default function LeadProfile() {
         )}
 
         {/* Message input */}
-        <div style={{ padding: "12px 20px", paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))", background: "var(--surface)", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
+        <div
+          style={{
+            padding: "12px 20px",
+            paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
+            background: "var(--surface)",
+            borderTop: "1px solid var(--border)",
+            flexShrink: 0,
+            position: isMobileView ? "fixed" : "sticky",
+            left: isMobileView ? 0 : undefined,
+            right: isMobileView ? 0 : undefined,
+            bottom: 0,
+            zIndex: isMobileView ? 95 : 5,
+            transform: isMobileView && isChatActivelyScrolling ? "translateY(14px)" : "translateY(0)",
+            transition: "transform 0.34s ease",
+          }}
+        >
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <label
               title="Attach files (max 5)"
@@ -2052,8 +2091,7 @@ export default function LeadProfile() {
             <textarea
               value={msgInput}
               onChange={e => setMsgInput(e.target.value)}
-              onKeyDown={handleKey}
-              placeholder="Type a message... (Enter to send, Shift+Enter for newline)"
+              placeholder="Type a message..."
               rows={1}
               style={{ flex: 1, padding: "8px 12px", border: "1.5px solid var(--border)", borderRadius: 10, fontSize: 13, fontFamily: "var(--font-body)", color: "var(--text)", background: "var(--surface)", resize: "none", lineHeight: 1.35 }}
             />
