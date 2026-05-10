@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback, useDeferredValue } from "react";
-import api from "../api/api";
+import api, { cachedGet } from "../api/api";
 import { useProgressiveRevealOneTier } from "../hooks/useProgressiveReveal";
 import SkeletonPulse from "../components/SkeletonPulse";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -156,7 +156,7 @@ export default function Leads() {
       const qs = new URLSearchParams();
       qs.set("status", status);
       if (sortMode === "priority") qs.set("sort", "priority");
-      const res = await api.get(`/admin/leads?${qs.toString()}`);
+      const res = await cachedGet(`/admin/leads?${qs.toString()}`, {}, 15000);
       setLeads(res.data || []);
     } catch (e) {
       console.error(e);
@@ -171,9 +171,16 @@ export default function Leads() {
     const pollMs = getAdaptivePollInterval(15000);
 
     let interval = null;
-    const refresh = () => {
+    let inFlight = false;
+    const refresh = async () => {
       if (document.visibilityState !== "visible") return;
-      fetchLeads({ silent: true });
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        await fetchLeads({ silent: true });
+      } finally {
+        inFlight = false;
+      }
     };
     const startPolling = () => {
       if (interval) return;

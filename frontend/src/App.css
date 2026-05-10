@@ -109,7 +109,16 @@
   flex: 1;
   min-width: 0;
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   background: linear-gradient(165deg, var(--bg) 0%, var(--bg-elevated) 55%, var(--bg) 100%);
+}
+
+.chat-scroll-panel {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  contain: content;
 }
 
 @media (min-width: 901px) {

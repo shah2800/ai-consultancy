@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback, useMemo, memo } from "react";
-import api from "../api/api";
+import api, { cachedGet } from "../api/api";
 import SkeletonPulse from "../components/SkeletonPulse";
 import { useParams, useNavigate } from "react-router-dom";
 import { inferPhoneOrigin } from "../utils/phoneCountry";
@@ -748,7 +748,8 @@ export default function LeadProfile() {
   const chatEndRef = useRef(null);
   const chatScrollRef = useRef(null);
   const shouldAutoScrollRef = useRef(true);
-  const scrollChromeTimerRef = useRef(null);
+  const scrollChromeRAFRef = useRef(null);
+  const scrollChromeLastEventRef = useRef(0);
   const scrollChromeActiveRef = useRef(false);
   const showScrollDownBtnRef = useRef(false);
 
@@ -805,32 +806,44 @@ export default function LeadProfile() {
   const [aiLeadLimitStr, setAiLeadLimitStr] = useState("100");
   const [aiControlSaving, setAiControlSaving] = useState(false);
 
+  const stopScrollChromeMotion = useCallback(() => {
+    scrollChromeActiveRef.current = false;
+    setIsChatActivelyScrolling(false);
+    if (scrollChromeRAFRef.current != null) {
+      cancelAnimationFrame(scrollChromeRAFRef.current);
+      scrollChromeRAFRef.current = null;
+    }
+  }, []);
+
+  const monitorScrollChromeIdle = useCallback(() => {
+    if (!scrollChromeActiveRef.current) {
+      scrollChromeRAFRef.current = null;
+      return;
+    }
+    const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+    if (now - scrollChromeLastEventRef.current > 180) {
+      stopScrollChromeMotion();
+      return;
+    }
+    scrollChromeRAFRef.current = requestAnimationFrame(monitorScrollChromeIdle);
+  }, [stopScrollChromeMotion]);
+
   useEffect(() => {
     return () => {
-      if (scrollChromeTimerRef.current) {
-        clearTimeout(scrollChromeTimerRef.current);
-      }
-      scrollChromeActiveRef.current = false;
+      stopScrollChromeMotion();
     };
-  }, []);
+  }, [stopScrollChromeMotion]);
 
   useEffect(() => {
     if (!isMobileView) {
-      if (scrollChromeActiveRef.current) {
-        scrollChromeActiveRef.current = false;
-        setIsChatActivelyScrolling(false);
-      }
-      if (scrollChromeTimerRef.current) {
-        clearTimeout(scrollChromeTimerRef.current);
-        scrollChromeTimerRef.current = null;
-      }
+      stopScrollChromeMotion();
     }
-  }, [isMobileView]);
+  }, [isMobileView, stopScrollChromeMotion]);
 
   const load = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLeadLoading(true);
     try {
-      const res = await api.get(`/admin/leads/${id}`);
+      const res = await cachedGet(`/admin/leads/${id}`, {}, 8000);
       setLead(res.data);
     } catch (e) { console.error(e); }
     finally { if (!silent) setLeadLoading(false); }
@@ -927,9 +940,16 @@ export default function LeadProfile() {
     const pollMs = getAdaptivePollInterval(10000);
 
     let interval = null;
-    const refresh = () => {
+    let inFlight = false;
+    const refresh = async () => {
       if (document.visibilityState !== "visible") return;
-      load({ silent: true });
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        await load({ silent: true });
+      } finally {
+        inFlight = false;
+      }
     };
     const startPolling = () => {
       if (interval) return;
@@ -1135,7 +1155,12 @@ export default function LeadProfile() {
       }
       setMsgInput("");
       setChatAttachments([]);
-      await load();
+      setSending(false);
+      void load({ silent: true });
+      // Pull fresh responses quickly after send so AI replies appear sooner.
+      setTimeout(() => { void load({ silent: true }); }, 1200);
+      setTimeout(() => { void load({ silent: true }); }, 3200);
+      return;
     } catch (e) {
       console.error(e);
       window.alert(e.response?.data?.error || "Send failed.");
@@ -1898,7 +1923,7 @@ export default function LeadProfile() {
       <div className="lead-profile-chat" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--bg)", minHeight: 0, minWidth: 0 }}>
 
         {/* Chat header */}
-        <div className="lead-profile-chat-header" style={{ padding: isMobileView ? "10px 12px" : "14px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "var(--shadow-sm)", transform: isMobileView && isChatActivelyScrolling ? "translateY(-24px)" : "translateY(0)", opacity: isMobileView && isChatActivelyScrolling ? 0.92 : 1, transition: "transform 0.38s ease, opacity 0.3s ease" }}>
+        <div className="lead-profile-chat-header" style={{ padding: isMobileView ? "10px 12px" : "14px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "var(--shadow-sm)", transform: isMobileView && isChatActivelyScrolling ? "translate3d(0, -24px, 0)" : "translate3d(0, 0, 0)", opacity: isMobileView && isChatActivelyScrolling ? 0.92 : 1, transition: "transform 0.38s ease, opacity 0.3s ease", willChange: isMobileView ? "transform, opacity" : undefined, backfaceVisibility: "hidden" }}>
           {isMobileView ? (
             <div
               className="lead-profile-mobile-summary-trigger"
@@ -1986,17 +2011,15 @@ export default function LeadProfile() {
                 setShowScrollDownBtn(shouldShowScrollDown);
               }
               if (isMobileView) {
+                scrollChromeLastEventRef.current =
+                  typeof performance !== "undefined" ? performance.now() : Date.now();
                 if (!scrollChromeActiveRef.current) {
                   scrollChromeActiveRef.current = true;
                   setIsChatActivelyScrolling(true);
                 }
-                if (scrollChromeTimerRef.current) {
-                  clearTimeout(scrollChromeTimerRef.current);
+                if (scrollChromeRAFRef.current == null) {
+                  scrollChromeRAFRef.current = requestAnimationFrame(monitorScrollChromeIdle);
                 }
-                scrollChromeTimerRef.current = setTimeout(() => {
-                  scrollChromeActiveRef.current = false;
-                  setIsChatActivelyScrolling(false);
-                }, 320);
               }
             }}
             className="chat-scroll-panel lead-chat-messages-scroll"
@@ -2108,8 +2131,10 @@ export default function LeadProfile() {
             right: isMobileView ? 0 : undefined,
             bottom: 0,
             zIndex: isMobileView ? 95 : 5,
-            transform: isMobileView && isChatActivelyScrolling ? "translateY(27px)" : "translateY(0)",
+            transform: isMobileView && isChatActivelyScrolling ? "translate3d(0, 27px, 0)" : "translate3d(0, 0, 0)",
             transition: "transform 0.38s ease",
+            willChange: isMobileView ? "transform" : undefined,
+            backfaceVisibility: "hidden",
           }}
         >
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>

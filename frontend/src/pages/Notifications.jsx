@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import api from "../api/api";
+import api, { cachedGet } from "../api/api";
 import { useNavigate } from "react-router-dom";
 import { useProgressiveRevealOneTier } from "../hooks/useProgressiveReveal";
 import SkeletonPulse from "../components/SkeletonPulse";
@@ -123,7 +123,7 @@ export default function Notifications() {
   const load = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
     try {
-      const res = await api.get("/admin/notifications");
+      const res = await cachedGet("/admin/notifications", {}, 10000);
       const data = res.data || [];
       setItems(data);
       setGroupedItems(buildGroupedItems(data));
@@ -141,9 +141,16 @@ export default function Notifications() {
     const pollMs = getAdaptivePollInterval(10000);
 
     let interval = null;
-    const refresh = () => {
+    let inFlight = false;
+    const refresh = async () => {
       if (document.visibilityState !== "visible") return;
-      load({ silent: true });
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        await load({ silent: true });
+      } finally {
+        inFlight = false;
+      }
     };
     const startPolling = () => {
       if (interval) return;

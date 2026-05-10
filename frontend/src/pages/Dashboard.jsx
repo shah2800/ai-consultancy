@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, memo } from "react";
-import api from "../api/api";
+import api, { cachedGet } from "../api/api";
 import ExportLeadsModal from "../components/ExportLeadsModal";
 import WeeklyReportModal from "../components/WeeklyReportModal";
 import { useNavigate } from "react-router-dom";
@@ -398,7 +398,10 @@ export default function Dashboard() {
     }
 
     /* Single completion path avoids “stuck” skeleton if one request hangs or finishes out of order (cold API / DB). */
-    Promise.allSettled([api.get("/admin/dashboard"), api.get("/leads/top")]).then(
+    Promise.allSettled([
+      cachedGet("/admin/dashboard", {}, 25000),
+      cachedGet("/leads/top", {}, 25000),
+    ]).then(
       (results) => {
         const [dashResult, topResult] = results;
 
@@ -434,9 +437,16 @@ export default function Dashboard() {
     const pollMs = getAdaptivePollInterval(15000);
 
     let interval = null;
-    const refresh = () => {
+    let inFlight = false;
+    const refresh = async () => {
       if (document.visibilityState !== "visible") return;
-      load({ silent: true });
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        await load({ silent: true });
+      } finally {
+        inFlight = false;
+      }
     };
     const startPolling = () => {
       if (interval) return;
