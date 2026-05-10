@@ -118,6 +118,7 @@ export default function Navbar({ onNavigate }) {
   // Fetch notification count on mount, every 60s, and when a lead marks notifications read
   useEffect(() => {
     const fetchBadge = async () => {
+      if (document.visibilityState !== "visible") return;
       try {
         const notifRes = await api.get("/admin/notifications");
         const unread = (notifRes.data || [])
@@ -128,12 +129,38 @@ export default function Navbar({ onNavigate }) {
         /* ignore badge fetch errors */
       }
     };
-    fetchBadge();
-    const interval = setInterval(fetchBadge, 8000);
-    window.addEventListener("crm-notifications-updated", fetchBadge);
-    return () => {
+
+    let interval = null;
+    const startPolling = () => {
+      if (interval) return;
+      interval = setInterval(fetchBadge, 10000);
+    };
+    const stopPolling = () => {
+      if (!interval) return;
       clearInterval(interval);
-      window.removeEventListener("crm-notifications-updated", fetchBadge);
+      interval = null;
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchBadge();
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+    const onNotificationsUpdated = () => {
+      fetchBadge();
+    };
+
+    onVisibilityChange();
+    window.addEventListener("focus", fetchBadge);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("crm-notifications-updated", onNotificationsUpdated);
+    return () => {
+      stopPolling();
+      window.removeEventListener("focus", fetchBadge);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("crm-notifications-updated", onNotificationsUpdated);
     };
   }, []);
 

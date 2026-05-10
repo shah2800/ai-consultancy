@@ -124,6 +124,7 @@ mongoose.connect(process.env.MONGO_URI)
     if (plat.length) {
       console.log(`   Platform admins — global signup UI (env): ${plat.join(", ")}`);
     }
+    startInactivityFollowupScheduler();
   })
   .catch((err) => console.log("❌ Mongo Error:", err));
 
@@ -600,6 +601,19 @@ function extractNameFromMessage(text = "") {
   const raw = String(text || "").trim();
   if (!raw) return "";
 
+  const blockedNameTokens = new Set([
+    "hi",
+    "hello",
+    "hey",
+    "ok",
+    "okay",
+    "yes",
+    "no",
+    "nhi",
+    "nahi",
+    "hmm",
+  ]);
+
   const patterns = [
     /(?:my name is|i am|i'm)\s+([a-zA-Z][a-zA-Z\s.'-]{1,40})/i,
     /(?:this is)\s+([a-zA-Z][a-zA-Z\s.'-]{1,40})/i,
@@ -614,7 +628,7 @@ function extractNameFromMessage(text = "") {
       candidate = candidate
         .replace(/\b(is|am|i'm|my|name)\b/gi, "")
         .trim();
-      if (candidate.length >= 2) {
+      if (candidate.length >= 2 && !blockedNameTokens.has(candidate.toLowerCase())) {
         return candidate;
       }
     }
@@ -627,6 +641,84 @@ function extractNameFromMessage(text = "") {
   }
 
   return "";
+}
+
+function shouldIgnoreForPersonalFacts(text = "") {
+  const t = String(text || "").trim().toLowerCase();
+  if (!t) return true;
+  const compact = t.replace(/[^\p{L}\p{N}\s]/gu, "").trim();
+  if (!compact) return true;
+
+  const softNoise = new Set([
+    "hi",
+    "hello",
+    "hey",
+    "ok",
+    "okay",
+    "yes",
+    "no",
+    "nhi",
+    "nahi",
+    "hmm",
+    "hmmm",
+    "i",
+  ]);
+  if (softNoise.has(compact)) return true;
+
+  const introPattern = /\b(my name is|name is|i am|i'm|this is)\b/i;
+  if (introPattern.test(t)) return false;
+
+  const words = compact.split(/\s+/).filter(Boolean);
+  if (words.length <= 2 && compact.length <= 8) return true;
+  return false;
+}
+
+function extractConfirmedStudentName(history = []) {
+  const arr = Array.isArray(history) ? history : [];
+  for (let i = arr.length - 1; i >= 0; i -= 1) {
+    const m = arr[i] || {};
+    const role = String(m.role || "").toLowerCase();
+    if (role !== "user") continue;
+    const name = extractNameFromMessage(String(m.content || ""));
+    if (name) return name;
+  }
+  return "";
+}
+
+function lastUserGreetingIntent(history = []) {
+  const arr = Array.isArray(history) ? history : [];
+  for (let i = arr.length - 1; i >= 0; i -= 1) {
+    const m = arr[i] || {};
+    const role = String(m.role || "").toLowerCase();
+    if (role !== "user") continue;
+    const text = String(m.content || "").trim().toLowerCase();
+    if (!text) return false;
+    return /^(hi|hello|hey)\b/.test(text);
+  }
+  return false;
+}
+
+function sanitizeReplyNameUsage(reply, confirmedName, history = []) {
+  const text = String(reply || "").trim();
+  if (!text) return "";
+  let next = text;
+
+  if (confirmedName) return next;
+
+  // If no confirmed name, avoid "Hi <Name>" style hallucinated greetings.
+  next = next.replace(
+    /^\s*(hi|hello|hey)\s+[a-zA-Z][a-zA-Z\s.'-]{1,25}([,!])?\s*/i,
+    "Hi! "
+  );
+
+  // Only keep greeting when the latest user message was a greeting.
+  if (!lastUserGreetingIntent(history)) {
+    next = next
+      .replace(/^\s*(hi|hello|hey)[!,.]?\s*/i, "")
+      .trimStart();
+  }
+
+  return next;
 }
 
 /* ============================================================
@@ -935,6 +1027,20 @@ const leadSchema = new mongoose.Schema(
       {
         role: String,
         content: String,
+        /** Outbound WhatsApp delivery metadata (admin UI only). */
+        whatsappDeliveryChannel: {
+          type: String,
+          default: "",
+        },
+        whatsappDeliveryStatus: {
+          type: String,
+          default: "",
+        },
+        whatsappDeliveryError: {
+          type: String,
+          default: "",
+        },
+        whatsappDeliveredAt: Date,
         /** WhatsApp inbound: text | image | video | document | audio | sticker | unknown */
         kind: {
           type: String,
@@ -954,6 +1060,11 @@ const leadSchema = new mongoose.Schema(
         },
         /** WhatsApp Cloud media id — used to fetch image/document/video via Graph API */
         whatsappMediaId: {
+          type: String,
+          default: "",
+        },
+        /** WhatsApp Cloud inbound message id for deduping webhook retries */
+        whatsappMessageId: {
           type: String,
           default: "",
         },
@@ -1651,6 +1762,7 @@ Rules:
 - Keep previous facts that are still valid.
 - If they CORRECT something (e.g. new name), replace the old fact with the new one.
 - Add new facts only they stated.
+- Ignore greetings/short filler messages like: hi, hello, ok, yes, no, nhi/nahi, hmm.
 - Max 18 lines in details. Plain text lines only.
 - If nothing personal in this message, set details to the previous facts unchanged and changed false.`,
       },
@@ -1675,6 +1787,7 @@ Rules:
 async function updateLeadImportantDetailsFromStudentMessage(lead, messageText) {
   const t = String(messageText || "").trim();
   if (!t || t.length < 2) return;
+  if (shouldIgnoreForPersonalFacts(t)) return;
   try {
     const next = await mergeLeadImportantDetailsGroq(
       lead.importantDetails || "",
@@ -1686,8 +1799,8 @@ async function updateLeadImportantDetailsFromStudentMessage(lead, messageText) {
   }
 }
 
-async function askAI(history, userId, opts = {}) {
-  const importantDetails = String(opts.importantDetails || "").trim();
+async function askAI(history, userId) {
+  const confirmedStudentName = extractConfirmedStudentName(history);
 
   let settings = null;
 
@@ -1775,8 +1888,8 @@ CONSULTANCY CONTACT & LOCATION (only share details that appear below when studen
 ${contactFactsBlock}
 ${aboutBlock ? `\n${aboutBlock}\n` : ""}
 
-STUDENT-STATED FACTS (saved from their messages — use these when they ask "what is my name" etc.; newer corrections in chat are already reflected here):
-${importantDetails || "(none stored yet — do not invent their name, scores, or personal details)"}
+CONFIRMED STUDENT NAME (use only if explicitly confirmed by student):
+${confirmedStudentName || "(not confirmed)"}
 
 IMPORTANT RULES:
 - Keep replies SHORT
@@ -1787,6 +1900,9 @@ IMPORTANT RULES:
 - No long paragraphs
 - Do not promise visa approval
 - Suggest human consultant after few messages
+- If confirmed student name is "(not confirmed)", DO NOT address the student by any name.
+- Never infer name from greetings/short words (hi, hey, nhi, ok, etc.).
+- Only use the exact confirmed student name when available.
 
 BUSINESS ALLOWED:
 ${canSay || "mention consultation support and process guidance only"}
@@ -1815,7 +1931,7 @@ ${universitiesSection}
     max_tokens: 150,
   });
 
-  return reply;
+  return sanitizeReplyNameUsage(reply, confirmedStudentName, history);
 }
 
 async function sendWhatsAppCloudText({ phoneNumberId, to, text }) {
@@ -1856,6 +1972,153 @@ async function sendWhatsAppCloudText({ phoneNumberId, to, text }) {
     }
     throw err;
   }
+}
+
+const FOLLOWUP_IDLE_MS = 24 * 60 * 60 * 1000;
+const FOLLOWUP_SWEEP_MS = 10 * 60 * 1000;
+let followupSchedulerStarted = false;
+let followupSweepInProgress = false;
+
+function toMs(d) {
+  const t = Date.parse(String(d || ""));
+  return Number.isFinite(t) ? t : 0;
+}
+
+function latestMessageByRoles(messages = [], roles = []) {
+  const allow = new Set((Array.isArray(roles) ? roles : []).map((r) => String(r).toLowerCase()));
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const m = messages[i] || {};
+    const role = String(m.role || "").toLowerCase();
+    if (allow.has(role)) return m;
+  }
+  return null;
+}
+
+function build24hFollowupText({ confirmedName, lastOutboundText }) {
+  const greeting = confirmedName ? `Hi ${confirmedName},` : "Hi,";
+  const prev = String(lastOutboundText || "").toLowerCase();
+
+  const proposalPattern = /\b(proposal|quote|quotation|pricing|price plan|offer|next steps?)\b/i;
+  if (proposalPattern.test(prev)) {
+    return `${greeting} just checking if you had any questions on the proposal or if you're ready for the next steps?`;
+  }
+
+  const docPattern = /\b(document|documents|details|detail|passport|transcript|ielts|bank statement|cv|sop)\b/i;
+  if (docPattern.test(prev)) {
+    return `${greeting} just circling back to see if you've had a chance to grab those documents/details we discussed?`;
+  }
+
+  return `${greeting} just following up on our last message. Let me know if you want to continue with the next steps.`;
+}
+
+async function runInactivityFollowupSweep() {
+  if (followupSweepInProgress) return;
+  followupSweepInProgress = true;
+  try {
+    const cutoff = new Date(Date.now() - FOLLOWUP_IDLE_MS);
+    const leads = await Lead.find({
+      source: "WhatsApp",
+      isMerged: { $ne: true },
+      phone: { $exists: true, $ne: "" },
+      status: { $nin: ["converted", "lost"] },
+      lastActivity: { $lte: cutoff },
+    }).select("_id userId phone status messages extractedData lastActivity");
+
+    if (!leads.length) return;
+
+    const settingsByUser = new Map();
+
+    for (const lead of leads) {
+      const msgs = Array.isArray(lead.messages) ? lead.messages : [];
+      if (msgs.length === 0) continue;
+
+      const lastMsg = msgs[msgs.length - 1] || {};
+      const lastRole = String(lastMsg.role || "").toLowerCase();
+      if (lastRole !== "assistant" && lastRole !== "admin") {
+        continue; // only follow up when waiting for student response
+      }
+
+      const lastOutboundAtMs = toMs(lastMsg.at || lead.lastActivity);
+      if (!lastOutboundAtMs || Date.now() - lastOutboundAtMs < FOLLOWUP_IDLE_MS) {
+        continue;
+      }
+
+      const lastUserMsg = latestMessageByRoles(msgs, ["user"]);
+      const lastUserAtMs = toMs(lastUserMsg?.at);
+      const lastReminderAtMs = toMs(lead.extractedData?.autoReminderSentAt);
+      if (lastReminderAtMs && (!lastUserAtMs || lastUserAtMs <= lastReminderAtMs)) {
+        continue; // already reminded for this waiting period
+      }
+
+      const uid = String(lead.userId || "");
+      if (!uid) continue;
+
+      if (!settingsByUser.has(uid)) {
+        const s = await Settings.findOne({ userId: uid }).lean();
+        settingsByUser.set(uid, s || null);
+      }
+      const st = settingsByUser.get(uid);
+      if (!st) continue;
+      if (st.aiAutoReplyEnabled === false) continue;
+
+      const phoneNumberId =
+        String(st.whatsappPhoneNumberId || "").trim() ||
+        String(process.env.WHATSAPP_PHONE_NUMBER_ID || "").trim();
+      if (!phoneNumberId) continue;
+
+      const confirmedName = extractConfirmedStudentName(msgs);
+      const reminderText = build24hFollowupText({
+        confirmedName,
+        lastOutboundText: String(lastMsg.content || ""),
+      });
+
+      try {
+        await sendWhatsAppCloudText({
+          phoneNumberId,
+          to: String(lead.phone).trim(),
+          text: reminderText,
+        });
+      } catch (sendErr) {
+        console.log(
+          "Auto follow-up send failed:",
+          sendErr?.response?.data || sendErr?.message || sendErr
+        );
+        continue;
+      }
+
+      lead.messages.push({
+        role: "assistant",
+        content: reminderText,
+        whatsappDeliveryChannel: "whatsapp",
+        whatsappDeliveryStatus: "sent",
+        whatsappDeliveredAt: new Date(),
+        at: new Date(),
+      });
+      lead.lastActivity = new Date();
+      lead.extractedData = {
+        ...(lead.extractedData || {}),
+        autoReminderSentAt: new Date().toISOString(),
+      };
+      await lead.save();
+    }
+  } catch (e) {
+    console.log("Auto follow-up sweep failed:", e?.message || e);
+  } finally {
+    followupSweepInProgress = false;
+  }
+}
+
+function startInactivityFollowupScheduler() {
+  if (followupSchedulerStarted) return;
+  followupSchedulerStarted = true;
+  // First sweep shortly after boot, then every 10 minutes.
+  setTimeout(() => {
+    runInactivityFollowupSweep().catch(() => {});
+  }, 45 * 1000);
+  setInterval(() => {
+    runInactivityFollowupSweep().catch(() => {});
+  }, FOLLOWUP_SWEEP_MS);
+  console.log("⏰ 24h follow-up scheduler started");
 }
 
 /** WhatsApp Cloud API media kinds (image | video | audio | document). */
@@ -2184,6 +2447,7 @@ const adminMessageSchema = z.object({
 });
 
 const webhookInboundMessageSchema = z.object({
+  id: z.string().trim().max(120).optional(),
   from: z
     .string()
     .trim()
@@ -2849,6 +3113,7 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
 
           const fromPhone = String(parsedInbound.data.from || "").trim();
           if (!fromPhone) continue;
+          const inboundMessageId = String(parsedInbound.data.id || "").trim();
 
           const summary = summarizeInboundWhatsAppMessage(msg || {});
 
@@ -2876,6 +3141,17 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
             lead.name = String(profileName || introName || "").trim();
           }
 
+          if (
+            inboundMessageId &&
+            (lead.messages || []).some(
+              (m) =>
+                m?.role === "user" &&
+                String(m?.whatsappMessageId || "").trim() === inboundMessageId
+            )
+          ) {
+            continue;
+          }
+
           lead.messages.push({
             role: "user",
             content: summary.content,
@@ -2884,15 +3160,9 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
             mediaFilename: summary.mediaFilename || "",
             mimeType: summary.mimeType || "",
             whatsappMediaId: summary.whatsappMediaId || "",
+            whatsappMessageId: inboundMessageId,
             at: new Date(),
           });
-
-          const factSource =
-            String(summary.content || "").trim() ||
-            String(summary.caption || "").trim();
-          if (factSource) {
-            await updateLeadImportantDetailsFromStudentMessage(lead, factSource);
-          }
 
           let aiReply = "";
           if (autoReplyEnabled) {
@@ -2950,9 +3220,7 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
                 content: String(m.content || ""),
               }));
 
-              aiReply = await askAI(history, accountSettings.userId, {
-                importantDetails: lead.importantDetails || "",
-              });
+              aiReply = await askAI(history, accountSettings.userId);
               if (!String(aiReply || "").trim()) {
                 aiReply = "Thanks for your message. Our consultant will reply shortly.";
               }
@@ -2968,18 +3236,7 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
             };
           }
 
-          if (aiReply) {
-            lead.messages.push({
-              role: "assistant",
-              content: aiReply,
-              at: new Date(),
-            });
-          }
-
-          lead.lastActivity = new Date();
-          await lead.save();
-          await maybeAutoRefreshLeadAiSummary(lead);
-
+          let aiReplyDelivered = false;
           if (aiReply) {
             try {
               await sendWhatsAppCloudText({
@@ -2989,13 +3246,31 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
                 to: fromPhone,
                 text: aiReply,
               });
+              aiReplyDelivered = true;
             } catch (sendErr) {
               console.log(
                 "WhatsApp auto-reply send failed:",
+                `lead=${String(lead?._id || "")}`,
+                `to=${String(fromPhone || "")}`,
                 sendErr?.response?.data || sendErr?.message || sendErr
               );
             }
           }
+
+          if (aiReply && aiReplyDelivered) {
+            lead.messages.push({
+              role: "assistant",
+              content: aiReply,
+              whatsappDeliveryChannel: "whatsapp",
+              whatsappDeliveryStatus: "sent",
+              whatsappDeliveredAt: new Date(),
+              at: new Date(),
+            });
+          }
+
+          lead.lastActivity = new Date();
+          await lead.save();
+          await maybeAutoRefreshLeadAiSummary(lead);
 
           await createNotification(
             accountSettings.userId,
@@ -3075,11 +3350,7 @@ app.post("/message", auth, aiMessageLimiter, async (req, res) => {
       content: message,
     });
 
-    await updateLeadImportantDetailsFromStudentMessage(lead, message);
-
-    const aiReply = await askAI(history, tenantUserId(req), {
-      importantDetails: lead.importantDetails || "",
-    });
+    const aiReply = await askAI(history, tenantUserId(req));
 
     lead.messages.push(
       {
@@ -3485,13 +3756,13 @@ app.post(
       lead.messages.push({
         role: "admin",
         content: crmContent || text || "📎 attachment",
+        whatsappDeliveryChannel: "whatsapp",
+        whatsappDeliveryStatus: "pending",
         at: new Date(),
       });
+      const outboundMessage = lead.messages[lead.messages.length - 1];
       lead.lastActivity = new Date();
       lead.priorityScore = calculatePriority(lead.toObject());
-
-      await lead.save();
-      await maybeAutoRefreshLeadAiSummary(lead);
 
       const whatsappInfo = {
         configured: false,
@@ -3541,11 +3812,16 @@ app.post(
             uploaded: uploadedMedia,
           });
           whatsappInfo.sent = true;
+          outboundMessage.whatsappDeliveryStatus = "sent";
+          outboundMessage.whatsappDeliveredAt = new Date();
+          outboundMessage.whatsappDeliveryError = "";
         } catch (waErr) {
           whatsappInfo.error =
             waErr?.response?.data?.error?.message ||
             waErr?.message ||
             "WhatsApp delivery failed";
+          outboundMessage.whatsappDeliveryStatus = "failed";
+          outboundMessage.whatsappDeliveryError = whatsappInfo.error;
           console.log(
             "Lead message WhatsApp send failed:",
             String(lead._id),
@@ -3554,7 +3830,15 @@ app.post(
         }
       } else if (whatsappInfo.configured && to.length < 8) {
         whatsappInfo.skippedNoPhone = true;
+        outboundMessage.whatsappDeliveryStatus = "skipped_no_phone";
+        outboundMessage.whatsappDeliveryError = "Lead phone is missing or invalid for WhatsApp delivery.";
+      } else {
+        outboundMessage.whatsappDeliveryStatus = "not_configured";
+        outboundMessage.whatsappDeliveryError = "WhatsApp is not configured on the server.";
       }
+
+      await lead.save();
+      await maybeAutoRefreshLeadAiSummary(lead);
 
       const notifBits = [];
       if (files.length) {
@@ -5177,17 +5461,29 @@ app.post(
         lead.messages.push({
           role: "admin",
           content: crmContent || message || "📎 attachment",
+          whatsappDeliveryChannel: "whatsapp",
+          whatsappDeliveryStatus: "pending",
           at: new Date(),
         });
+        const outboundMessage = lead.messages[lead.messages.length - 1];
         lead.lastActivity = new Date();
         lead.priorityScore = calculatePriority(lead.toObject());
-        await lead.save();
 
-        if (!whatsappConfigured) continue;
+        if (!whatsappConfigured) {
+          outboundMessage.whatsappDeliveryStatus = "not_configured";
+          outboundMessage.whatsappDeliveryError =
+            whatsappStats.reason || "WhatsApp is not configured on the server.";
+          await lead.save();
+          continue;
+        }
 
         const to = normalizePhoneKey(lead.phone);
         if (to.length < 8) {
           whatsappStats.skippedNoPhone++;
+          outboundMessage.whatsappDeliveryStatus = "skipped_no_phone";
+          outboundMessage.whatsappDeliveryError =
+            "Lead phone is missing or invalid for WhatsApp delivery.";
+          await lead.save();
           continue;
         }
 
@@ -5200,9 +5496,19 @@ app.post(
           });
 
           whatsappStats.delivered++;
+          outboundMessage.whatsappDeliveryStatus = "sent";
+          outboundMessage.whatsappDeliveredAt = new Date();
+          outboundMessage.whatsappDeliveryError = "";
+          await lead.save();
           await new Promise((r) => setTimeout(r, 250));
         } catch (sendErr) {
           whatsappStats.failed++;
+          outboundMessage.whatsappDeliveryStatus = "failed";
+          outboundMessage.whatsappDeliveryError =
+            sendErr?.response?.data?.error?.message ||
+            sendErr?.message ||
+            "WhatsApp delivery failed";
+          await lead.save();
           pushErrorSample(lead.phone, sendErr);
           console.log(
             "Broadcast WhatsApp send failed:",

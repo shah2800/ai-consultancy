@@ -138,17 +138,42 @@ export default function Notifications() {
   useEffect(() => {
     load();
 
-    const refresh = () => load({ silent: true });
-    const interval = setInterval(refresh, 4000);
+    let interval = null;
+    const refresh = () => {
+      if (document.visibilityState !== "visible") return;
+      load({ silent: true });
+    };
+    const startPolling = () => {
+      if (interval) return;
+      interval = setInterval(refresh, 6000);
+    };
+    const stopPolling = () => {
+      if (!interval) return;
+      clearInterval(interval);
+      interval = null;
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refresh();
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+    const onNotificationsUpdated = () => {
+      refresh();
+    };
+
+    onVisibilityChange();
     window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
-    window.addEventListener("crm-notifications-updated", refresh);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("crm-notifications-updated", onNotificationsUpdated);
 
     return () => {
-      clearInterval(interval);
+      stopPolling();
       window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", refresh);
-      window.removeEventListener("crm-notifications-updated", refresh);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("crm-notifications-updated", onNotificationsUpdated);
     };
   }, [load]);
 

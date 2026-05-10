@@ -1,21 +1,22 @@
-import { useState, useEffect, useLayoutEffect } from "react";
+import { useState, useEffect, useLayoutEffect, Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useSearchParams, Link, useLocation } from "react-router-dom";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import Leads from "./pages/Leads";
-import LeadProfile from "./pages/LeadProfile";
-import Analytics from "./pages/Analytics";
-import Settings from "./pages/Settings";
 import Navbar from "./components/Navbar";
-import Register from "./pages/Register";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import Broadcast from "./pages/Broadcast";
-import Universities from "./pages/Universities";
-import Notifications from "./pages/Notifications";
-import Team from "./pages/Team";
-import Help from "./pages/Help";
 import api from "./api/api";
+
+const Login = lazy(() => import("./pages/Login"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Leads = lazy(() => import("./pages/Leads"));
+const LeadProfile = lazy(() => import("./pages/LeadProfile"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Register = lazy(() => import("./pages/Register"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Broadcast = lazy(() => import("./pages/Broadcast"));
+const Universities = lazy(() => import("./pages/Universities"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const Team = lazy(() => import("./pages/Team"));
+const Help = lazy(() => import("./pages/Help"));
 
 function RegisterRoute() {
   const [searchParams] = useSearchParams();
@@ -140,24 +141,32 @@ function Layout({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
-        <Route path="/leads" element={<Layout><Leads /></Layout>} />
-        <Route path="/leads/:id" element={<Layout><LeadProfile /></Layout>} />
-        <Route path="/analytics" element={<Layout><Analytics /></Layout>} />
-        <Route path="/notifications" element={<Layout><Notifications /></Layout>} />
-        <Route path="/team" element={<Layout><Team /></Layout>} />
-        <Route path="/broadcast" element={<Layout><Broadcast /></Layout>} />
-        <Route path="/universities" element={<Layout><Universities /></Layout>} />
-        <Route path="/assigned-leads" element={<Navigate to="/leads" replace />} />
-        <Route path="/assigned-team" element={<Navigate to="/leads" replace />} />
-        <Route path="/settings" element={<Layout><Settings /></Layout>} />
-        <Route path="/help" element={<Layout><Help /></Layout>} />
-        <Route path="/register" element={<RegisterRoute />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-      </Routes>
+      <Suspense
+        fallback={
+          <div className="page-shell" style={{ padding: 24, color: "var(--text-2)" }}>
+            Loading...
+          </div>
+        }
+      >
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+          <Route path="/leads" element={<Layout><Leads /></Layout>} />
+          <Route path="/leads/:id" element={<Layout><LeadProfile /></Layout>} />
+          <Route path="/analytics" element={<Layout><Analytics /></Layout>} />
+          <Route path="/notifications" element={<Layout><Notifications /></Layout>} />
+          <Route path="/team" element={<Layout><Team /></Layout>} />
+          <Route path="/broadcast" element={<Layout><Broadcast /></Layout>} />
+          <Route path="/universities" element={<Layout><Universities /></Layout>} />
+          <Route path="/assigned-leads" element={<Navigate to="/leads" replace />} />
+          <Route path="/assigned-team" element={<Navigate to="/leads" replace />} />
+          <Route path="/settings" element={<Layout><Settings /></Layout>} />
+          <Route path="/help" element={<Layout><Help /></Layout>} />
+          <Route path="/register" element={<RegisterRoute />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

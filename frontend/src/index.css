@@ -188,6 +188,12 @@ h1, h2, h3, h4 {
   background: var(--surface-2) !important;
 }
 
+/* Large lead lists: skip rendering off-screen rows until needed */
+.leads-table-row {
+  content-visibility: auto;
+  contain-intrinsic-size: 84px;
+}
+
 /* Focus visibility (keyboard / accessibility) */
 input:focus-visible,
 textarea:focus-visible,
@@ -216,4 +222,17 @@ button:active:not(:disabled) { transform: scale(0.98); }
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+@media (max-width: 900px) {
+  /* Reduce costly hover/lift effects on mobile browsers */
+  .metric-card:hover,
+  .dashboard-metric-card--interactive:hover {
+    transform: none !important;
+    box-shadow: var(--shadow-sm) !important;
+  }
+
+  button:active:not(:disabled) {
+    transform: none;
+  }
 }

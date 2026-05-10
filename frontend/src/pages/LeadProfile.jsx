@@ -575,6 +575,42 @@ function ChatBubble({ msg }) {
   const time = msg.at ? new Date(msg.at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "";
   const inboundKind = effectiveInboundKind(msg);
   const isInboundMedia = isUser && INBOUND_MEDIA_KINDS.includes(inboundKind);
+  const deliveryStatus = String(msg.whatsappDeliveryStatus || "").trim().toLowerCase();
+  const deliveryError = String(msg.whatsappDeliveryError || "").trim();
+  const deliveryChannel = String(msg.whatsappDeliveryChannel || "").trim().toLowerCase();
+  const isUndeliveredWhatsApp =
+    deliveryChannel === "whatsapp" &&
+    ["failed", "skipped_no_phone", "not_configured"].includes(deliveryStatus);
+
+  const renderDeliveryBadge = (align = "left") => {
+    if (!isUndeliveredWhatsApp) return null;
+    return (
+      <div
+        title={deliveryError || "Not sent to WhatsApp"}
+        style={{
+          marginTop: 3,
+          textAlign: align,
+        }}
+      >
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.02em",
+            color: "#b91c1c",
+            background: "#fef2f2",
+            borderRadius: 999,
+            padding: "2px 8px",
+          }}
+        >
+          Not sent to WhatsApp
+        </span>
+      </div>
+    );
+  };
 
   if (isUser && isInboundMedia) {
     const meta = MEDIA_CARD_META[inboundKind] || { icon: "📎", label: "Media", tint: "var(--accent)" };
@@ -645,11 +681,21 @@ function ChatBubble({ msg }) {
   if (isAI) return (
     <div style={{ display: "flex", justifyContent: "flex-start", marginBottom: 10 }}>
       <div style={{ maxWidth: "72%" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3, paddingLeft: 4 }}>
-          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#4361EE", background: "#EEF1FD", padding: "1px 6px", borderRadius: 4 }}>AI</span>
+        <div
+          style={{
+            background: isUndeliveredWhatsApp ? "#fef2f2" : "#F0F1F8",
+            color: isUndeliveredWhatsApp ? "#7f1d1d" : "var(--text)",
+            padding: "10px 14px",
+            borderRadius: "16px 16px 16px 4px",
+            fontSize: 14,
+            lineHeight: 1.5,
+            borderLeft: isUndeliveredWhatsApp ? "3px solid #dc2626" : "3px solid #4361EE",
+          }}
+        >
+          {msg.text || msg.content}
         </div>
-        <div style={{ background: "#F0F1F8", color: "var(--text)", padding: "10px 14px", borderRadius: "16px 16px 16px 4px", fontSize: 14, lineHeight: 1.5, borderLeft: "3px solid #4361EE" }}>{msg.text || msg.content}</div>
         <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3, paddingLeft: 4 }}>{time}</div>
+        {renderDeliveryBadge("left")}
       </div>
     </div>
   );
@@ -657,11 +703,21 @@ function ChatBubble({ msg }) {
   return (
     <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
       <div style={{ maxWidth: "72%" }}>
-        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 5, marginBottom: 3, paddingRight: 4 }}>
-          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#1E9E5E", background: "#E9F8F0", padding: "1px 6px", borderRadius: 4 }}>You</span>
+        <div
+          style={{
+            background: isUndeliveredWhatsApp ? "#fef2f2" : "#4361EE",
+            color: isUndeliveredWhatsApp ? "#7f1d1d" : "#fff",
+            padding: "10px 14px",
+            borderRadius: "16px 16px 4px 16px",
+            fontSize: 14,
+            lineHeight: 1.5,
+            border: isUndeliveredWhatsApp ? "1px solid #fecaca" : "none",
+          }}
+        >
+          {msg.text || msg.content}
         </div>
-        <div style={{ background: "#4361EE", color: "#fff", padding: "10px 14px", borderRadius: "16px 16px 4px 16px", fontSize: 14, lineHeight: 1.5 }}>{msg.text || msg.content}</div>
         <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3, paddingRight: 4, textAlign: "right" }}>{time}</div>
+        {renderDeliveryBadge("right")}
       </div>
     </div>
   );
@@ -770,15 +826,37 @@ export default function LeadProfile() {
   useEffect(() => {
     load();
 
-    const refresh = () => load({ silent: true });
-    const interval = setInterval(refresh, 4000);
+    let interval = null;
+    const refresh = () => {
+      if (document.visibilityState !== "visible") return;
+      load({ silent: true });
+    };
+    const startPolling = () => {
+      if (interval) return;
+      interval = setInterval(refresh, 6000);
+    };
+    const stopPolling = () => {
+      if (!interval) return;
+      clearInterval(interval);
+      interval = null;
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refresh();
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    onVisibilityChange();
     window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
-      clearInterval(interval);
+      stopPolling();
       window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", refresh);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [load]);
 

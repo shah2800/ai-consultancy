@@ -167,15 +167,37 @@ export default function Leads() {
   useEffect(() => {
     fetchLeads();
 
-    const refresh = () => fetchLeads({ silent: true });
-    const interval = setInterval(refresh, 8000);
+    let interval = null;
+    const refresh = () => {
+      if (document.visibilityState !== "visible") return;
+      fetchLeads({ silent: true });
+    };
+    const startPolling = () => {
+      if (interval) return;
+      interval = setInterval(refresh, 10000);
+    };
+    const stopPolling = () => {
+      if (!interval) return;
+      clearInterval(interval);
+      interval = null;
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refresh();
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    onVisibilityChange();
     window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
-      clearInterval(interval);
+      stopPolling();
       window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", refresh);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [fetchLeads]);
 
