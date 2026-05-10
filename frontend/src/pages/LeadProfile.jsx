@@ -31,7 +31,7 @@ const MAX_CHAT_ATTACHMENTS = 5;
 
 function LeadProfileShellSkeleton() {
   return (
-    <div className="lead-profile-shell" style={{ position: "relative", display: "flex", height: "100vh", overflow: "hidden", fontFamily: "var(--font-body)", minHeight: 0 }}>
+    <div className="lead-profile-shell" style={{ position: "relative", display: "flex", height: "100dvh", overflow: "hidden", fontFamily: "var(--font-body)", minHeight: 0 }}>
       <div className="lead-profile-sidebar" style={{ width: 300, minWidth: 300, background: "var(--surface)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
           <SkeletonPulse style={{ width: 72, height: 12, marginBottom: 14 }} />
@@ -1258,9 +1258,10 @@ export default function LeadProfile() {
 
   const leadsListPath = "/leads";
   const leadsListLabel = "All Leads";
+  const showTypingIndicator = !sending && msgInput.trim().length > 0;
 
   return (
-    <div className="lead-profile-shell" style={{ display: "flex", height: "100vh", overflow: "hidden", fontFamily: "var(--font-body)", minHeight: 0 }}>
+    <div className="lead-profile-shell" style={{ display: "flex", height: "100dvh", overflow: "hidden", fontFamily: "var(--font-body)", minHeight: 0 }}>
 
       {/* LEFT PANEL */}
       <div className={`lead-profile-sidebar ${mobileSidebarOpen ? "is-mobile-open" : ""}`} style={{ width: 300, minWidth: 300, background: "var(--surface)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
@@ -1856,14 +1857,15 @@ export default function LeadProfile() {
                   {initials}
                 </div>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-heading)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayName}</div>
-                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <div className="lead-profile-mobile-summary-name">{displayName}</div>
+                  <div className="lead-profile-mobile-summary-meta">
                     {lead.phone} · {(STATUS_CONFIG[lead.status] || STATUS_CONFIG.new).label}
                   </div>
-                  <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <div className="lead-profile-mobile-summary-ai">
                     AI replies today: {aiCountToday}/{shownReplyCap}
                   </div>
                 </div>
+                <span className="lead-profile-mobile-summary-chevron" aria-hidden>›</span>
               </div>
             </div>
           ) : null}
@@ -1940,6 +1942,19 @@ export default function LeadProfile() {
             ) : (
               <LeadChatThreadSkeleton />
             )}
+            {showTypingIndicator ? (
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4, marginBottom: 8 }}>
+                <div
+                  className="typing-indicator-bubble"
+                  aria-label="Typing"
+                  title="Typing..."
+                >
+                  <span className="typing-indicator-dot" />
+                  <span className="typing-indicator-dot" />
+                  <span className="typing-indicator-dot" />
+                </div>
+              </div>
+            ) : null}
             <div ref={chatEndRef} />
           </div>
           {chatThreadReady && messages.length > 0 && showScrollDownBtn ? (
@@ -2002,22 +2017,22 @@ export default function LeadProfile() {
         )}
 
         {/* Message input */}
-        <div style={{ padding: "12px 20px", background: "var(--surface)", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div style={{ padding: "12px 20px", paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))", background: "var(--surface)", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <label
               title="Attach files (max 5)"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
-                width: 42,
-                height: 42,
+                width: 36,
+                height: 36,
                 flexShrink: 0,
-                borderRadius: 10,
+                borderRadius: 9,
                 border: "1.5px solid var(--border)",
                 background: "var(--surface-2)",
                 cursor: "pointer",
-                fontSize: 18,
+                fontSize: 16,
                 lineHeight: 1,
                 userSelect: "none",
               }}
@@ -2039,13 +2054,13 @@ export default function LeadProfile() {
               onChange={e => setMsgInput(e.target.value)}
               onKeyDown={handleKey}
               placeholder="Type a message... (Enter to send, Shift+Enter for newline)"
-              rows={2}
-              style={{ flex: 1, padding: "10px 14px", border: "1.5px solid var(--border)", borderRadius: 12, fontSize: 14, fontFamily: "var(--font-body)", color: "var(--text)", background: "var(--surface)", resize: "none", lineHeight: 1.5 }}
+              rows={1}
+              style={{ flex: 1, padding: "8px 12px", border: "1.5px solid var(--border)", borderRadius: 10, fontSize: 13, fontFamily: "var(--font-body)", color: "var(--text)", background: "var(--surface)", resize: "none", lineHeight: 1.35 }}
             />
             <button
               onClick={sendMessage}
               disabled={sending || (!msgInput.trim() && chatAttachments.length === 0)}
-              style={{ padding: "10px 18px", height: 42, background: sending || (!msgInput.trim() && chatAttachments.length === 0) ? "var(--border)" : "var(--accent)", color: sending || (!msgInput.trim() && chatAttachments.length === 0) ? "var(--text-3)" : "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: sending || (!msgInput.trim() && chatAttachments.length === 0) ? "not-allowed" : "pointer", fontFamily: "var(--font-body)", flexShrink: 0, transition: "all 0.15s" }}
+              style={{ padding: "8px 14px", height: 36, background: sending || (!msgInput.trim() && chatAttachments.length === 0) ? "var(--border)" : "var(--accent)", color: sending || (!msgInput.trim() && chatAttachments.length === 0) ? "var(--text-3)" : "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 600, cursor: sending || (!msgInput.trim() && chatAttachments.length === 0) ? "not-allowed" : "pointer", fontFamily: "var(--font-body)", flexShrink: 0, transition: "all 0.15s" }}
             >
               {sending ? "..." : "Send"}
             </button>
