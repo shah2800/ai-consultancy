@@ -1266,8 +1266,16 @@ export default function LeadProfile() {
       <div className={`lead-profile-sidebar ${mobileSidebarOpen ? "is-mobile-open" : ""}`} style={{ width: 300, minWidth: 300, background: "var(--surface)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
 
         {/* Back + Header */}
-        <div style={{ padding: "16px 20px 0", borderBottom: "1px solid var(--border)", paddingBottom: 16, position: "relative" }}>
-          <button onClick={() => navigate(leadsListPath)} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "var(--text-3)", fontSize: 12, cursor: "pointer", padding: 0, marginBottom: 14, fontFamily: "var(--font-body)" }}>
+        <div
+          className="lead-profile-sidebar-header"
+          style={{
+            padding: isMobileView ? "12px 14px 0" : "16px 20px 0",
+            borderBottom: "1px solid var(--border)",
+            paddingBottom: isMobileView ? 12 : 16,
+            position: "relative",
+          }}
+        >
+          <button onClick={() => navigate(leadsListPath)} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "var(--text-3)", fontSize: 12, cursor: "pointer", padding: 0, marginBottom: isMobileView ? 10 : 14, fontFamily: "var(--font-body)" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
             {leadsListLabel}
           </button>
@@ -1280,12 +1288,12 @@ export default function LeadProfile() {
             ✕
           </button>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 48, height: 48, borderRadius: "50%", background: lead.score >= 70 ? "#FEF0EC" : lead.score >= 40 ? "#FEF3DC" : "#EEF1FD", color: lead.score >= 70 ? "#D64B2A" : lead.score >= 40 ? "#D08A12" : "#4361EE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: isMobileView ? 10 : 12 }}>
+            <div style={{ width: isMobileView ? 42 : 48, height: isMobileView ? 42 : 48, borderRadius: "50%", background: lead.score >= 70 ? "#FEF0EC" : lead.score >= 40 ? "#FEF3DC" : "#EEF1FD", color: lead.score >= 70 ? "#D64B2A" : lead.score >= 40 ? "#D08A12" : "#4361EE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobileView ? 14 : 16, fontWeight: 700, flexShrink: 0 }}>
               {initials}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-heading)" }}>{displayName}</div>
+              <div style={{ fontSize: isMobileView ? 14 : 15, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-heading)" }}>{displayName}</div>
               <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2, fontFamily: "ui-monospace, monospace" }}>{lead.phone}</div>
               {phoneOrigin && (
                 <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 6, lineHeight: 1.4 }}>
@@ -1297,7 +1305,7 @@ export default function LeadProfile() {
                 </div>
               )}
             </div>
-            <ScoreRing score={lead.score || 0} size={44} />
+            <ScoreRing score={lead.score || 0} size={isMobileView ? 38 : 44} />
           </div>
 
           {assignedToMe ? (
@@ -1336,7 +1344,7 @@ export default function LeadProfile() {
           ) : null}
 
           {/* Status */}
-          <div style={{ marginTop: 12, position: "relative" }}>
+          <div style={{ marginTop: isMobileView ? 10 : 12, position: "relative" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <StatusBadge status={lead.status} />
               <button onClick={() => setShowStatusMenu(v => !v)} disabled={statusUpdating} style={{ fontSize: 11, color: "var(--text-3)", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontFamily: "var(--font-body)" }}>
@@ -1457,9 +1465,69 @@ export default function LeadProfile() {
             overscrollBehavior: "contain",
             WebkitOverflowScrolling: "touch",
             touchAction: "pan-y",
-            padding: "16px 20px",
+            padding: isMobileView ? "12px 14px" : "16px 20px",
           }}
         >
+          {isMobileView ? (
+            <div className="lead-profile-mobile-drawer-controls lead-profile-mobile-drawer-controls--inline">
+              <div
+                style={{
+                  marginBottom: 8,
+                  paddingBottom: 8,
+                  borderBottom: "1px solid var(--border)",
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-heading)" }}>
+                  Conversation
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+                  {messages.length} message{messages.length !== 1 ? "s" : ""} · {displayName}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowQuickReplies((v) => !v);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className="lead-profile-mobile-info-btn"
+                >
+                  ⚡ Quick Replies
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!clearingChat && messages.length > 0) {
+                      clearChat();
+                      setMobileSidebarOpen(false);
+                    }
+                  }}
+                  disabled={clearingChat || messages.length === 0}
+                  className="lead-profile-mobile-info-btn"
+                  style={{
+                    color: clearingChat || messages.length === 0 ? "var(--text-3)" : "var(--danger)",
+                  }}
+                >
+                  {clearingChat ? "Clearing..." : "Clear Chat"}
+                </button>
+              </div>
+              <span
+                style={{
+                  display: "inline-flex",
+                  marginTop: 8,
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  background: nextAction.color + "15",
+                  color: nextAction.color,
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}
+              >
+                {nextAction.icon} {nextAction.text}
+              </span>
+            </div>
+          ) : null}
           {sidebarIntelReady ? (
           /* CRM Intelligence */
           <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px", marginBottom: 16 }}>
@@ -1746,67 +1814,6 @@ export default function LeadProfile() {
           ) : null}
         </div>
 
-        {/* Quick Actions */}
-        {isMobileView ? (
-          <div className="lead-profile-mobile-drawer-controls">
-            <div
-              style={{
-                marginBottom: 10,
-                paddingBottom: 10,
-                borderBottom: "1px solid var(--border)",
-              }}
-            >
-              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-heading)" }}>
-                Conversation
-              </div>
-              <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
-                {messages.length} message{messages.length !== 1 ? "s" : ""} · {displayName}
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowQuickReplies((v) => !v);
-                  setMobileSidebarOpen(false);
-                }}
-                className="lead-profile-mobile-info-btn"
-              >
-                ⚡ Quick Replies
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!clearingChat && messages.length > 0) {
-                    clearChat();
-                    setMobileSidebarOpen(false);
-                  }
-                }}
-                disabled={clearingChat || messages.length === 0}
-                className="lead-profile-mobile-info-btn"
-                style={{
-                  color: clearingChat || messages.length === 0 ? "var(--text-3)" : "var(--danger)",
-                }}
-              >
-                {clearingChat ? "Clearing..." : "Clear Chat"}
-              </button>
-            </div>
-            <span
-              style={{
-                display: "inline-flex",
-                marginTop: 8,
-                padding: "4px 10px",
-                borderRadius: 6,
-                background: nextAction.color + "15",
-                color: nextAction.color,
-                fontSize: 11,
-                fontWeight: 700,
-              }}
-            >
-              {nextAction.icon} {nextAction.text}
-            </span>
-          </div>
-        ) : null}
         <div style={{ padding: "12px 16px", borderTop: "1px solid var(--border)", display: "flex", gap: 8 }}>
           <button onClick={openWhatsApp} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 12px", background: "#25D366", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-body)" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.99 0C5.368 0 0 5.374 0 12c0 2.115.552 4.097 1.513 5.816L.057 23.28a.985.985 0 001.207 1.207l5.472-1.458A11.942 11.942 0 0012 24c6.627 0 12-5.373 12-12S18.617 0 11.99 0zm.01 21.818a9.814 9.814 0 01-5.006-1.368l-.36-.214-3.727.979.998-3.648-.235-.374A9.818 9.818 0 012.182 12c0-5.42 4.402-9.818 9.818-9.818 5.417 0 9.818 4.399 9.818 9.818 0 5.42-4.401 9.818-9.818 9.818z"/></svg>

@@ -991,7 +991,7 @@
   }
 
   .lead-profile-sidebar {
-    width: min(92vw, 420px) !important;
+    width: min(84vw, 360px) !important;
     min-width: 0 !important;
     max-height: none;
     border-right: none !important;
@@ -1083,6 +1083,13 @@
     border-top: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
     background: var(--surface);
+  }
+
+  .lead-profile-mobile-drawer-controls--inline {
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
   }
 
   .lead-chat-messages-scroll,
