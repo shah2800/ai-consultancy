@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import api from "../api/api";
-import { useProgressiveRevealTwoTier } from "../hooks/useProgressiveReveal";
 import SkeletonPulse from "../components/SkeletonPulse";
+import DeferUntilInView from "../components/DeferUntilInView";
 
 const URGENCY_CONFIG = {
   high: { color: "var(--hot)", bg: "var(--hot-bg)", label: "High" },
@@ -373,26 +373,6 @@ function ExecutiveSummary({ data }) {
   );
 }
 
-function AnalyticsExecutiveSkeleton() {
-  return (
-    <div style={{ padding: "var(--space-4) 0" }}>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-5)", justifyContent: "space-between" }}>
-        <div style={{ flex: "1 1 280px" }}>
-          <SkeletonPulse style={{ width: 120, height: 11, marginBottom: 12 }} />
-          <SkeletonPulse style={{ width: "100%", height: 18, marginBottom: 8, borderRadius: 6 }} />
-          <SkeletonPulse style={{ width: "88%", height: 14, borderRadius: 6 }} />
-        </div>
-        <SkeletonPulse style={{ width: 200, height: 72, borderRadius: 10 }} />
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12, marginTop: 20 }}>
-        {[1, 2, 3, 4].map((k) => (
-          <SkeletonPulse key={k} style={{ height: 76, borderRadius: 10 }} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function AnalyticsGridSkeleton() {
   return (
     <div className="analytics-results-grid">
@@ -466,13 +446,6 @@ export default function Analytics() {
     { title: "Gaps", desc: "Where summaries suggest thin or missing information." },
     { title: "Prompt ideas", desc: "Snippets to paste into Settings → AI behavior." },
   ];
-
-  const analyticsRunKey = data?.meta?.generatedAt
-    ? String(data.meta.generatedAt)
-    : data
-      ? `run-${String(data.summary || "").slice(0, 24)}-${(data.insights || []).length}`
-      : "";
-  const { primaryReady, secondaryReady } = useProgressiveRevealTwoTier(Boolean(data), analyticsRunKey);
 
   return (
     <div className="page-shell analytics-page" style={{ maxWidth: 1040 }}>
@@ -590,43 +563,43 @@ export default function Analytics() {
       {data ? (
         <div>
           <div className="analytics-summary-card">
-            {primaryReady ? (
-              <>
-                <ExecutiveSummary data={data} />
+            <>
+              <ExecutiveSummary data={data} />
 
-                {data.conversionInsights ? (
-                  <div className="analytics-conversion-row">
-                {[
-                  { label: "Main bottleneck", value: data.conversionInsights.bottleneck },
-                  { label: "Best converting topic", value: data.conversionInsights.bestConvertingTopic },
-                      { label: "Avg. messages to convert", value: data.conversionInsights.avgMessagesToConvert },
-                    ]
-                      .filter((x) => x.value)
-                      .map(({ label, value }) => (
-                  <div key={label}>
-                          <div className="analytics-conversion-item__label">{label}</div>
-                          <div className="analytics-conversion-item__value">{value}</div>
-                  </div>
-                ))}
-              </div>
-                ) : null}
-              </>
-            ) : (
-              <AnalyticsExecutiveSkeleton />
-            )}
+              {data.conversionInsights ? (
+                <div className="analytics-conversion-row">
+                  {[
+                    { label: "Main bottleneck", value: data.conversionInsights.bottleneck },
+                    { label: "Best converting topic", value: data.conversionInsights.bestConvertingTopic },
+                    { label: "Avg. messages to convert", value: data.conversionInsights.avgMessagesToConvert },
+                  ]
+                    .filter((x) => x.value)
+                    .map(({ label, value }) => (
+                      <div key={label}>
+                        <div className="analytics-conversion-item__label">{label}</div>
+                        <div className="analytics-conversion-item__value">{value}</div>
+                      </div>
+                    ))}
+                </div>
+              ) : null}
+            </>
           </div>
 
-          {secondaryReady ? (
+          <DeferUntilInView
+            fallback={<AnalyticsGridSkeleton />}
+            idleFallbackMs={1000}
+            rootMargin="180px 0px"
+          >
             <div className="analytics-results-grid">
               <div className="analytics-panel-stack">
                 {data.topTopics?.length > 0 ? (
                   <div className="panel">
                     <div className="panel-body">
                       <h2 className="analytics-section-title">What students ask about most</h2>
-                  {data.topTopics.map((t, i) => (
-                    <TopicBar key={i} {...t} />
-                  ))}
-                </div>
+                      {data.topTopics.map((t, i) => (
+                        <TopicBar key={i} {...t} />
+                      ))}
+                    </div>
                   </div>
                 ) : null}
 
@@ -634,23 +607,23 @@ export default function Analytics() {
                   <div className="panel">
                     <div className="panel-body">
                       <h2 className="analytics-section-title">Information gaps</h2>
-                  {data.missingInfo.map((item, i) => (
-                    <MissingInfoCard key={i} {...item} />
-                  ))}
-                </div>
+                      {data.missingInfo.map((item, i) => (
+                        <MissingInfoCard key={i} {...item} />
+                      ))}
+                    </div>
                   </div>
                 ) : null}
-            </div>
+              </div>
 
               <div className="analytics-panel-stack">
                 {data.insights?.length > 0 ? (
                   <div className="panel">
                     <div className="panel-body">
                       <h2 className="analytics-section-title">Actionable insights</h2>
-                  {data.insights.map((ins, i) => (
-                    <InsightCard key={i} {...ins} />
-                  ))}
-                </div>
+                      {data.insights.map((ins, i) => (
+                        <InsightCard key={i} {...ins} />
+                      ))}
+                    </div>
                   </div>
                 ) : null}
 
@@ -658,17 +631,15 @@ export default function Analytics() {
                   <div className="panel">
                     <div className="panel-body">
                       <h2 className="analytics-section-title">Suggested prompt additions</h2>
-                  {data.suggestions.map((s, i) => (
-                    <SuggestionCard key={i} index={i + 1} {...s} />
-                  ))}
-                </div>
+                      {data.suggestions.map((s, i) => (
+                        <SuggestionCard key={i} index={i + 1} {...s} />
+                      ))}
+                    </div>
                   </div>
                 ) : null}
               </div>
             </div>
-          ) : primaryReady ? (
-            <AnalyticsGridSkeleton />
-          ) : null}
+          </DeferUntilInView>
         </div>
       ) : null}
     </div>

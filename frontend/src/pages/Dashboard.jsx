@@ -2,8 +2,8 @@ import { useEffect, useState, useCallback, memo } from "react";
 import api from "../api/api";
 import ExportLeadsModal from "../components/ExportLeadsModal";
 import WeeklyReportModal from "../components/WeeklyReportModal";
+import DeferUntilInView from "../components/DeferUntilInView";
 import { useNavigate } from "react-router-dom";
-import { useProgressiveRevealOneTier } from "../hooks/useProgressiveReveal";
 import SkeletonPulse from "../components/SkeletonPulse";
 import { setupManagedPolling } from "../utils/performance";
 
@@ -372,11 +372,136 @@ function TopLeadsPanelSkeleton() {
   );
 }
 
+function DashboardDeferredPanels({ data, navigate, topLeads, topLeadsLoading, loadTopLeads }) {
+  useEffect(() => {
+    void loadTopLeads();
+  }, [loadTopLeads]);
+
+  return (
+    <div className="dashboard-grid-bottom">
+
+      {/* Top Leads Panel */}
+      <div style={{
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderRadius: 12,
+        overflow: "hidden",
+        boxShadow: "var(--shadow-sm)",
+      }}>
+        <div style={{
+          padding: "14px 16px 12px",
+          borderBottom: "1px solid var(--border)",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}>
+          <div>
+            <h2 className="dashboard-panel-title">Top 5 to contact today</h2>
+            <p className="dashboard-panel-desc">Ranked by AI priority score</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/leads?sort=priority")}
+            className="btn btn-secondary"
+            style={{ fontSize: 11, padding: "6px 12px", fontWeight: 600 }}
+          >
+            View all →
+          </button>
+        </div>
+
+        {topLeadsLoading ? (
+          <TopLeadsPanelSkeleton />
+        ) : topLeads.length === 0 ? (
+          <div style={{ padding: 24, color: "var(--text-3)", fontSize: 13, textAlign: "center" }}>
+            No active leads yet
+          </div>
+        ) : (
+          <div>
+            {topLeads.map((lead, i) => (
+              <TopLeadRow
+                key={lead._id}
+                lead={lead}
+                rank={i + 1}
+                onClick={() => navigate(`/leads/${lead._id}`)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Right column: Country + Quick Stats */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+        {/* Country Breakdown */}
+        <div style={{
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: 12,
+          padding: "14px 16px",
+          boxShadow: "var(--shadow-sm)",
+        }}>
+          <h2 className="dashboard-panel-title" style={{ marginBottom: 14 }}>
+            By country
+          </h2>
+          <CountryBar data={data.countryBreakdown || {}} />
+        </div>
+
+        {/* Conversion health */}
+        <div style={{
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: 12,
+          padding: "14px 16px",
+          boxShadow: "var(--shadow-sm)",
+        }}>
+          <h2 className="dashboard-panel-title" style={{ marginBottom: 14 }}>
+            Health check
+          </h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {[
+              {
+                label: "Response rate",
+                value: data.total > 0 ? `${Math.round(data.replied / data.total * 100)}%` : "—",
+                good: data.total > 0 && (data.replied / data.total) >= 0.5,
+              },
+              {
+                label: "Hot + Ready",
+                value: data.hot + data.ready,
+                good: (data.hot + data.ready) >= 3,
+              },
+              {
+                label: "Uncontacted",
+                value: data.uncontacted,
+                good: data.uncontacted === 0,
+                invert: true,
+              },
+              {
+                label: "Overdue follow-ups",
+                value: data.followUpsOverdue,
+                good: data.followUpsOverdue === 0,
+                invert: true,
+              },
+            ].map(({ label, value, good }) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 12, color: "var(--text-2)" }}>{label}</span>
+                <span style={{
+                  fontSize: 12, fontWeight: 600,
+                  color: good ? "var(--success)" : "var(--danger)",
+                }}>
+                  {value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [topLeads, setTopLeads] = useState([]);
   const [dashLoading, setDashLoading] = useState(true);
-  const [topLeadsLoading, setTopLeadsLoading] = useState(true);
+  const [topLeadsLoading, setTopLeadsLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [topLeadsError, setTopLeadsError] = useState(false);
   const [leadExportModalOpen, setLeadExportModalOpen] = useState(false);
@@ -387,59 +512,77 @@ export default function Dashboard() {
   const [weeklyData, setWeeklyData] = useState(null);
   const navigate = useNavigate();
 
-  const bottomSectionReady = useProgressiveRevealOneTier(Boolean(data), "dashboard-bottom");
+  const loadTopLeads = useCallback(async () => {
+    setTopLeadsLoading(true);
+    setTopLeadsError(false);
+    try {
+      const res = await api.get("/leads/top");
+      const list = res.data;
+      setTopLeads(Array.isArray(list) ? list : []);
+      setTopLeadsError(false);
+    } catch (e) {
+      console.error(e);
+      setTopLeads([]);
+      setTopLeadsError(true);
+    } finally {
+      setTopLeadsLoading(false);
+    }
+  }, []);
 
-  const load = useCallback(({ silent = false } = {}) => {
+  const fetchDashboardOnly = useCallback(async ({ silent = false } = {}) => {
     if (!silent) {
       setLoadError("");
-      setTopLeadsError(false);
       setDashLoading(true);
-      setTopLeadsLoading(true);
+    }
+    try {
+      const res = await api.get("/admin/dashboard");
+      setData(res.data);
+      setLoadError("");
+    } catch (reason) {
+      console.error(reason);
+      setData(null);
+      setLoadError(formatLoadError(reason));
+    } finally {
+      if (!silent) setDashLoading(false);
+    }
+  }, []);
+
+  const silentRefreshBoth = useCallback(async () => {
+    const results = await Promise.allSettled([api.get("/admin/dashboard"), api.get("/leads/top")]);
+
+    const [dashResult, topResult] = results;
+
+    if (dashResult.status === "fulfilled") {
+      setData(dashResult.value.data);
+      setLoadError("");
+    } else {
+      console.error(dashResult.reason);
+      setData(null);
+      setLoadError(formatLoadError(dashResult.reason));
     }
 
-    /* Single completion path avoids “stuck” skeleton if one request hangs or finishes out of order (cold API / DB). */
-    Promise.allSettled([api.get("/admin/dashboard"), api.get("/leads/top")]).then(
-      (results) => {
-        const [dashResult, topResult] = results;
-
-        if (dashResult.status === "fulfilled") {
-          setData(dashResult.value.data);
-          setLoadError("");
-        } else {
-          console.error(dashResult.reason);
-          setData(null);
-          setLoadError(formatLoadError(dashResult.reason));
-        }
-
-        if (topResult.status === "fulfilled") {
-          const list = topResult.value.data;
-          setTopLeads(Array.isArray(list) ? list : []);
-          setTopLeadsError(false);
-        } else {
-          console.error(topResult.reason);
-          setTopLeads([]);
-          setTopLeadsError(true);
-        }
-      }
-    ).finally(() => {
-      if (!silent) {
-        setDashLoading(false);
-        setTopLeadsLoading(false);
-      }
-    });
+    if (topResult.status === "fulfilled") {
+      const list = topResult.value.data;
+      setTopLeads(Array.isArray(list) ? list : []);
+      setTopLeadsError(false);
+    } else {
+      console.error(topResult.reason);
+      setTopLeads([]);
+      setTopLeadsError(true);
+    }
   }, []);
 
   useEffect(() => {
-    load();
+    void fetchDashboardOnly();
     const polling = setupManagedPolling(
-      () => load({ silent: true }),
+      () => silentRefreshBoth(),
       { baseMs: 25000, minGapMs: 2500, runImmediately: false }
     );
 
     return () => {
       polling.dispose();
     };
-  }, [load]);
+  }, [fetchDashboardOnly, silentRefreshBoth]);
 
   if (dashLoading && !data) {
     return <DashboardInitialSkeleton />;
@@ -468,7 +611,7 @@ export default function Dashboard() {
           type="button"
           className="btn btn-primary"
           style={{ marginTop: 14 }}
-          onClick={() => load()}
+          onClick={() => void fetchDashboardOnly()}
         >
           Retry
         </button>
@@ -644,127 +787,20 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* === BOTTOM ROW: Top Leads + Country — idle-staggered after funnel + intel */}
-      {bottomSectionReady ? (
-      <div className="dashboard-grid-bottom">
-
-        {/* Top Leads Panel */}
-        <div style={{
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: 12,
-          overflow: "hidden",
-          boxShadow: "var(--shadow-sm)",
-        }}>
-          <div style={{
-            padding: "14px 16px 12px",
-            borderBottom: "1px solid var(--border)",
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-          }}>
-            <div>
-              <h2 className="dashboard-panel-title">Top 5 to contact today</h2>
-              <p className="dashboard-panel-desc">Ranked by AI priority score</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate("/leads?sort=priority")}
-              className="btn btn-secondary"
-              style={{ fontSize: 11, padding: "6px 12px", fontWeight: 600 }}
-            >
-              View all →
-            </button>
-          </div>
-
-          {topLeadsLoading ? (
-            <TopLeadsPanelSkeleton />
-          ) : topLeads.length === 0 ? (
-            <div style={{ padding: 24, color: "var(--text-3)", fontSize: 13, textAlign: "center" }}>
-              No active leads yet
-            </div>
-          ) : (
-            <div>
-              {topLeads.map((lead, i) => (
-                <TopLeadRow
-                  key={lead._id}
-                  lead={lead}
-                  rank={i + 1}
-                  onClick={() => navigate(`/leads/${lead._id}`)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Right column: Country + Quick Stats */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-
-          {/* Country Breakdown */}
-          <div style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: 12,
-            padding: "14px 16px",
-            boxShadow: "var(--shadow-sm)",
-          }}>
-            <h2 className="dashboard-panel-title" style={{ marginBottom: 14 }}>
-              By country
-            </h2>
-            <CountryBar data={data.countryBreakdown || {}} />
-          </div>
-
-          {/* Conversion health */}
-          <div style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: 12,
-            padding: "14px 16px",
-            boxShadow: "var(--shadow-sm)",
-          }}>
-            <h2 className="dashboard-panel-title" style={{ marginBottom: 14 }}>
-              Health check
-            </h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {[
-                {
-                  label: "Response rate",
-                  value: data.total > 0 ? `${Math.round(data.replied / data.total * 100)}%` : "—",
-                  good: data.total > 0 && (data.replied / data.total) >= 0.5,
-                },
-                {
-                  label: "Hot + Ready",
-                  value: data.hot + data.ready,
-                  good: (data.hot + data.ready) >= 3,
-                },
-                {
-                  label: "Uncontacted",
-                  value: data.uncontacted,
-                  good: data.uncontacted === 0,
-                  invert: true,
-                },
-                {
-                  label: "Overdue follow-ups",
-                  value: data.followUpsOverdue,
-                  good: data.followUpsOverdue === 0,
-                  invert: true,
-                },
-              ].map(({ label, value, good }) => (
-                <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 12, color: "var(--text-2)" }}>{label}</span>
-                  <span style={{
-                    fontSize: 12, fontWeight: 600,
-                    color: good ? "var(--success)" : "var(--danger)",
-                  }}>
-                    {value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-      ) : (
-        <DashboardBottomSkeleton />
-      )}
+      {/* === BOTTOM ROW: fetched + mounted when scrolled near (idle fallback keeps large screens instant) */}
+      <DeferUntilInView
+        fallback={<DashboardBottomSkeleton />}
+        idleFallbackMs={950}
+        rootMargin="180px 0px"
+      >
+        <DashboardDeferredPanels
+          data={data}
+          navigate={navigate}
+          topLeads={topLeads}
+          topLeadsLoading={topLeadsLoading}
+          loadTopLeads={loadTopLeads}
+        />
+      </DeferUntilInView>
 
       <WeeklyReportModal
         open={weeklyModalOpen}

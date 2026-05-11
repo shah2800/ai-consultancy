@@ -718,12 +718,20 @@
   line-height: 1.55;
 }
 
-/* App shell — desktop sidebar + mobile drawer */
+/* App shell — desktop sidebar + mobile drawer
+   Viewport-locked shell + min-height:0 on main so wheel/trackpad scroll always
+   applies to .app-shell__main (avoids Chrome/Windows “stuck” scroll on long pages). */
 .app-shell {
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
   background: var(--bg);
   position: relative;
+  overflow: hidden;
 }
 
 .app-shell__overlay {
@@ -757,7 +765,9 @@
 .app-shell__main {
   flex: 1;
   min-width: 0;
-  overflow: auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   /* Mobile: hide overlay bar — touch scroll works without it */
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -809,9 +819,9 @@
   }
 }
 
+/* Avoid content-visibility here: Chrome can under-report scroll height on long forms (Settings). */
 .settings-page .settings-card {
-  content-visibility: auto;
-  contain-intrinsic-size: 460px;
+  content-visibility: visible;
 }
 
 .chat-scroll-panel {
@@ -908,8 +918,8 @@
   .app-shell__sidebar {
     position: sticky;
     top: 0;
-    align-self: flex-start;
-    height: 100vh;
+    align-self: stretch;
+    min-height: 0;
     overflow: hidden;
   }
 }

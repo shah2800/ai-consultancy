@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../api/api";
 import { COUNTRIES } from "../utils/countries";
-import { useProgressiveRevealTwoTier } from "../hooks/useProgressiveReveal";
+import DeferUntilInView from "../components/DeferUntilInView";
 import SkeletonPulse from "../components/SkeletonPulse";
 
 function websiteHref(raw) {
@@ -111,8 +111,6 @@ export default function Universities() {
     setFormError("");
   }, [form]);
 
-  const { primaryReady, secondaryReady } = useProgressiveRevealTwoTier(!initialLoad, "universities");
-
   const toggleExpanded = (id) => {
     setExpandedId((cur) => (cur === id ? "" : id));
   };
@@ -207,7 +205,6 @@ export default function Universities() {
         </div>
       ) : null}
 
-      {primaryReady ? (
       <div id="uni-add-form" className="panel" style={{ padding: 16, marginBottom: 18 }}>
         <h2 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, fontFamily: "var(--font-heading)" }}>
           Add a university
@@ -357,15 +354,13 @@ export default function Universities() {
           {adding ? "Adding..." : "Add University"}
         </button>
       </div>
-      ) : (
-        <div className="panel" style={{ padding: 16, marginBottom: 18 }}>
-          <div className="dashboard-skeleton-pulse" style={{ width: "100%", height: 120, borderRadius: 10, marginBottom: 12 }} aria-hidden />
-          <div className="dashboard-skeleton-pulse" style={{ width: 140, height: 40, borderRadius: 10 }} aria-hidden />
-        </div>
-      )}
 
-      {secondaryReady ? (
-      universities.length === 0 ? (
+      <DeferUntilInView
+        fallback={<UniversitiesGridSkeleton />}
+        idleFallbackMs={950}
+        rootMargin="140px 0px"
+      >
+      {universities.length === 0 ? (
         <div
           className="panel uni-empty-state"
           style={{
@@ -475,10 +470,8 @@ export default function Universities() {
           );
         })}
       </div>
-      )
-      ) : primaryReady ? (
-        <UniversitiesGridSkeleton />
-      ) : null}
+      )}
+      </DeferUntilInView>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import api from "../api/api";
 import { useNavigate } from "react-router-dom";
-import { useProgressiveRevealOneTier } from "../hooks/useProgressiveReveal";
+import DeferUntilInView from "../components/DeferUntilInView";
 import SkeletonPulse from "../components/SkeletonPulse";
 import { setupManagedPolling } from "../utils/performance";
 
@@ -213,8 +213,6 @@ export default function Notifications() {
     }
   };
 
-  const listPaintReady = useProgressiveRevealOneTier(!loading, "notifications-list");
-
   const clearAll = async () => {
     setDeleting(true);
     try {
@@ -290,10 +288,14 @@ export default function Notifications() {
       <div className="panel" style={{ overflow: "hidden" }}>
         {groupedItems.length === 0 ? (
           <div className="panel-body" style={{ color: "var(--text-3)" }}>No notifications yet.</div>
-        ) : !listPaintReady ? (
-          <NotificationListSkeleton rows={Math.min(8, groupedItems.length)} />
         ) : (
-          groupedItems.map((n, idx) => (
+          <DeferUntilInView
+            fallback={<NotificationListSkeleton rows={Math.min(8, groupedItems.length)} />}
+            idleFallbackMs={850}
+            rootMargin="160px 0px"
+          >
+            <>
+          {groupedItems.map((n, idx) => (
             <div
               key={n._id}
               style={{
@@ -378,7 +380,9 @@ export default function Notifications() {
                 </button>
               )}
             </div>
-          ))
+          ))}
+            </>
+          </DeferUntilInView>
         )}
       </div>
     </div>
