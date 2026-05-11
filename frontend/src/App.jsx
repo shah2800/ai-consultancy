@@ -80,17 +80,14 @@ function Layout({ children }) {
   const [navOpen, setNavOpen] = useState(false);
   const location = useLocation();
 
-  /* Long pages scroll `.app-shell__main`. Reset synchronously before paint so the next route isn’t “above” the viewport. */
+  /* Reset scroll on route change synchronously before paint.
+     Single-pass is enough now that scroll-behavior is `auto` on the main area;
+     the old double-rAF worked around smooth-scroll fighting the jump-to-top. */
   useLayoutEffect(() => {
-    const scrollTop = () => {
-      const main = document.querySelector(".app-shell__main");
-      if (main) main.scrollTop = 0;
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-      window.scrollTo(0, 0);
-    };
-    scrollTop();
-    requestAnimationFrame(scrollTop);
+    const main = document.querySelector(".app-shell__main");
+    if (main) main.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   }, [location.pathname, location.search]);
 
   useEffect(() => {
@@ -144,13 +141,22 @@ function Layout({ children }) {
 export default function App() {
   useEffect(() => {
     if (!canPrefetchRoutes()) return undefined;
-    const cancel = runWhenIdle(() => {
-      // Warm common route chunks after first paint.
+    // Tier 1 — warm the three most-visited chunks right after first paint.
+    const cancelT1 = runWhenIdle(() => {
       import("./pages/Dashboard");
       import("./pages/Leads");
       import("./pages/Notifications");
     }, 1400);
-    return cancel;
+    // Tier 2 — secondary chunks after a longer idle gap so T1 loads finish first.
+    const cancelT2 = runWhenIdle(() => {
+      import("./pages/LeadProfile");
+      import("./pages/Analytics");
+      import("./pages/Settings");
+    }, 4000);
+    return () => {
+      cancelT1();
+      cancelT2();
+    };
   }, []);
 
   return (

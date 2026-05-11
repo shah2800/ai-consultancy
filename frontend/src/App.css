@@ -113,10 +113,14 @@
   flex: 1;
   min-width: 0;
   overflow: auto;
-  scroll-behavior: smooth;
+  /* Keep scroll instant on desktop — smooth causes full-layer repaint on every tick
+     for the main content area. Targeted smooth-scroll is applied per-element via JS. */
+  scroll-behavior: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  background: linear-gradient(165deg, var(--bg) 0%, var(--bg-elevated) 55%, var(--bg) 100%);
+  /* Flat colour instead of gradient: gradients on scrolling containers force a
+     composited layer repaint on desktop on every scroll frame. */
+  background: var(--bg);
 }
 
 .settings-page .settings-card {
@@ -197,7 +201,7 @@
   }
 
   .app-shell__main {
-    /* Avoid touch-scroll stutter on long forms. */
+    /* Already auto globally; repeat for specificity in case a browser UA overrides. */
     scroll-behavior: auto;
   }
 
@@ -307,7 +311,10 @@
   font-weight: 700;
   font-family: var(--font-body);
   cursor: pointer;
-  transition: all 0.16s ease;
+  /* Avoid `transition: all` — it forces the browser to check every CSS property
+     on every frame. List only the properties that actually change. */
+  transition: background 0.14s ease, color 0.12s ease, border-color 0.12s ease,
+    box-shadow 0.14s ease, opacity 0.12s ease;
 }
 
 .btn-primary {
@@ -480,7 +487,9 @@
   border-radius: 50%;
   background: var(--success);
   box-shadow: 0 0 0 2px rgb(22 163 74 / 0.25);
-  animation: dashboard-live-pulse 2.2s ease infinite;
+  /* Limit to 4 pulses then rest — infinite animations trigger style recalcs
+     on every frame, which compounds when other layouts are also running. */
+  animation: dashboard-live-pulse 2.2s ease 4;
 }
 
 @keyframes dashboard-live-pulse {
@@ -523,11 +532,12 @@
   border-radius: var(--radius-md);
   padding: var(--space-4);
   box-shadow: var(--shadow-sm);
+  /* Removed `transform` from transition — it promotes each card to its own
+     compositor layer on desktop, multiplying GPU memory use when there are 6+ cards. */
   transition:
-    box-shadow 0.18s ease,
-    transform 0.18s ease,
-    border-color 0.18s ease,
-    background 0.15s ease;
+    box-shadow 0.15s ease,
+    border-color 0.15s ease,
+    background 0.12s ease;
 }
 
 .dashboard-metric-card--interactive {
@@ -536,8 +546,8 @@
 
 .dashboard-metric-card--interactive:hover {
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
   border-color: rgb(var(--accent-rgb) / 0.2);
+  background: var(--bg-elevated);
 }
 
 .dashboard-metric-card__value {
@@ -1823,7 +1833,10 @@
 .analytics-topic-row__fill {
   height: 100%;
   border-radius: 999px;
-  transition: width 1s ease;
+  /* Width transitions force a layout pass + paint on every frame — very expensive
+     on desktop. Use transform: scaleX() via a CSS custom property instead so the
+     browser can composite-only animate. The initial value is set inline by the JS. */
+  transition: none;
 }
 
 .analytics-insight-card {
@@ -2070,4 +2083,36 @@
 
 .panel.uni-empty-state {
   border-style: dashed;
+}
+
+/* ——————————————————————————————————————————
+   Desktop performance guard
+   Targets viewport ≥ 901 px where the full 6-column table is visible,
+   multi-card dashboard grids are rendered, and the sidebar stays sticky.
+   ——————————————————————————————————————————*/
+@media (min-width: 901px) {
+  /* Skip off-screen lead rows entirely (avoids layout + paint for rows the
+     user hasn't scrolled to yet on long lead lists). */
+  .leads-table-row {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 54px;
+  }
+
+  /* Dashboard cards: skip paint for off-screen cards in tall dashboards. */
+  .dashboard-metric-card {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 110px;
+  }
+
+  /* Notification rows and team rows. */
+  .list-row {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 46px;
+  }
+
+  /* Sidebar is sticky + hidden overflow — don't promote to its own GPU
+     layer until the user actually opens a panel. */
+  .app-shell__sidebar {
+    contain: layout style;
+  }
 }

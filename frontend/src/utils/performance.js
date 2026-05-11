@@ -18,9 +18,12 @@ export function canPrefetchRoutes() {
   const effectiveType = String(connection?.effectiveType || "").toLowerCase();
   const memory = Number(navigator.deviceMemory || 0);
   const cores = Number(navigator.hardwareConcurrency || 0);
+  // Use ≤1 GB / ≤2 cores as the "very low-end" threshold so that ordinary
+  // laptops (i5/Ryzen 5 = 4–8 cores, ≥4 GB RAM) still get prefetch.
+  // The previous ≤4-core threshold blocked prefetch on most laptop CPUs.
   const constrainedDevice =
-    (Number.isFinite(memory) && memory > 0 && memory <= 4) ||
-    (Number.isFinite(cores) && cores > 0 && cores <= 4);
+    (Number.isFinite(memory) && memory > 0 && memory <= 1) ||
+    (Number.isFinite(cores) && cores > 0 && cores <= 2);
   return !saveData && !effectiveType.includes("2g") && !constrainedDevice;
 }
 
