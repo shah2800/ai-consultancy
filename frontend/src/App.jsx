@@ -1,9 +1,9 @@
 import { useState, useEffect, useLayoutEffect, Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useSearchParams, Link, useLocation } from "react-router-dom";
-import Navbar from "./components/Navbar";
 import api from "./api/api";
 import { canPrefetchRoutes, runWhenIdle } from "./utils/performance";
 
+const Navbar = lazy(() => import("./components/Navbar"));
 const Login = lazy(() => import("./pages/Login"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Leads = lazy(() => import("./pages/Leads"));
@@ -131,7 +131,9 @@ function Layout({ children }) {
       />
 
       <aside id="crm-sidebar" className={`app-shell__sidebar ${navOpen ? "is-open" : ""}`}>
-        <Navbar onNavigate={() => setNavOpen(false)} />
+        <Suspense fallback={<div className="app-shell__sidebar-loading" aria-hidden />}>
+          <Navbar onNavigate={() => setNavOpen(false)} />
+        </Suspense>
       </aside>
 
       <main className="app-shell__main">{children}</main>
@@ -146,9 +148,7 @@ export default function App() {
       // Warm common route chunks after first paint.
       import("./pages/Dashboard");
       import("./pages/Leads");
-      import("./pages/LeadProfile");
       import("./pages/Notifications");
-      import("./pages/Analytics");
     }, 1400);
     return cancel;
   }, []);

@@ -272,4 +272,13 @@ button:active:not(:disabled) { transform: scale(0.98); }
   button:active:not(:disabled) {
     transform: none;
   }
+
+  /* Chat thread updates can stutter on lower-end mobile GPUs. */
+  .msg-bubble {
+    animation: none;
+  }
+
+  .typing-indicator-dot {
+    animation-duration: 1.6s;
+  }
 }

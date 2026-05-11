@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import { useProgressiveRevealOneTier } from "../hooks/useProgressiveReveal";
@@ -23,6 +23,15 @@ const PRESET_FAQS = [
 
 /** Shown in Consultancy Profile for new workspaces when the API has not saved a name yet. */
 const DEFAULT_CONSULTANCY_NAME = "Next Step International";
+
+const SETTINGS_NAV_LOWER = [
+  { href: "#settings-whatsapp", label: "WhatsApp" },
+  { href: "#settings-countries", label: "Countries" },
+  { href: "#settings-ai", label: "AI" },
+  { href: "#settings-faq", label: "FAQs" },
+  { href: "#settings-account", label: "Account" },
+  { href: "#settings-help", label: "Help" },
+];
 
 function SectionHeader({ title, desc }) {
   return (

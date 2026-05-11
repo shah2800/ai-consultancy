@@ -4,7 +4,7 @@ import SkeletonPulse from "../components/SkeletonPulse";
 import { useParams, useNavigate } from "react-router-dom";
 import { inferPhoneOrigin } from "../utils/phoneCountry";
 import { formatLastActivity } from "../utils/lastActivity";
-import { getAdaptivePollInterval } from "../utils/performance";
+import { setupManagedPolling } from "../utils/performance";
 import { roleFromToken, userIdFromToken } from "../utils/jwt";
 
 const STATUS_CONFIG = {
@@ -937,46 +937,13 @@ export default function LeadProfile() {
 
   useEffect(() => {
     load();
-    const pollMs = getAdaptivePollInterval(10000);
-
-    let interval = null;
-    let inFlight = false;
-    const refresh = async () => {
-      if (document.visibilityState !== "visible") return;
-      if (inFlight) return;
-      inFlight = true;
-      try {
-        await load({ silent: true });
-      } finally {
-        inFlight = false;
-      }
-    };
-    const startPolling = () => {
-      if (interval) return;
-      interval = setInterval(refresh, pollMs);
-    };
-    const stopPolling = () => {
-      if (!interval) return;
-      clearInterval(interval);
-      interval = null;
-    };
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        refresh();
-        startPolling();
-      } else {
-        stopPolling();
-      }
-    };
-
-    onVisibilityChange();
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", onVisibilityChange);
+    const polling = setupManagedPolling(
+      () => load({ silent: true }),
+      { baseMs: 15000, minGapMs: 2000, runImmediately: false }
+    );
 
     return () => {
-      stopPolling();
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
+      polling.dispose();
     };
   }, [load]);
 
@@ -1923,7 +1890,7 @@ export default function LeadProfile() {
       <div className="lead-profile-chat" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--bg)", minHeight: 0, minWidth: 0 }}>
 
         {/* Chat header */}
-        <div className="lead-profile-chat-header" style={{ padding: isMobileView ? "10px 12px" : "14px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "var(--shadow-sm)", transform: isMobileView && isChatActivelyScrolling ? "translate3d(0, -24px, 0)" : "translate3d(0, 0, 0)", opacity: isMobileView && isChatActivelyScrolling ? 0.92 : 1, transition: "transform 0.38s ease, opacity 0.3s ease", willChange: isMobileView ? "transform, opacity" : undefined, backfaceVisibility: "hidden" }}>
+        <div className="lead-profile-chat-header" style={{ padding: isMobileView ? "10px 12px" : "14px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "var(--shadow-sm)", transform: isMobileView && isChatActivelyScrolling ? "translate3d(0, -24px, 0)" : "translate3d(0, 0, 0)", opacity: isMobileView && isChatActivelyScrolling ? 0.92 : 1, transition: "transform 0.2s ease-out, opacity 0.15s linear" }}>
           {isMobileView ? (
             <div
               className="lead-profile-mobile-summary-trigger"
@@ -2099,6 +2066,7 @@ export default function LeadProfile() {
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {QUICK_REPLIES.map(({ label, text }) => (
                 <button
+                  className="lead-profile-quick-reply-btn"
                   key={label}
                   onClick={() => { setMsgInput(text); setShowQuickReplies(false); }}
                   style={{
@@ -2106,10 +2074,8 @@ export default function LeadProfile() {
                     background: "var(--surface-2)", color: "var(--text)",
                     border: "1px solid var(--border)", borderRadius: 8,
                     cursor: "pointer", fontFamily: "var(--font-body)",
-                    transition: "all 0.12s",
+                    transition: "background 0.12s ease, border-color 0.12s ease, color 0.12s ease",
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "var(--accent-light)"; e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "var(--surface-2)"; e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text)"; }}
                 >
                   {label}
                 </button>
@@ -2120,6 +2086,7 @@ export default function LeadProfile() {
 
         {/* Message input */}
         <div
+          className="lead-profile-chat-composer"
           style={{
             padding: "12px 20px",
             paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
@@ -2132,9 +2099,7 @@ export default function LeadProfile() {
             bottom: 0,
             zIndex: isMobileView ? 95 : 5,
             transform: isMobileView && isChatActivelyScrolling ? "translate3d(0, 27px, 0)" : "translate3d(0, 0, 0)",
-            transition: "transform 0.38s ease",
-            willChange: isMobileView ? "transform" : undefined,
-            backfaceVisibility: "hidden",
+            transition: "transform 0.2s ease-out",
           }}
         >
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -2178,7 +2143,7 @@ export default function LeadProfile() {
             <button
               onClick={sendMessage}
               disabled={sending || (!msgInput.trim() && chatAttachments.length === 0)}
-              style={{ padding: "8px 14px", height: 36, background: sending || (!msgInput.trim() && chatAttachments.length === 0) ? "var(--border)" : "var(--accent)", color: sending || (!msgInput.trim() && chatAttachments.length === 0) ? "var(--text-3)" : "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 600, cursor: sending || (!msgInput.trim() && chatAttachments.length === 0) ? "not-allowed" : "pointer", fontFamily: "var(--font-body)", flexShrink: 0, transition: "all 0.15s" }}
+              style={{ padding: "8px 14px", height: 36, background: sending || (!msgInput.trim() && chatAttachments.length === 0) ? "var(--border)" : "var(--accent)", color: sending || (!msgInput.trim() && chatAttachments.length === 0) ? "var(--text-3)" : "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 600, cursor: sending || (!msgInput.trim() && chatAttachments.length === 0) ? "not-allowed" : "pointer", fontFamily: "var(--font-body)", flexShrink: 0, transition: "background 0.15s ease, color 0.15s ease" }}
             >
               {sending ? "..." : "Send"}
             </button>

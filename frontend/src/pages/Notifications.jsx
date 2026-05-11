@@ -3,7 +3,7 @@ import api from "../api/api";
 import { useNavigate } from "react-router-dom";
 import { useProgressiveRevealOneTier } from "../hooks/useProgressiveReveal";
 import SkeletonPulse from "../components/SkeletonPulse";
-import { getAdaptivePollInterval } from "../utils/performance";
+import { setupManagedPolling } from "../utils/performance";
 
 function NotificationsPageSkeleton() {
   return (
@@ -138,50 +138,18 @@ export default function Notifications() {
 
   useEffect(() => {
     load();
-    const pollMs = getAdaptivePollInterval(10000);
-
-    let interval = null;
-    let inFlight = false;
-    const refresh = async () => {
-      if (document.visibilityState !== "visible") return;
-      if (inFlight) return;
-      inFlight = true;
-      try {
-        await load({ silent: true });
-      } finally {
-        inFlight = false;
-      }
-    };
-    const startPolling = () => {
-      if (interval) return;
-      interval = setInterval(refresh, pollMs);
-    };
-    const stopPolling = () => {
-      if (!interval) return;
-      clearInterval(interval);
-      interval = null;
-    };
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        refresh();
-        startPolling();
-      } else {
-        stopPolling();
-      }
-    };
+    const polling = setupManagedPolling(
+      () => load({ silent: true }),
+      { baseMs: 20000, minGapMs: 2500, runImmediately: false }
+    );
     const onNotificationsUpdated = () => {
-      refresh();
+      polling.trigger({ force: true });
     };
 
-    onVisibilityChange();
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("crm-notifications-updated", onNotificationsUpdated);
 
     return () => {
-      stopPolling();
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
+      polling.dispose();
       window.removeEventListener("crm-notifications-updated", onNotificationsUpdated);
     };
   }, [load]);

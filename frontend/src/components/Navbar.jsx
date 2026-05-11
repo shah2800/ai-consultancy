@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import api from "../api/api";
 import { roleFromToken, emailFromToken } from "../utils/jwt";
-import { getAdaptivePollInterval } from "../utils/performance";
+import { setupManagedPolling } from "../utils/performance";
 
 function currentRoleFromToken() {
   return roleFromToken(localStorage.getItem("token"));
@@ -116,14 +116,9 @@ export default function Navbar({ onNavigate }) {
 
   const userEmail = emailFromToken(localStorage.getItem("token"));
 
-  // Fetch notification count on mount, every 60s, and when a lead marks notifications read
+  // Keep badge fresh while active, and refresh on explicit notification updates.
   useEffect(() => {
-    const pollMs = getAdaptivePollInterval(15000);
-    let inFlight = false;
     const fetchBadge = async () => {
-      if (document.visibilityState !== "visible") return;
-      if (inFlight) return;
-      inFlight = true;
       try {
         const notifRes = await api.get("/admin/notifications");
         const unread = (notifRes.data || [])
@@ -132,41 +127,20 @@ export default function Navbar({ onNavigate }) {
         setNotificationCount(unread);
       } catch {
         /* ignore badge fetch errors */
-      } finally {
-        inFlight = false;
       }
     };
 
-    let interval = null;
-    const startPolling = () => {
-      if (interval) return;
-      interval = setInterval(fetchBadge, pollMs);
-    };
-    const stopPolling = () => {
-      if (!interval) return;
-      clearInterval(interval);
-      interval = null;
-    };
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        fetchBadge();
-        startPolling();
-      } else {
-        stopPolling();
-      }
-    };
+    const polling = setupManagedPolling(
+      fetchBadge,
+      { baseMs: 30000, minGapMs: 3500, runImmediately: true }
+    );
     const onNotificationsUpdated = () => {
-      fetchBadge();
+      polling.trigger({ force: true });
     };
 
-    onVisibilityChange();
-    window.addEventListener("focus", fetchBadge);
-    document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("crm-notifications-updated", onNotificationsUpdated);
     return () => {
-      stopPolling();
-      window.removeEventListener("focus", fetchBadge);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
+      polling.dispose();
       window.removeEventListener("crm-notifications-updated", onNotificationsUpdated);
     };
   }, []);

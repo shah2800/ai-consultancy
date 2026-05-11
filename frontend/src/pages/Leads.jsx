@@ -6,7 +6,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { inferPhoneOrigin } from "../utils/phoneCountry";
 import { formatLastActivity } from "../utils/lastActivity";
 import { userIdFromToken } from "../utils/jwt";
-import { getAdaptivePollInterval } from "../utils/performance";
+import { setupManagedPolling } from "../utils/performance";
 
 const STATUS_CONFIG = {
   all: { label: "All", color: "var(--text-2)", bg: "var(--surface-2)" },
@@ -168,46 +168,13 @@ export default function Leads() {
 
   useEffect(() => {
     fetchLeads();
-    const pollMs = getAdaptivePollInterval(15000);
-
-    let interval = null;
-    let inFlight = false;
-    const refresh = async () => {
-      if (document.visibilityState !== "visible") return;
-      if (inFlight) return;
-      inFlight = true;
-      try {
-        await fetchLeads({ silent: true });
-      } finally {
-        inFlight = false;
-      }
-    };
-    const startPolling = () => {
-      if (interval) return;
-      interval = setInterval(refresh, pollMs);
-    };
-    const stopPolling = () => {
-      if (!interval) return;
-      clearInterval(interval);
-      interval = null;
-    };
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        refresh();
-        startPolling();
-      } else {
-        stopPolling();
-      }
-    };
-
-    onVisibilityChange();
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", onVisibilityChange);
+    const polling = setupManagedPolling(
+      () => fetchLeads({ silent: true }),
+      { baseMs: 25000, minGapMs: 2500, runImmediately: false }
+    );
 
     return () => {
-      stopPolling();
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
+      polling.dispose();
     };
   }, [fetchLeads]);
 

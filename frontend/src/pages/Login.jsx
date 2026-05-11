@@ -48,7 +48,7 @@ export default function Login() {
   return (
     <div className="auth-shell">
       {/* Left brand panel */}
-      <div className="auth-shell__aside" style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+      <div className="auth-shell__aside">
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 60 }}>
           <div style={{
