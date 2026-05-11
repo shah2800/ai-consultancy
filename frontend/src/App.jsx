@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useSearchParams, Link, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
-import api from "./api/api";
+import api, { cachedGet } from "./api/api";
 import { canPrefetchRoutes, runWhenIdle } from "./utils/performance";
 
 const Login = lazy(() => import("./pages/Login"));
@@ -30,7 +30,7 @@ function RegisterRoute() {
     (async () => {
       if (invite) {
         try {
-          const res = await api.get("/public/invite-preview", { params: { token: invite } });
+          const res = await cachedGet("/public/invite-preview", { params: { token: invite } }, 120000);
           if (!cancelled) setInviteValid(!!res.data?.valid);
         } catch {
           if (!cancelled) setInviteValid(false);

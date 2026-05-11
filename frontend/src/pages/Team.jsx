@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import api from "../api/api";
+import api, { invalidateCachedGet } from "../api/api";
 import { useProgressiveRevealTwoTier } from "../hooks/useProgressiveReveal";
 import PasswordField from "../components/PasswordField";
 import { parseJwtPayload } from "../utils/jwt";
@@ -98,6 +98,7 @@ export default function Team() {
     setSignupSaving(true);
     try {
       await api.patch("/admin/app-config", { allowPublicRegister: next });
+      invalidateCachedGet("/public/app-config");
       setAllowPublicRegister(next);
       setOk(
         next

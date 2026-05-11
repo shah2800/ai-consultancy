@@ -20,6 +20,25 @@
   border-right: 1px solid var(--sidebar-border);
 }
 
+.auth-shell__aside--login {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.login-form-input,
+.login-form-password .password-field-input {
+  opacity: 1;
+}
+
+.login-form-input::placeholder {
+  opacity: 0.45;
+}
+
+.login-form-password .password-field-input::placeholder {
+  opacity: 0.65;
+}
+
 .auth-shell__panel {
   width: 460px;
   min-width: 0;
@@ -329,23 +348,45 @@
 
 .password-field-toggle {
   position: absolute;
-  right: 6px;
+  right: 4px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-3);
   cursor: pointer;
+  z-index: 2;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition:
     color 0.15s ease,
     background 0.15s ease;
+}
+
+.password-field-toggle svg {
+  pointer-events: none;
+}
+
+.password-field-toggle-icon {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.password-field-toggle-icon svg {
+  width: 20px;
+  height: 20px;
+  display: block;
 }
 
 .password-field-toggle:hover {

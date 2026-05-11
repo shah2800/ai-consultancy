@@ -831,6 +831,19 @@ const signupInviteSchema = new mongoose.Schema(
 
 const SignupInvite = mongoose.model("SignupInvite", signupInviteSchema);
 
+/** Pending email-verification OTP for signup flows (public + invite). */
+const signupOtpSchema = new mongoose.Schema(
+  {
+    email: { type: String, required: true, unique: true, index: true },
+    tokenHash: { type: String, required: true },
+    expiresAt: { type: Date, required: true, index: true },
+    sentAt: { type: Date, required: true, default: Date.now },
+  },
+  { timestamps: true }
+);
+
+const SignupOtp = mongoose.model("SignupOtp", signupOtpSchema);
+
 function hashSignupInviteToken(raw) {
   return crypto.createHash("sha256").update(String(raw), "utf8").digest("hex");
 }
@@ -1362,6 +1375,10 @@ function hashPasswordResetToken(raw) {
   return crypto.createHash("sha256").update(String(raw), "utf8").digest("hex");
 }
 
+function hashSignupOtp(raw) {
+  return crypto.createHash("sha256").update(String(raw), "utf8").digest("hex");
+}
+
 function getMailTransporter() {
   const host = process.env.SMTP_HOST;
   if (!host || !nodemailer) return null;
@@ -1410,6 +1427,36 @@ async function sendPasswordResetOtpEmail(to, otp, validMinutes = 15) {
     subject: "Your NextStep CRM password reset code",
     text: `Your verification code is: ${otp}\n\nIt expires in ${validMinutes} minutes.\n\nIf you did not request a password reset, ignore this email.`,
     html: `<p>Your verification code:</p><p style="font-size:26px;font-weight:700;letter-spacing:6px;font-family:monospace">${otp}</p><p>This code expires in <strong>${validMinutes} minutes</strong>.</p><p>If you did not request a password reset, you can ignore this email.</p>`,
+  });
+
+  return true;
+}
+
+async function sendSignupOtpEmail(to, otp, validMinutes = 10) {
+  const from =
+    process.env.MAIL_FROM ||
+    process.env.SMTP_USER ||
+    '"NextStep CRM" <noreply@localhost>';
+
+  const transporter = getMailTransporter();
+
+  if (!transporter) {
+    console.warn(
+      "\n========== SIGNUP VERIFY (no SMTP — email not sent) ==========\n" +
+        `  To:   ${to}\n` +
+        `  OTP:  ${otp}   (expires in ${validMinutes} minutes)\n` +
+        "  Fix:  Add SMTP_HOST, SMTP_USER, SMTP_PASS to .env and restart the API.\n" +
+        "=============================================================\n"
+    );
+    return false;
+  }
+
+  await transporter.sendMail({
+    from,
+    to,
+    subject: "Your NextStep CRM signup verification code",
+    text: `Your signup verification code is: ${otp}\n\nIt expires in ${validMinutes} minutes.\n\nIf you did not request this, you can ignore this email.`,
+    html: `<p>Your signup verification code:</p><p style="font-size:26px;font-weight:700;letter-spacing:6px;font-family:monospace">${otp}</p><p>This code expires in <strong>${validMinutes} minutes</strong>.</p><p>If you did not request this, you can ignore this email.</p>`,
   });
 
   return true;
@@ -2400,6 +2447,14 @@ const resetLimiter = rateLimit({
   message: { error: "Too many code attempts. Please request a new code later." },
 });
 
+const signupOtpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many verification code requests. Please wait and retry." },
+});
+
 const webhookLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 120,
@@ -2573,6 +2628,18 @@ function registerNameOk(name) {
 const REGISTER_EMAIL_RE =
   /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 
+const REGISTER_ALLOWED_EMAIL_DOMAINS = new Set(["gmail.com", "googlemail.com"]);
+const SIGNUP_OTP_TTL_MINUTES = 10;
+const SIGNUP_OTP_RESEND_COOLDOWN_MS = 60 * 1000;
+
+function registerEmailDomainAllowed(email) {
+  const emailNorm = String(email || "").trim().toLowerCase();
+  const at = emailNorm.lastIndexOf("@");
+  if (at < 0) return false;
+  const domain = emailNorm.slice(at + 1);
+  return REGISTER_ALLOWED_EMAIL_DOMAINS.has(domain);
+}
+
 app.get("/auth/email-available", authLimiter, async (req, res) => {
   try {
     const raw = String(req.query.email || "").trim().toLowerCase();
@@ -2590,6 +2657,82 @@ app.get("/auth/email-available", authLimiter, async (req, res) => {
   }
 });
 
+app.post("/auth/register/send-otp", signupOtpLimiter, async (req, res) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({
+        error: "Database is offline. Check MONGO_URI / MongoDB connection, then retry.",
+      });
+    }
+
+    const emailNorm = String(req.body?.email || "").trim().toLowerCase();
+    if (!emailNorm) {
+      return res.status(400).json({ error: "Email is required." });
+    }
+    if (!REGISTER_EMAIL_RE.test(emailNorm)) {
+      return res.status(400).json({ error: "Invalid email address." });
+    }
+    if (!registerEmailDomainAllowed(emailNorm)) {
+      return res
+        .status(400)
+        .json({ error: "Only Gmail addresses are allowed for registration." });
+    }
+
+    const existingUser = await findAuthUserByEmail(emailNorm);
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already exists" });
+    }
+
+    const existingOtp = await SignupOtp.findOne({ email: emailNorm })
+      .select("sentAt")
+      .lean();
+    if (
+      existingOtp?.sentAt &&
+      Date.now() - new Date(existingOtp.sentAt).getTime() <
+        SIGNUP_OTP_RESEND_COOLDOWN_MS
+    ) {
+      return res.status(429).json({
+        error: "Please wait 60 seconds before requesting another code.",
+      });
+    }
+
+    const otp = generatePasswordResetOtp();
+    const expiresAt = new Date(Date.now() + SIGNUP_OTP_TTL_MINUTES * 60 * 1000);
+    await SignupOtp.findOneAndUpdate(
+      { email: emailNorm },
+      {
+        $set: {
+          email: emailNorm,
+          tokenHash: hashSignupOtp(otp),
+          expiresAt,
+          sentAt: new Date(),
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    try {
+      await sendSignupOtpEmail(emailNorm, otp, SIGNUP_OTP_TTL_MINUTES);
+    } catch (mailErr) {
+      console.error("Signup verification email failed:", mailErr?.message || mailErr);
+      console.log(`[Signup verify] OTP for ${emailNorm}: ${otp}`);
+    }
+
+    return res.json({
+      success: true,
+      message: "Verification code sent to your email.",
+    });
+  } catch (err) {
+    console.log(err);
+    if (String(err?.message || "").includes("buffering timed out")) {
+      return res.status(503).json({
+        error: "Database is offline. Check MONGO_URI / MongoDB connection, then retry.",
+      });
+    }
+    return res.status(500).json({ error: "Could not send verification code." });
+  }
+});
+
 app.post("/auth/register", authLimiter, async (req, res) => {
   try {
     if (!(await getEffectiveAllowPublicRegister())) {
@@ -2598,11 +2741,11 @@ app.post("/auth/register", authLimiter, async (req, res) => {
       });
     }
 
-    const { name, email, password } = req.body;
+    const { name, email, password, otp } = req.body;
 
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !otp) {
       return res.status(400).json({
-        error: "Name, email and password required",
+        error: "Name, email, password and verification code required",
       });
     }
 
@@ -2622,6 +2765,23 @@ app.post("/auth/register", authLimiter, async (req, res) => {
     if (!REGISTER_EMAIL_RE.test(emailNorm)) {
       return res.status(400).json({
         error: "Invalid email address.",
+      });
+    }
+    if (!registerEmailDomainAllowed(emailNorm)) {
+      return res.status(400).json({
+        error: "Only Gmail addresses are allowed for registration.",
+      });
+    }
+
+    const otpHash = hashSignupOtp(String(otp).trim());
+    const verified = await SignupOtp.findOne({
+      email: emailNorm,
+      tokenHash: otpHash,
+      expiresAt: { $gt: new Date() },
+    }).select("_id");
+    if (!verified) {
+      return res.status(400).json({
+        error: "Invalid or expired verification code. Request a new code.",
       });
     }
 
@@ -2644,6 +2804,7 @@ app.post("/auth/register", authLimiter, async (req, res) => {
     });
 
     const wid = String(user._id);
+    await SignupOtp.deleteOne({ email: emailNorm });
 
     const token = jwt.sign(
       {
@@ -2673,11 +2834,11 @@ const SIGNUP_INVITE_TTL_MS = 48 * 60 * 60 * 1000;
 app.post("/auth/register-invite", authLimiter, async (req, res) => {
   try {
     const rawToken = String(req.body?.token || "").trim();
-    const { name, email, password } = req.body;
+    const { name, email, password, otp } = req.body;
 
-    if (!rawToken || !name || !email || !password) {
+    if (!rawToken || !name || !email || !password || !otp) {
       return res.status(400).json({
-        error: "Invite token, name, email and password required",
+        error: "Invite token, name, email, password and verification code required",
       });
     }
 
@@ -2697,6 +2858,23 @@ app.post("/auth/register-invite", authLimiter, async (req, res) => {
     if (!REGISTER_EMAIL_RE.test(emailNorm)) {
       return res.status(400).json({
         error: "Invalid email address.",
+      });
+    }
+    if (!registerEmailDomainAllowed(emailNorm)) {
+      return res.status(400).json({
+        error: "Only Gmail addresses are allowed for registration.",
+      });
+    }
+
+    const otpHash = hashSignupOtp(String(otp).trim());
+    const verified = await SignupOtp.findOne({
+      email: emailNorm,
+      tokenHash: otpHash,
+      expiresAt: { $gt: new Date() },
+    }).select("_id");
+    if (!verified) {
+      return res.status(400).json({
+        error: "Invalid or expired verification code. Request a new code.",
       });
     }
 
@@ -2738,6 +2916,7 @@ app.post("/auth/register-invite", authLimiter, async (req, res) => {
       });
       invite.usedAt = new Date();
       await invite.save();
+      await SignupOtp.deleteOne({ email: emailNorm });
 
       const wid = String(user._id);
       const token = jwt.sign(
@@ -2787,6 +2966,7 @@ app.post("/auth/register-invite", authLimiter, async (req, res) => {
       });
       invite.usedAt = new Date();
       await invite.save();
+      await SignupOtp.deleteOne({ email: emailNorm });
 
       const wid = String(ownerId);
       const token = jwt.sign(

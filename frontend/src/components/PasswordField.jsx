@@ -57,11 +57,14 @@ export default function PasswordField({
       <button
         type="button"
         className="password-field-toggle"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => setVisible((v) => !v)}
         aria-label={visible ? "Hide password" : "Show password"}
         aria-pressed={visible}
       >
-        {visible ? <IconEyeOff /> : <IconEye />}
+        <span className="password-field-toggle-icon">
+          {visible ? <IconEyeOff /> : <IconEye />}
+        </span>
       </button>
     </div>
   );

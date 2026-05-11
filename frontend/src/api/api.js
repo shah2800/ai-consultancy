@@ -141,6 +141,41 @@ export async function cachedGet(url, config = {}, ttlMs = 15000) {
   return requestPromise;
 }
 
+export function invalidateCachedGet(match) {
+  const matcher = typeof match === "function"
+    ? match
+    : (key) => key.includes(String(match || ""));
+
+  for (const key of Array.from(memoryGetCache.keys())) {
+    if (matcher(key)) memoryGetCache.delete(key);
+  }
+  for (const key of Array.from(inFlightGets.keys())) {
+    if (matcher(key)) inFlightGets.delete(key);
+  }
+
+  try {
+    for (let i = sessionStorage.length - 1; i >= 0; i -= 1) {
+      const fullKey = sessionStorage.key(i);
+      if (!fullKey || !fullKey.startsWith(SESSION_CACHE_PREFIX)) continue;
+      const cacheKey = fullKey.slice(SESSION_CACHE_PREFIX.length);
+      if (matcher(cacheKey)) sessionStorage.removeItem(fullKey);
+    }
+  } catch {
+    /* Ignore storage access issues */
+  }
+
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+      const fullKey = localStorage.key(i);
+      if (!fullKey || !fullKey.startsWith(STORAGE_CACHE_PREFIX)) continue;
+      const cacheKey = fullKey.slice(STORAGE_CACHE_PREFIX.length);
+      if (matcher(cacheKey)) localStorage.removeItem(fullKey);
+    }
+  } catch {
+    /* Ignore storage access issues */
+  }
+}
+
 /* =========================
    AUTO ATTACH JWT TOKEN
 ========================= */
