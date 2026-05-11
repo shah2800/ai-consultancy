@@ -758,6 +758,7 @@
   flex: 1;
   min-width: 0;
   overflow: auto;
+  /* Mobile: hide overlay bar — touch scroll works without it */
   scrollbar-width: none;
   -ms-overflow-style: none;
   /* Keep scroll instant on desktop — smooth causes full-layer repaint on every tick
@@ -776,6 +777,38 @@
   height: 0;
 }
 
+/* Laptop/desktop: real scrollbar — hidden bar + Windows overlay = tiny unusable thumb */
+@media (min-width: 901px) {
+  .app-shell__main {
+    border-left: 1px solid var(--border-subtle);
+    scrollbar-width: thin;
+    scrollbar-color: rgb(148 163 184 / 0.45) transparent;
+    -ms-overflow-style: auto;
+  }
+
+  .app-shell__main::-webkit-scrollbar {
+    display: block;
+    width: 10px;
+    height: 10px;
+  }
+
+  .app-shell__main::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .app-shell__main::-webkit-scrollbar-thumb {
+    background: rgb(148 163 184 / 0.42);
+    border-radius: 99px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  .app-shell__main::-webkit-scrollbar-thumb:hover {
+    background: rgb(100 116 139 / 0.55);
+    background-clip: padding-box;
+  }
+}
+
 .settings-page .settings-card {
   content-visibility: auto;
   contain-intrinsic-size: 460px;
@@ -786,12 +819,6 @@
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   contain: content;
-}
-
-@media (min-width: 901px) {
-  .app-shell__main {
-    border-left: 1px solid var(--border-subtle);
-  }
 }
 
 .mobile-nav-bar {
