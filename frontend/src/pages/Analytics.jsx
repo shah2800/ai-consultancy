@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import api from "../api/api";
 import { useProgressiveRevealTwoTier } from "../hooks/useProgressiveReveal";
 import SkeletonPulse from "../components/SkeletonPulse";
@@ -35,6 +35,14 @@ function UrgencyBadge({ urgency }) {
 function TopicBar({ topic, percentage, description }) {
   const color =
     percentage >= 50 ? "var(--accent)" : percentage >= 30 ? "var(--warm)" : "var(--text-3)";
+  const targetScale = Math.min(100, Math.max(0, percentage)) / 100;
+  const [scale, setScale] = useState(0);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setScale(targetScale));
+    return () => cancelAnimationFrame(id);
+  }, [targetScale]);
+
   return (
     <div className="analytics-topic-row">
       <div className="analytics-topic-row__head">
@@ -47,7 +55,7 @@ function TopicBar({ topic, percentage, description }) {
         <div
           className="analytics-topic-row__fill"
           style={{
-            width: `${Math.min(100, percentage)}%`,
+            transform: `scaleX(${scale})`,
             background: color,
           }}
         />

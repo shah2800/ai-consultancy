@@ -2794,6 +2794,25 @@ app.post("/auth/register", authLimiter, async (req, res) => {
       });
     }
 
+    // Require email OTP verification before creating the account
+    const otpCode = String(req.body.otpCode || "").trim();
+    if (!otpCode) {
+      return res.status(400).json({
+        error: "Email verification code is required. Please verify your email first.",
+      });
+    }
+    const signupOtpRecord = await SignupOtp.findOne({ email: emailNorm });
+    if (
+      !signupOtpRecord ||
+      signupOtpRecord.tokenHash !== hashSignupOtp(otpCode) ||
+      new Date(signupOtpRecord.expiresAt).getTime() < Date.now()
+    ) {
+      return res.status(400).json({
+        error: "Invalid or expired verification code. Please request a new one.",
+      });
+    }
+    await SignupOtp.deleteOne({ email: emailNorm });
+
     const hashed = await bcrypt.hash(password, 10);
 
     const user = await AuthUser.create({
@@ -2891,6 +2910,25 @@ app.post("/auth/register-invite", authLimiter, async (req, res) => {
         error: "Email already exists",
       });
     }
+
+    // Require email OTP verification before creating the account
+    const otpCode = String(req.body.otpCode || "").trim();
+    if (!otpCode) {
+      return res.status(400).json({
+        error: "Email verification code is required. Please verify your email first.",
+      });
+    }
+    const signupOtpRecord = await SignupOtp.findOne({ email: emailNorm });
+    if (
+      !signupOtpRecord ||
+      signupOtpRecord.tokenHash !== hashSignupOtp(otpCode) ||
+      new Date(signupOtpRecord.expiresAt).getTime() < Date.now()
+    ) {
+      return res.status(400).json({
+        error: "Invalid or expired verification code. Please request a new one.",
+      });
+    }
+    await SignupOtp.deleteOne({ email: emailNorm });
 
     const hashed = await bcrypt.hash(password, 10);
 
