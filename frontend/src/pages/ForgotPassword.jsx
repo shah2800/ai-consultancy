@@ -60,9 +60,6 @@ export default function ForgotPassword() {
     try {
       await API.post("/auth/forgot-password", { email: e });
       setStep("reset");
-      setInfo(
-        "If that email is registered, a 6-digit code was generated. With SMTP configured in the server .env, it is emailed to you (check spam). If you have not set up SMTP yet, look at the terminal where you ran npm start / node index.js — the OTP is printed there in a boxed message."
-      );
     } catch (err) {
       setError(formatForgotPasswordError(err));
     } finally {

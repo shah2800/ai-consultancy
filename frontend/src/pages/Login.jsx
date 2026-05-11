@@ -48,7 +48,7 @@ export default function Login() {
   return (
     <div className="auth-shell">
       {/* Left brand panel */}
-      <div className="auth-shell__aside auth-shell__aside--login">
+      <div className="auth-shell__aside" style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 60 }}>
           <div style={{
@@ -133,7 +133,6 @@ export default function Login() {
               </label>
               <input
                 type="email"
-                className="login-form-input"
                 placeholder="admin@nextstep.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -157,7 +156,6 @@ export default function Login() {
               </label>
               <PasswordField
                 id="login-password"
-                className="login-form-password"
                 placeholder="••••••••"
                 value={password}
                 onChange={e => setPassword(e.target.value)}

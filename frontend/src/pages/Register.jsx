@@ -17,11 +17,6 @@ export default function Register({ inviteToken = null }) {
   const [error, setError] = useState("");
 
   const [inviteHint, setInviteHint] = useState(null);
-  const [otp, setOtp] = useState("");
-  const [otpSending, setOtpSending] = useState(false);
-  const [otpSentTo, setOtpSentTo] = useState("");
-  const [otpOk, setOtpOk] = useState("");
-  const [showOtpModal, setShowOtpModal] = useState(false);
 
   const nav = useNavigate();
 
@@ -86,12 +81,6 @@ export default function Register({ inviteToken = null }) {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((p) => ({ ...p, [name]: value }));
-    if (name === "email") {
-      setOtpSentTo("");
-      setOtp("");
-      setOtpOk("");
-      setShowOtpModal(false);
-    }
   };
 
   const isAllowedRegisterEmail = (value) => {
@@ -104,14 +93,6 @@ export default function Register({ inviteToken = null }) {
   };
 
   const normalizedEmail = String(form.email || "").trim().toLowerCase();
-
-  const requestSignupOtp = async (email) => {
-    await API.post("/auth/register/send-otp", { email });
-    setOtpSentTo(email);
-    setOtpOk("We sent OTP to your email. Enter it to finish account creation.");
-  };
-
-
 
   const register = async () => {
 
@@ -147,27 +128,6 @@ export default function Register({ inviteToken = null }) {
 
     }
 
-    const code = otp.trim().replace(/\D/g, "");
-    if (otpSentTo !== normalizedEmail) {
-      setLoading(true);
-      setError("");
-      setOtpOk("");
-      try {
-        await requestSignupOtp(normalizedEmail);
-        setShowOtpModal(true);
-      } catch (err) {
-        setError(err.response?.data?.error || "Could not send verification code.");
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-    if (code.length !== 6) {
-      setError("Enter the OTP from your Gmail to continue.");
-      setShowOtpModal(true);
-      return;
-    }
-
     setLoading(true);
 
     setError("");
@@ -188,13 +148,11 @@ export default function Register({ inviteToken = null }) {
 
           password: form.password,
 
-          otp: code,
-
         });
 
       } else {
 
-        res = await API.post("/auth/register", { ...form, otp: code });
+        res = await API.post("/auth/register", form);
 
       }
 
@@ -407,119 +365,6 @@ export default function Register({ inviteToken = null }) {
         </div>
 
       </div>
-
-      {showOtpModal ? (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgb(15 23 42 / 0.55)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 100,
-            padding: 14,
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 420,
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: 14,
-              boxShadow: "var(--shadow-lg)",
-              padding: 18,
-            }}
-          >
-            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-heading)", marginBottom: 8 }}>
-              Verify your Gmail
-            </div>
-            <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-2)", lineHeight: 1.55 }}>
-              {otpOk || "We sent OTP to your email. Enter it below to complete registration."}
-              <br />
-              <strong style={{ color: "var(--text)" }}>{normalizedEmail}</strong>
-            </p>
-            <input
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              inputMode="numeric"
-              maxLength={6}
-              placeholder="Enter OTP from Gmail"
-              style={{
-                width: "100%",
-                padding: "11px 14px",
-                borderRadius: 10,
-                border: "1.5px solid var(--border)",
-                background: "var(--surface)",
-                fontFamily: "var(--font-body)",
-                fontSize: 14,
-                marginBottom: 12,
-                boxSizing: "border-box",
-              }}
-            />
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                onClick={() => setShowOtpModal(false)}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  border: "1.5px solid var(--border)",
-                  background: "var(--surface-2)",
-                  color: "var(--text-2)",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={otpSending}
-                onClick={async () => {
-                  setOtpSending(true);
-                  setError("");
-                  try {
-                    await requestSignupOtp(normalizedEmail);
-                  } catch (err) {
-                    setError(err.response?.data?.error || "Could not send verification code.");
-                  } finally {
-                    setOtpSending(false);
-                  }
-                }}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  border: "1.5px solid var(--border)",
-                  background: "var(--surface-2)",
-                  color: "var(--text-2)",
-                  fontWeight: 600,
-                  cursor: otpSending ? "not-allowed" : "pointer",
-                }}
-              >
-                {otpSending ? "Sending..." : "Resend OTP"}
-              </button>
-              <button
-                type="button"
-                onClick={register}
-                disabled={loading}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  border: "none",
-                  background: loading ? "var(--border)" : "var(--accent)",
-                  color: "#fff",
-                  fontWeight: 700,
-                  cursor: loading ? "not-allowed" : "pointer",
-                }}
-              >
-                {loading ? "Verifying..." : "Verify & Create"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
     </div>
 

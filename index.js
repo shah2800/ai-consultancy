@@ -36,14 +36,24 @@ app.use(express.json({
   },
 }));
 
+function normalizeOrigin(origin) {
+  const raw = String(origin || "").trim();
+  if (!raw) return "";
+  return raw.replace(/\/+$/, "").toLowerCase();
+}
+
 const corsAllowlist = new Set(
   [
     process.env.FRONTEND_URL,
     process.env.CORS_ORIGINS,
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
   ]
     .filter(Boolean)
     .flatMap((v) => String(v).split(","))
-    .map((s) => s.trim())
+    .map((s) => normalizeOrigin(s))
     .filter(Boolean)
 );
 
@@ -52,8 +62,11 @@ app.use(
     origin: (origin, cb) => {
       /* Allow same-origin, server-to-server, Postman/curl (no Origin). */
       if (!origin) return cb(null, true);
+      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
+        return cb(null, true);
+      }
       if (corsAllowlist.size === 0) return cb(null, true);
-      if (corsAllowlist.has(origin)) return cb(null, true);
+      if (corsAllowlist.has(normalizeOrigin(origin))) return cb(null, true);
       return cb(new Error("CORS blocked for origin"));
     },
   })
@@ -2741,11 +2754,11 @@ app.post("/auth/register", authLimiter, async (req, res) => {
       });
     }
 
-    const { name, email, password, otp } = req.body;
+    const { name, email, password } = req.body;
 
-    if (!name || !email || !password || !otp) {
+    if (!name || !email || !password) {
       return res.status(400).json({
-        error: "Name, email, password and verification code required",
+        error: "Name, email and password required",
       });
     }
 
@@ -2773,18 +2786,6 @@ app.post("/auth/register", authLimiter, async (req, res) => {
       });
     }
 
-    const otpHash = hashSignupOtp(String(otp).trim());
-    const verified = await SignupOtp.findOne({
-      email: emailNorm,
-      tokenHash: otpHash,
-      expiresAt: { $gt: new Date() },
-    }).select("_id");
-    if (!verified) {
-      return res.status(400).json({
-        error: "Invalid or expired verification code. Request a new code.",
-      });
-    }
-
     const existing = await findAuthUserByEmail(emailNorm);
 
     if (existing) {
@@ -2804,8 +2805,6 @@ app.post("/auth/register", authLimiter, async (req, res) => {
     });
 
     const wid = String(user._id);
-    await SignupOtp.deleteOne({ email: emailNorm });
-
     const token = jwt.sign(
       {
         id: String(user._id),
@@ -2834,11 +2833,11 @@ const SIGNUP_INVITE_TTL_MS = 48 * 60 * 60 * 1000;
 app.post("/auth/register-invite", authLimiter, async (req, res) => {
   try {
     const rawToken = String(req.body?.token || "").trim();
-    const { name, email, password, otp } = req.body;
+    const { name, email, password } = req.body;
 
-    if (!rawToken || !name || !email || !password || !otp) {
+    if (!rawToken || !name || !email || !password) {
       return res.status(400).json({
-        error: "Invite token, name, email, password and verification code required",
+        error: "Invite token, name, email and password required",
       });
     }
 
@@ -2863,18 +2862,6 @@ app.post("/auth/register-invite", authLimiter, async (req, res) => {
     if (!registerEmailDomainAllowed(emailNorm)) {
       return res.status(400).json({
         error: "Only Gmail addresses are allowed for registration.",
-      });
-    }
-
-    const otpHash = hashSignupOtp(String(otp).trim());
-    const verified = await SignupOtp.findOne({
-      email: emailNorm,
-      tokenHash: otpHash,
-      expiresAt: { $gt: new Date() },
-    }).select("_id");
-    if (!verified) {
-      return res.status(400).json({
-        error: "Invalid or expired verification code. Request a new code.",
       });
     }
 
@@ -2916,7 +2903,6 @@ app.post("/auth/register-invite", authLimiter, async (req, res) => {
       });
       invite.usedAt = new Date();
       await invite.save();
-      await SignupOtp.deleteOne({ email: emailNorm });
 
       const wid = String(user._id);
       const token = jwt.sign(
@@ -2966,7 +2952,6 @@ app.post("/auth/register-invite", authLimiter, async (req, res) => {
       });
       invite.usedAt = new Date();
       await invite.save();
-      await SignupOtp.deleteOne({ email: emailNorm });
 
       const wid = String(ownerId);
       const token = jwt.sign(
@@ -3094,6 +3079,12 @@ app.post("/auth/login", loginLimiter, async (req, res) => {
 
 app.post("/auth/forgot-password", forgotLimiter, async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({
+        error: "Database is offline. Check MONGO_URI / MongoDB connection, then retry.",
+      });
+    }
+
     const emailRaw = String(req.body.email || "").trim();
     if (!emailRaw) {
       return res.status(400).json({
@@ -3134,6 +3125,11 @@ app.post("/auth/forgot-password", forgotLimiter, async (req, res) => {
     res.json(generic);
   } catch (err) {
     console.log(err);
+    if (String(err?.message || "").includes("buffering timed out")) {
+      return res.status(503).json({
+        error: "Database is offline. Check MONGO_URI / MongoDB connection, then retry.",
+      });
+    }
 
     res.status(500).json({
       error: "Could not process request. Try again later.",

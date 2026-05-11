@@ -20,25 +20,6 @@
   border-right: 1px solid var(--sidebar-border);
 }
 
-.auth-shell__aside--login {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.login-form-input,
-.login-form-password .password-field-input {
-  opacity: 1;
-}
-
-.login-form-input::placeholder {
-  opacity: 0.45;
-}
-
-.login-form-password .password-field-input::placeholder {
-  opacity: 0.65;
-}
-
 .auth-shell__panel {
   width: 460px;
   min-width: 0;
@@ -122,15 +103,22 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overscroll-behavior: contain;
 }
 
 .app-shell__main {
   flex: 1;
   min-width: 0;
   overflow: auto;
+  scroll-behavior: smooth;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   background: linear-gradient(165deg, var(--bg) 0%, var(--bg-elevated) 55%, var(--bg) 100%);
+}
+
+.settings-page .settings-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 460px;
 }
 
 .chat-scroll-panel {
@@ -203,6 +191,11 @@
 
   .app-shell {
     flex-direction: column;
+  }
+
+  .app-shell__main {
+    /* Avoid touch-scroll stutter on long forms. */
+    scroll-behavior: auto;
   }
 
   .app-shell__overlay.is-open {
@@ -348,45 +341,23 @@
 
 .password-field-toggle {
   position: absolute;
-  right: 4px;
+  right: 6px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-3);
   cursor: pointer;
-  z-index: 2;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
   transition:
     color 0.15s ease,
     background 0.15s ease;
-}
-
-.password-field-toggle svg {
-  pointer-events: none;
-}
-
-.password-field-toggle-icon {
-  width: 20px;
-  height: 20px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 0;
-}
-
-.password-field-toggle-icon svg {
-  width: 20px;
-  height: 20px;
-  display: block;
 }
 
 .password-field-toggle:hover {

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, memo } from "react";
-import api, { cachedGet } from "../api/api";
+import api from "../api/api";
 import ExportLeadsModal from "../components/ExportLeadsModal";
 import WeeklyReportModal from "../components/WeeklyReportModal";
 import { useNavigate } from "react-router-dom";
@@ -398,10 +398,7 @@ export default function Dashboard() {
     }
 
     /* Single completion path avoids “stuck” skeleton if one request hangs or finishes out of order (cold API / DB). */
-    Promise.allSettled([
-      cachedGet("/admin/dashboard", {}, 25000),
-      cachedGet("/leads/top", {}, 25000),
-    ]).then(
+    Promise.allSettled([api.get("/admin/dashboard"), api.get("/leads/top")]).then(
       (results) => {
         const [dashResult, topResult] = results;
 

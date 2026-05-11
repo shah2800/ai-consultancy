@@ -289,7 +289,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="page-shell" style={{ maxWidth: 760 }}>
+    <div className="page-shell settings-page" style={{ maxWidth: 760 }}>
 
       {/* Header */}
       <div className="settings-header" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32 }}>

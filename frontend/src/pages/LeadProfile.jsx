@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback, useMemo, memo } from "react";
-import api, { cachedGet } from "../api/api";
+import api from "../api/api";
 import SkeletonPulse from "../components/SkeletonPulse";
 import { useParams, useNavigate } from "react-router-dom";
 import { inferPhoneOrigin } from "../utils/phoneCountry";
@@ -843,7 +843,7 @@ export default function LeadProfile() {
   const load = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLeadLoading(true);
     try {
-      const res = await cachedGet(`/admin/leads/${id}`, {}, 8000);
+      const res = await api.get(`/admin/leads/${id}`);
       setLead(res.data);
     } catch (e) { console.error(e); }
     finally { if (!silent) setLeadLoading(false); }

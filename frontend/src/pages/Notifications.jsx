@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import api, { cachedGet } from "../api/api";
+import api from "../api/api";
 import { useNavigate } from "react-router-dom";
 import { useProgressiveRevealOneTier } from "../hooks/useProgressiveReveal";
 import SkeletonPulse from "../components/SkeletonPulse";
@@ -123,7 +123,7 @@ export default function Notifications() {
   const load = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
     try {
-      const res = await cachedGet("/admin/notifications", {}, 10000);
+      const res = await api.get("/admin/notifications");
       const data = res.data || [];
       setItems(data);
       setGroupedItems(buildGroupedItems(data));

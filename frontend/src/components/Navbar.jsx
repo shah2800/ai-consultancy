@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState, useCallback, useRef } from "react";
-import api, { cachedGet } from "../api/api";
+import { useEffect, useState } from "react";
+import api from "../api/api";
 import { roleFromToken, emailFromToken } from "../utils/jwt";
 import { getAdaptivePollInterval } from "../utils/performance";
 
@@ -113,7 +113,6 @@ export default function Navbar({ onNavigate }) {
     role === "admin" || role === "manager"
       ? [...NAV_LINKS.slice(0, 6), teamLink, NAV_LINKS[6]]
       : NAV_LINKS;
-  const prefetchedRoutesRef = useRef(new Set());
 
   const userEmail = emailFromToken(localStorage.getItem("token"));
 
@@ -126,7 +125,7 @@ export default function Navbar({ onNavigate }) {
       if (inFlight) return;
       inFlight = true;
       try {
-        const notifRes = await cachedGet("/admin/notifications", {}, 10000);
+        const notifRes = await api.get("/admin/notifications");
         const unread = (notifRes.data || [])
           .filter((n) => !n.read)
           .reduce((sum, n) => sum + (n.count || 1), 0);
@@ -176,24 +175,6 @@ export default function Navbar({ onNavigate }) {
     localStorage.removeItem("token");
     navigate("/");
   };
-
-  const prefetchRouteData = useCallback((to) => {
-    if (prefetchedRoutesRef.current.has(to)) return;
-    prefetchedRoutesRef.current.add(to);
-    const jobs = [];
-    if (to === "/dashboard") {
-      jobs.push(cachedGet("/admin/dashboard", {}, 25000));
-      jobs.push(cachedGet("/leads/top", {}, 25000));
-    } else if (to === "/leads") {
-      jobs.push(cachedGet("/admin/leads?status=all", {}, 15000));
-    } else if (to === "/notifications") {
-      jobs.push(cachedGet("/admin/notifications", {}, 10000));
-    }
-    if (jobs.length === 0) return;
-    Promise.allSettled(jobs).catch(() => {
-      /* ignore prefetch failures */
-    });
-  }, []);
 
   return (
     <div
@@ -286,6 +267,7 @@ export default function Navbar({ onNavigate }) {
           minHeight: 0,
           overflowY: "auto",
           overflowX: "hidden",
+          overscrollBehavior: "contain",
           padding: "0 10px 8px",
           WebkitOverflowScrolling: "touch",
         }}
@@ -310,13 +292,10 @@ export default function Navbar({ onNavigate }) {
               key={link.to}
               href={link.to}
               title={badgeHint}
-              onMouseEnter={() => prefetchRouteData(link.to)}
-              onTouchStart={() => prefetchRouteData(link.to)}
               onClick={(e) => {
                 /* Explicit SPA navigation — avoids rare cases where <Link> doesn’t swap the route until full reload (esp. long pages like Assigned leads). */
                 if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
                 e.preventDefault();
-                prefetchRouteData(link.to);
                 navigate(link.to);
                 onNavigate?.();
               }}
@@ -359,7 +338,6 @@ export default function Navbar({ onNavigate }) {
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
-                  animation: "pulse 2s ease infinite",
                 }}>
                   {notifBadge > 99 ? "99+" : notifBadge}
                 </span>
