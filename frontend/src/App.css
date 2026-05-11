@@ -340,13 +340,22 @@
 
 .password-field-wrap .password-field-input {
   display: block;
+  /* Password vs text can use different default fonts/heights; keep layout stable for the toggle. */
+  font-family: var(--font-body);
+  line-height: 1.35;
+}
+
+/* Edge/IE: hide native reveal so it does not fight our toggle or shift layout. */
+.password-field-input::-ms-reveal {
+  display: none;
 }
 
 .password-field-toggle {
   position: absolute;
   right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 0;
+  bottom: 0;
+  margin: auto 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -358,9 +367,20 @@
   background: transparent;
   color: var(--text-3);
   cursor: pointer;
+  flex-shrink: 0;
   transition:
     color 0.15s ease,
     background 0.15s ease;
+}
+
+.password-field-toggle-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  pointer-events: none;
 }
 
 .password-field-toggle:hover {
@@ -371,6 +391,12 @@
 .password-field-toggle:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.password-field-toggle:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .chip {
@@ -1894,4 +1920,154 @@
   .lead-profile-chat-composer {
     transition-duration: 0.18s !important;
   }
+}
+
+/* —— Settings: section jump nav & country chips —— */
+.settings-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0 14px;
+  margin: -4px 0 10px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: linear-gradient(180deg, var(--bg) 88%, transparent);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.settings-subnav a {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.settings-subnav a:hover {
+  color: var(--accent);
+  background: var(--accent-light);
+  border-color: var(--accent);
+}
+
+.settings-subnav a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.settings-country-chip-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  margin: 0 -4px;
+  padding: 0 4px 6px;
+}
+
+.settings-country-chip-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.settings-country-chip-scroll:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.settings-country-chip-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  align-items: center;
+  min-height: 44px;
+  width: max-content;
+  min-width: 100%;
+}
+
+.settings-country-chip {
+  flex-shrink: 0;
+}
+
+.settings-country-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.88;
+}
+
+.settings-country-chip-remove-text {
+  display: none;
+}
+
+@media (min-width: 701px) {
+  .settings-country-chip-remove-text {
+    display: inline;
+  }
+}
+
+.settings-faq-preset-q {
+  display: inline;
+}
+
+.settings-whatsapp-guide summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* —— Universities: form tabs —— */
+.uni-form-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.uni-form-tab {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.uni-form-tab:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.uni-form-tab.is-active {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.uni-form-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.uni-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.panel.uni-empty-state {
+  border-style: dashed;
 }

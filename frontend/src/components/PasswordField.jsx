@@ -31,6 +31,7 @@ export default function PasswordField({
   placeholder,
   style,
   className,
+  disabled,
 }) {
   const [visible, setVisible] = useState(false);
   const mergedStyle = {
@@ -53,10 +54,12 @@ export default function PasswordField({
         onKeyDown={onKeyDown}
         autoComplete={autoComplete}
         placeholder={placeholder}
+        disabled={disabled}
       />
       <button
         type="button"
         className="password-field-toggle"
+        disabled={disabled}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => setVisible((v) => !v)}
         aria-label={visible ? "Hide password" : "Show password"}

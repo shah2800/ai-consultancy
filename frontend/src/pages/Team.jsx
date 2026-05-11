@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import api, { invalidateCachedGet } from "../api/api";
 import { useProgressiveRevealTwoTier } from "../hooks/useProgressiveReveal";
@@ -16,6 +16,31 @@ const baseInputStyle = {
   fontSize: 13,
   boxSizing: "border-box",
 };
+
+function InviteExpiryHint({ expiresAtMs }) {
+  const [, setBump] = useState(0);
+  useEffect(() => {
+    if (!expiresAtMs) return undefined;
+    const id = window.setInterval(() => setBump((b) => b + 1), 60_000);
+    return () => window.clearInterval(id);
+  }, [expiresAtMs]);
+  if (!expiresAtMs) return null;
+  const ms = expiresAtMs - Date.now();
+  if (ms <= 0) {
+    return (
+      <p style={{ fontSize: 12, color: "var(--text-3)", margin: "6px 0 0", lineHeight: 1.5 }}>
+        This link may have expired—generate a new invite if it does not work.
+      </p>
+    );
+  }
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  return (
+    <p style={{ fontSize: 12, color: "var(--text-3)", margin: "6px 0 0", lineHeight: 1.5 }}>
+      About <strong>{h}h {m}m</strong> left on this invite.
+    </p>
+  );
+}
 
 export default function Team() {
   const location = useLocation();
@@ -41,6 +66,10 @@ export default function Team() {
   const [inviteBusy, setInviteBusy] = useState(false);
   const [memberInviteUrl, setMemberInviteUrl] = useState("");
   const [ownerInviteUrl, setOwnerInviteUrl] = useState("");
+  const [memberInviteExpiresAt, setMemberInviteExpiresAt] = useState(null);
+  const [ownerInviteExpiresAt, setOwnerInviteExpiresAt] = useState(null);
+  const [copiedKind, setCopiedKind] = useState("");
+  const feedbackRef = useRef(null);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -92,6 +121,24 @@ export default function Team() {
     location.pathname
   );
 
+  useEffect(() => {
+    if (!error && !ok) return;
+    feedbackRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [error, ok]);
+
+  const copyInviteUrl = async (kind) => {
+    const url = kind === "member" ? memberInviteUrl : ownerInviteUrl;
+    if (!url) return;
+    setError("");
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedKind(kind);
+      window.setTimeout(() => setCopiedKind(""), 2000);
+    } catch {
+      setError("Could not copy to clipboard—select the link and copy manually.");
+    }
+  };
+
   const setSignup = async (next) => {
     setError("");
     setOk("");
@@ -141,6 +188,8 @@ export default function Team() {
       if (em) body.email = em;
       const res = await api.post("/admin/workspace-invites", body);
       setMemberInviteUrl(res.data?.inviteUrl || "");
+      const mh = Number(res.data?.expiresInHours);
+      setMemberInviteExpiresAt(Date.now() + (Number.isFinite(mh) ? mh : 48) * 3600000);
       setOk("Workspace invite link ready — copy and send it (expires in 48 hours).");
     } catch (err) {
       setError(err.response?.data?.error || "Could not create invite.");
@@ -157,6 +206,8 @@ export default function Team() {
       const em = inviteEmail.trim();
       const res = await api.post("/platform/owner-signup-invites", em ? { email: em } : {});
       setOwnerInviteUrl(res.data?.inviteUrl || "");
+      const oh = Number(res.data?.expiresInHours);
+      setOwnerInviteExpiresAt(Date.now() + (Number.isFinite(oh) ? oh : 48) * 3600000);
       setOk("New-consultancy signup link created — send it to your customer (expires in 48 hours).");
     } catch (err) {
       setError(err.response?.data?.error || "Could not create owner invite.");
@@ -235,81 +286,28 @@ export default function Team() {
         </p>
       </div>
 
-      {error ? (
-        <div className="analytics-error" style={{ marginBottom: 14 }}>
-          {error}
-        </div>
-      ) : null}
-      {ok ? (
-        <div
-          style={{
-            background: "var(--ready-bg)",
-            border: "1px solid rgb(134 239 172)",
-            color: "var(--ready)",
-            borderRadius: 10,
-            padding: "10px 14px",
-            fontSize: 13,
-            marginBottom: 14,
-          }}
-        >
-          {ok}
-        </div>
-      ) : null}
-
-      {primaryReady && canManagePublicSignup === true && isAdmin ? (
-        <div
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: 14,
-            padding: "20px 22px",
-            marginBottom: 18,
-          }}
-        >
+      <div ref={feedbackRef}>
+        {error ? (
+          <div className="analytics-error" style={{ marginBottom: 14 }}>
+            {error}
+          </div>
+        ) : null}
+        {ok ? (
           <div
             style={{
-              fontSize: 14,
-              fontWeight: 700,
-              marginBottom: 8,
-              color: "var(--text)",
-              fontFamily: "var(--font-heading)",
+              background: "var(--ready-bg)",
+              border: "1px solid rgb(134 239 172)",
+              color: "var(--ready)",
+              borderRadius: 10,
+              padding: "10px 14px",
+              fontSize: 13,
+              marginBottom: 14,
             }}
           >
-            Public sign-up
+            {ok}
           </div>
-          <p style={{ margin: "0 0 14px", fontSize: 13, color: "var(--text-2)", lineHeight: 1.55 }}>
-            <strong>App-wide</strong>—same signup/login for everyone. Other workspaces are unchanged.{" "}
-            <code style={{ fontSize: 12 }}>PERMANENT_MANAGER_EMAILS</code> accounts stay managers on the server and
-            can&apos;t be demoted here.
-          </p>
-          {allowPublicRegister === null ? (
-            <div style={{ color: "var(--text-3)", fontSize: 13 }}>Loading setting…</div>
-          ) : (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-              <button
-                type="button"
-                className={allowPublicRegister ? "btn btn-primary" : "btn btn-secondary"}
-                onClick={() => setSignup(true)}
-                disabled={signupSaving || allowPublicRegister === true}
-              >
-                {signupSaving && allowPublicRegister === false ? "Saving…" : "Allow public signup"}
-              </button>
-              <button
-                type="button"
-                className={!allowPublicRegister ? "btn btn-primary" : "btn btn-secondary"}
-                onClick={() => setSignup(false)}
-                disabled={signupSaving || allowPublicRegister === false}
-              >
-                {signupSaving && allowPublicRegister === true ? "Saving…" : "Disable public signup"}
-              </button>
-              <span className="chip" style={{ border: "1px solid var(--border)", fontSize: 12 }}>
-                {allowPublicRegister ? "Open" : "Closed"}
-                {signupSource ? ` · ${signupSource}` : ""}
-              </span>
-            </div>
-          )}
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
       {primaryReady ? (
       <div
@@ -347,6 +345,7 @@ export default function Team() {
             style={baseInputStyle}
             value={inviteRole}
             onChange={(e) => setInviteRole(e.target.value)}
+            aria-label="Role for invited member"
           >
             <option value="staff">Staff</option>
             <option value="viewer">Viewer</option>
@@ -354,12 +353,42 @@ export default function Team() {
             <option value="admin">Admin</option>
           </select>
         </div>
+        <details
+          style={{
+            marginBottom: 12,
+            border: "1px solid var(--border)",
+            borderRadius: 10,
+            padding: "8px 12px",
+            background: "var(--surface-2)",
+            fontSize: 12,
+            color: "var(--text-2)",
+            lineHeight: 1.55,
+          }}
+        >
+          <summary style={{ cursor: "pointer", fontWeight: 600, color: "var(--text)" }}>
+            What each role can do
+          </summary>
+          <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
+            <li>
+              <strong>Viewer</strong> — read leads and reports; cannot change settings or team.
+            </li>
+            <li>
+              <strong>Staff</strong> — work leads day-to-day; typically no org-wide settings.
+            </li>
+            <li>
+              <strong>Manager</strong> — manage leads, team, and workspace settings (not global public signup).
+            </li>
+            <li>
+              <strong>Admin</strong> — full control in this workspace, including public signup when the server allows it.
+            </li>
+          </ul>
+        </details>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 12 }}>
           <button type="button" className="btn btn-secondary" onClick={createMemberInvite} disabled={inviteBusy}>
             {inviteBusy ? "…" : "Generate workspace invite"}
           </button>
           {canCreateOwnerInvites ? (
-            <button type="button" className="btn btn-primary" onClick={createOwnerInvite} disabled={inviteBusy}>
+            <button type="button" className="btn btn-secondary" onClick={createOwnerInvite} disabled={inviteBusy}>
               {inviteBusy ? "…" : "New consultancy invite (platform)"}
             </button>
           ) : null}
@@ -367,13 +396,37 @@ export default function Team() {
         {memberInviteUrl ? (
           <div style={{ marginBottom: canCreateOwnerInvites ? 14 : 0 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", marginBottom: 6 }}>Workspace invite URL</div>
-            <input readOnly style={{ ...baseInputStyle, fontSize: 12 }} value={memberInviteUrl} onFocus={(e) => e.target.select()} />
+            <div style={{ display: "flex", gap: 8, alignItems: "stretch", flexWrap: "wrap" }}>
+              <input
+                readOnly
+                style={{ ...baseInputStyle, fontSize: 12, flex: "1 1 200px", minWidth: 0 }}
+                value={memberInviteUrl}
+                onFocus={(e) => e.target.select()}
+                aria-label="Workspace invite URL"
+              />
+              <button type="button" className="btn btn-secondary" onClick={() => copyInviteUrl("member")}>
+                {copiedKind === "member" ? "Copied" : "Copy"}
+              </button>
+            </div>
+            <InviteExpiryHint expiresAtMs={memberInviteExpiresAt} />
           </div>
         ) : null}
         {ownerInviteUrl ? (
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", marginBottom: 6 }}>New consultancy invite URL</div>
-            <input readOnly style={{ ...baseInputStyle, fontSize: 12 }} value={ownerInviteUrl} onFocus={(e) => e.target.select()} />
+            <div style={{ display: "flex", gap: 8, alignItems: "stretch", flexWrap: "wrap" }}>
+              <input
+                readOnly
+                style={{ ...baseInputStyle, fontSize: 12, flex: "1 1 200px", minWidth: 0 }}
+                value={ownerInviteUrl}
+                onFocus={(e) => e.target.select()}
+                aria-label="New consultancy invite URL"
+              />
+              <button type="button" className="btn btn-secondary" onClick={() => copyInviteUrl("owner")}>
+                {copiedKind === "owner" ? "Copied" : "Copy"}
+              </button>
+            </div>
+            <InviteExpiryHint expiresAtMs={ownerInviteExpiresAt} />
           </div>
         ) : null}
       </div>
@@ -436,7 +489,7 @@ export default function Team() {
         <div style={{ marginTop: 12 }}>
           <button
             type="button"
-            className="btn btn-primary"
+            className="btn btn-secondary"
             onClick={createUser}
             disabled={creating}
           >
@@ -460,12 +513,14 @@ export default function Team() {
       )}
 
       {secondaryReady ? (
+      <>
       <div
         style={{
           background: "var(--surface)",
           border: "1px solid var(--border)",
           borderRadius: 14,
           padding: "20px 22px",
+          marginBottom: 18,
         }}
       >
         <div
@@ -482,7 +537,21 @@ export default function Team() {
         {loading ? (
           <div style={{ color: "var(--text-3)", fontSize: 13 }}>Loading team…</div>
         ) : users.length === 0 ? (
-          <div style={{ color: "var(--text-3)", fontSize: 13 }}>No users found.</div>
+          <div
+            style={{
+              border: "1px dashed var(--border)",
+              borderRadius: 12,
+              padding: "20px 16px",
+              textAlign: "center",
+              background: "var(--surface-2)",
+            }}
+          >
+            <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 600, color: "var(--text)" }}>No team members yet</p>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--text-2)", lineHeight: 1.55 }}>
+              Generate an invite link above so people create their own password, or use <strong>Add team member</strong>{" "}
+              if you prefer to set a password for them.
+            </p>
+          </div>
         ) : (
           <div
             style={{
@@ -623,6 +692,60 @@ export default function Team() {
           </div>
         )}
       </div>
+      {primaryReady && canManagePublicSignup === true && isAdmin ? (
+        <div
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: 14,
+            padding: "20px 22px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              marginBottom: 8,
+              color: "var(--text)",
+              fontFamily: "var(--font-heading)",
+            }}
+          >
+            Public sign-up
+          </div>
+          <p style={{ margin: "0 0 14px", fontSize: 13, color: "var(--text-2)", lineHeight: 1.55 }}>
+            <strong>App-wide</strong>—same signup/login for everyone. Other workspaces are unchanged.{" "}
+            <code style={{ fontSize: 12 }}>PERMANENT_MANAGER_EMAILS</code> accounts stay managers on the server and
+            can&apos;t be demoted here.
+          </p>
+          {allowPublicRegister === null ? (
+            <div style={{ color: "var(--text-3)", fontSize: 13 }}>Loading setting…</div>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+              <button
+                type="button"
+                className={allowPublicRegister ? "btn btn-primary" : "btn btn-secondary"}
+                onClick={() => setSignup(true)}
+                disabled={signupSaving || allowPublicRegister === true}
+              >
+                {signupSaving && allowPublicRegister === false ? "Saving…" : "Allow public signup"}
+              </button>
+              <button
+                type="button"
+                className={!allowPublicRegister ? "btn btn-primary" : "btn btn-secondary"}
+                onClick={() => setSignup(false)}
+                disabled={signupSaving || allowPublicRegister === false}
+              >
+                {signupSaving && allowPublicRegister === true ? "Saving…" : "Disable public signup"}
+              </button>
+              <span className="chip" style={{ border: "1px solid var(--border)", fontSize: 12 }}>
+                {allowPublicRegister ? "Open" : "Closed"}
+                {signupSource ? ` · ${signupSource}` : ""}
+              </span>
+            </div>
+          )}
+        </div>
+      ) : null}
+      </>
       ) : primaryReady ? (
         <div
           style={{
