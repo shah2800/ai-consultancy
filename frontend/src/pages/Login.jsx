@@ -29,7 +29,10 @@ export default function Login() {
   }, []);
 
   const login = async () => {
-    if (!email || !password) { setError("Please fill in all fields."); return; }
+    if (!email || !password) {
+      setError("Please fill in all fields.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -43,188 +46,139 @@ export default function Login() {
     }
   };
 
-  const handleKey = (e) => { if (e.key === "Enter") login(); };
+  const handleKey = (e) => {
+    if (e.key === "Enter") login();
+  };
+
+  const features = [
+    { title: "AI-assisted", desc: "Student conversations" },
+    { title: "Live pipeline", desc: "Lead scoring & stages" },
+    { title: "WhatsApp", desc: "Integrated routing" },
+  ];
+
+  const logoMark = (
+    <div className="auth-aside-logo" aria-hidden>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+      </svg>
+    </div>
+  );
 
   return (
     <div className="auth-shell">
-      {/* Left brand panel */}
-      <div className="auth-shell__aside">
-        {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 60 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 12,
-            background: "linear-gradient(145deg, var(--accent-hover), var(--accent))",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 0 32px var(--sidebar-glow)",
-          }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-          </div>
+      <aside className="auth-shell__aside">
+        <div className="auth-aside-brand-row">
+          {logoMark}
           <div>
-            <div style={{ color: "#fff", fontSize: 18, fontWeight: 700, fontFamily: "var(--font-heading)" }}>
-              Next Step International
-            </div>
-            <div style={{ color: "var(--sidebar-text-muted)", fontSize: 12, marginTop: 2 }}>
-              Study Abroad CRM
-            </div>
+            <div className="auth-aside-title">Next Step International</div>
+            <div className="auth-aside-sub">Study abroad CRM</div>
           </div>
         </div>
 
-        <h1 style={{
-          color: "#fff",
-          fontSize: 38,
-          fontFamily: "var(--font-heading)",
-          fontWeight: 700,
-          lineHeight: 1.2,
-          marginBottom: 18,
-          letterSpacing: "-0.02em",
-        }}>
-          Manage your leads<br />
-          <span style={{ color: "var(--accent)" }}>smarter with AI.</span>
+        <h1 className="auth-aside-headline">
+          Manage enquiries with clarity.
+          <br />
+          <span className="auth-aside-headline-accent">Help every student move forward.</span>
         </h1>
-        <p style={{ color: "var(--sidebar-text)", fontSize: 15, lineHeight: 1.7, maxWidth: 360 }}>
-          Track student inquiries, view AI conversations, and convert leads for Georgia, Turkey & China programs.
+        <p className="auth-aside-lede">
+          One workspace for intake, follow-ups, AI replies, and programmes across your markets—built for education
+          consultants.
         </p>
 
-        {/* Stats */}
-        <div style={{ display: "flex", gap: 32, marginTop: 48 }}>
-          {[
-            { val: "AI Powered", label: "Conversations" },
-            { val: "Real-time", label: "Lead Scoring" },
-            { val: "WhatsApp", label: "Direct Contact" },
-          ].map(({ val, label }) => (
-            <div key={label}>
-              <div style={{ color: "#fff", fontSize: 14, fontWeight: 700, fontFamily: "var(--font-heading)" }}>{val}</div>
-              <div style={{ color: "var(--sidebar-text-muted)", fontSize: 12, marginTop: 2 }}>{label}</div>
+        <dl className="auth-aside-features">
+          {features.map(({ title, desc }) => (
+            <div key={title}>
+              <dt>{title}</dt>
+              <dd>{desc}</dd>
             </div>
           ))}
-        </div>
-      </div>
+        </dl>
+      </aside>
 
-      {/* Right form panel */}
       <div className="auth-shell__panel">
-        <div className="auth-shell__card">
-          <h2 style={{ fontSize: 26, fontFamily: "var(--font-heading)", fontWeight: 700, marginBottom: 6, color: "var(--text)" }}>
-            Welcome back
-          </h2>
-          <p style={{ color: "var(--text-3)", fontSize: 14, marginBottom: 36 }}>
-            Sign in to your CRM dashboard
-          </p>
+        <div className="auth-mobile-brand">
+          {logoMark}
+          <div>
+            <div className="auth-mobile-brand__title">Next Step International</div>
+            <div className="auth-mobile-brand__meta">Study abroad CRM</div>
+          </div>
+        </div>
 
-          {error && (
-            <div style={{
-              background: "var(--danger-bg)",
-              border: "1px solid rgb(252 165 165)",
-              color: "var(--danger)",
-              borderRadius: 8,
-              padding: "10px 14px",
-              fontSize: 13,
-              marginBottom: 20,
-            }}>
-              {error}
-            </div>
-          )}
+        <main className="auth-shell__card auth-card-login">
+          <header className="auth-login-header">
+            <h2 className="auth-login-title">Sign in</h2>
+            <p className="auth-login-lede">
+              Workspace access for your team. Use the email and password from your administrator.
+            </p>
+          </header>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div aria-live="polite" aria-atomic="true">
+            {error ? <div role="alert" className="auth-alert-error">{error}</div> : null}
+          </div>
+
+          <div className="auth-login-form">
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
-                Email address
+              <label className="auth-field-label" htmlFor="login-email">
+                Email
               </label>
               <input
+                id="login-email"
+                name="email"
                 type="email"
-                placeholder="admin@nextstep.com"
+                autoComplete="email"
+                placeholder="you@company.com"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
                 onKeyDown={handleKey}
-                style={{
-                  width: "100%",
-                  padding: "11px 14px",
-                  border: "1.5px solid var(--border)",
-                  borderRadius: 10,
-                  fontSize: 14,
-                  background: "var(--surface)",
-                  color: "var(--text)",
-                  fontFamily: "var(--font-body)",
-                  transition: "border-color 0.15s",
-                }}
+                className="auth-input-login"
               />
             </div>
             <div>
-              <label htmlFor="login-password" style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
+              <label className="auth-field-label" htmlFor="login-password">
                 Password
               </label>
               <PasswordField
                 id="login-password"
-                placeholder="••••••••"
+                name="password"
+                placeholder="Enter your password"
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={handleKey}
                 autoComplete="current-password"
-                style={{
-                  padding: "11px 14px",
-                  border: "1.5px solid var(--border)",
-                  borderRadius: 10,
-                  fontSize: 14,
-                  background: "var(--surface)",
-                  color: "var(--text)",
-                  fontFamily: "var(--font-body)",
-                  transition: "border-color 0.15s",
-                }}
+                inputClassName="auth-input-login"
               />
             </div>
 
-            <button
-              onClick={login}
-              disabled={loading}
-              style={{
-                marginTop: 6,
-                padding: "13px",
-                background: loading ? "var(--border)" : "var(--accent)",
-                color: "#fff",
-                border: "none",
-                borderRadius: 10,
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: loading ? "not-allowed" : "pointer",
-                fontFamily: "var(--font-body)",
-                transition: "all 0.15s",
-                boxShadow: loading ? "none" : "0 4px 18px rgb(var(--accent-rgb) / 0.35)",
-              }}
-            >
-              {loading ? "Signing in..." : "Sign in →"}
+            <button type="button" className="auth-submit-primary" onClick={login} disabled={loading}>
+              {loading ? "Signing in…" : "Sign in"}
             </button>
 
             {allowPublicRegister ? (
-              <p style={{ textAlign: "center", marginTop: 8, marginBottom: 0, fontSize: 14, color: "var(--text-2)", lineHeight: 1.5 }}>
-                Don&apos;t have an account?{" "}
-                <Link
-                  to="/register"
-                  style={{ color: "var(--accent)", fontWeight: 700, textDecoration: "none" }}
-                >
-                  Create account
+              <p className="auth-footer-links">
+                New to the platform?{" "}
+                <Link to="/register" className="auth-link-accent">
+                  Create an account
                 </Link>
               </p>
             ) : (
-              <p style={{ textAlign: "center", marginTop: 8, marginBottom: 0, fontSize: 13, color: "var(--text-3)", lineHeight: 1.5 }}>
-                Public signup is off. Use the <strong style={{ color: "var(--text-2)" }}>invite link</strong> from your admin or platform owner (ends with{" "}
-                <code style={{ fontSize: 11 }}>?invite=…</code>
-                ).
+              <p className="auth-footer-links auth-footer-links--muted">
+                Registration is invitation-only. Use the link from your admin (
+                <code className="auth-inline-code">?invite=…</code>) to join this workspace.
               </p>
             )}
 
-            <p style={{ textAlign: "center", marginTop: 10, marginBottom: 0, fontSize: 13 }}>
-              <Link to="/forgot-password" style={{ color: "var(--text-3)", fontWeight: 600, textDecoration: "none" }}>
+            <p className="auth-footer-links">
+              <Link to="/forgot-password" className="auth-link-muted">
                 Forgot password?
               </Link>
             </p>
           </div>
 
-          <p style={{ marginTop: 28, fontSize: 12, color: "var(--text-3)", lineHeight: 1.55 }}>
-            To change your password after you’re logged in, open <strong style={{ color: "var(--text-2)" }}>Settings</strong> from the sidebar and use{" "}
-            <strong style={{ color: "var(--text-2)" }}>Account &amp; password</strong>.
+          <p className="auth-login-footnote">
+            After you sign in, update your password anytime under{" "}
+            <strong className="auth-footnote-strong">Settings → Account &amp; password</strong>.
           </p>
-        </div>
+        </main>
       </div>
     </div>
   );

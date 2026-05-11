@@ -31,6 +31,7 @@ export default function PasswordField({
   placeholder,
   style,
   className,
+  inputClassName,
   disabled,
 }) {
   const [visible, setVisible] = useState(false);
@@ -47,7 +48,7 @@ export default function PasswordField({
         id={id}
         name={name}
         type={visible ? "text" : "password"}
-        className="password-field-input"
+        className={`password-field-input${inputClassName ? ` ${inputClassName}` : ""}`}
         style={mergedStyle}
         value={value}
         onChange={onChange}

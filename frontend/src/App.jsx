@@ -1,5 +1,14 @@
 import { useState, useEffect, useLayoutEffect, Suspense, lazy } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useSearchParams, Link, useLocation } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useSearchParams,
+  Link,
+  useLocation,
+  Outlet,
+} from "react-router-dom";
 import api from "./api/api";
 import { canPrefetchRoutes, runWhenIdle } from "./utils/performance";
 
@@ -18,6 +27,30 @@ const Universities = lazy(() => import("./pages/Universities"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Team = lazy(() => import("./pages/Team"));
 const Help = lazy(() => import("./pages/Help"));
+
+/** Wraps auth pages so route changes animate in (login ↔ register ↔ forgot / reset). */
+function AuthPageTransition() {
+  const location = useLocation();
+
+  /* Warm sibling route chunks so "Back to sign in" / tab switches don’t flash Suspense. */
+  useEffect(() => {
+    void import("./pages/Login");
+    void import("./pages/Register");
+    void import("./pages/ForgotPassword");
+    void import("./pages/ResetPassword");
+  }, []);
+
+  return (
+    <div className="auth-page-transition">
+      <div
+        key={`${location.pathname}${location.search}`}
+        className="auth-page-transition__inner"
+      >
+        <Outlet />
+      </div>
+    </div>
+  );
+}
 
 function RegisterRoute() {
   const [searchParams] = useSearchParams();
@@ -169,7 +202,12 @@ export default function App() {
         }
       >
         <Routes>
-          <Route path="/" element={<Login />} />
+          <Route element={<AuthPageTransition />}>
+            <Route path="/" element={<Login />} />
+            <Route path="/register" element={<RegisterRoute />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+          </Route>
           <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
           <Route path="/leads" element={<Layout><Leads /></Layout>} />
           <Route path="/leads/:id" element={<Layout><LeadProfile /></Layout>} />
@@ -182,9 +220,6 @@ export default function App() {
           <Route path="/assigned-team" element={<Navigate to="/leads" replace />} />
           <Route path="/settings" element={<Layout><Settings /></Layout>} />
           <Route path="/help" element={<Layout><Help /></Layout>} />
-          <Route path="/register" element={<RegisterRoute />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
