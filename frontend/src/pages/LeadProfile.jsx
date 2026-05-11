@@ -815,7 +815,7 @@ export default function LeadProfile() {
     }
   }, []);
 
-  const monitorScrollChromeIdle = useCallback(() => {
+  const monitorScrollChromeIdle = useCallback(function monitorScrollChromeIdleFrame() {
     if (!scrollChromeActiveRef.current) {
       scrollChromeRAFRef.current = null;
       return;
@@ -825,7 +825,7 @@ export default function LeadProfile() {
       stopScrollChromeMotion();
       return;
     }
-    scrollChromeRAFRef.current = requestAnimationFrame(monitorScrollChromeIdle);
+    scrollChromeRAFRef.current = requestAnimationFrame(monitorScrollChromeIdleFrame);
   }, [stopScrollChromeMotion]);
 
   useEffect(() => {
