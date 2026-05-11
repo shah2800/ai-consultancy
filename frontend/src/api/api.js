@@ -1,5 +1,10 @@
 import axios from "axios";
 
+const memoryGetCache = new Map();
+const inFlightGets = new Map();
+const SESSION_CACHE_PREFIX = "api:get:session:";
+const STORAGE_CACHE_PREFIX = "api:get:storage:";
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:10000",
   headers: { "Content-Type": "application/json" },

@@ -24,14 +24,14 @@ const PRESET_FAQS = [
 /** Shown in Consultancy Profile for new workspaces when the API has not saved a name yet. */
 const DEFAULT_CONSULTANCY_NAME = "Next Step International";
 
-const SETTINGS_NAV_LOWER = [
-  { href: "#settings-whatsapp", label: "WhatsApp" },
-  { href: "#settings-countries", label: "Countries" },
-  { href: "#settings-ai", label: "AI" },
-  { href: "#settings-faq", label: "FAQs" },
-  { href: "#settings-account", label: "Account" },
-  { href: "#settings-help", label: "Help" },
-];
+function serializeSettingsPayload(settings, aiDailyLimitStr) {
+  const raw = String(aiDailyLimitStr ?? "").trim();
+  const lim =
+    raw === ""
+      ? Math.min(1000, Math.max(1, Math.floor(Number(settings.aiDailyReplyLimit) || 100)))
+      : Math.min(1000, Math.max(1, Math.floor(Number(raw) || 100)));
+  return JSON.stringify({ ...settings, aiDailyReplyLimit: lim });
+}
 
 function SectionHeader({ title, desc }) {
   return (
@@ -130,6 +130,20 @@ export default function Settings() {
   const [pwError, setPwError] = useState("");
   /** Lets you clear the field and type a new value (e.g. 21) without the input snapping to 1 */
   const [aiDailyLimitStr, setAiDailyLimitStr] = useState("100");
+  const [dirty, setDirty] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const baselineRef = useRef(null);
+  const settingsRef = useRef(settings);
+  const aiDailyStrRef = useRef(aiDailyLimitStr);
+  const saveErrorRef = useRef(null);
+
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
+
+  useEffect(() => {
+    aiDailyStrRef.current = aiDailyLimitStr;
+  }, [aiDailyLimitStr]);
 
   const settingsRole = roleFromToken(localStorage.getItem("token"));
   /* Admins and managers may edit org/AI settings for this workspace only (API uses tenant scope). */
@@ -164,13 +178,53 @@ export default function Settings() {
   const lowerSectionsReady = useProgressiveRevealOneTier(!loading, "settings-lower");
 
   useEffect(() => {
+    if (loading) return;
+    if (baselineRef.current === null) {
+      baselineRef.current = serializeSettingsPayload(settingsRef.current, aiDailyStrRef.current);
+      setDirty(false);
+      return;
+    }
+    setDirty(
+      serializeSettingsPayload(settings, aiDailyLimitStr) !== baselineRef.current
+    );
+  }, [settings, aiDailyLimitStr, loading]);
+
+  useEffect(() => {
+    if (!dirty || !canEditOrgSettings) return;
+    const onBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty, canEditOrgSettings]);
+
+  useEffect(() => {
+    if (saveError && saveErrorRef.current) {
+      saveErrorRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [saveError]);
+
+  useEffect(() => {
+    setSaveError("");
+  }, [settings, aiDailyLimitStr]);
+
+  useEffect(() => {
     const onUpdated = (e) => {
       const lim = e.detail?.aiDailyReplyLimit;
       if (Number.isFinite(lim)) {
         const n = Math.min(1000, Math.max(1, Math.floor(lim)));
         setSettings((prev) => ({ ...prev, aiDailyReplyLimit: n }));
         setAiDailyLimitStr(String(n));
+        window.setTimeout(() => {
+          baselineRef.current = serializeSettingsPayload(
+            settingsRef.current,
+            aiDailyStrRef.current
+          );
+          setDirty(false);
+        }, 0);
       } else {
+        baselineRef.current = null;
         load();
       }
     };
@@ -180,6 +234,7 @@ export default function Settings() {
 
   const save = async () => {
     if (!canEditOrgSettings) return;
+    setSaveError("");
     setSaving(true);
     try {
       const raw = aiDailyLimitStr.trim();
@@ -188,16 +243,32 @@ export default function Settings() {
           ? Math.min(1000, Math.max(1, Math.floor(Number(settings.aiDailyReplyLimit) || 100)))
           : Math.min(1000, Math.max(1, Math.floor(Number(raw) || 100)));
       const toSave = { ...settings, aiDailyReplyLimit: lim };
+      const enabled = toSave.enabledCountries || [];
+      if (enabled.length === 0) {
+        setSaveError(
+          "Add at least one enabled country so the AI knows which destinations you support."
+        );
+        setSaving(false);
+        return;
+      }
       await api.post("/admin/settings", toSave);
       setSettings(toSave);
       setAiDailyLimitStr(String(lim));
+      baselineRef.current = serializeSettingsPayload(toSave, String(lim));
+      setDirty(false);
       window.dispatchEvent(
         new CustomEvent("crm-settings-updated", { detail: { aiDailyReplyLimit: lim } })
       );
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } catch {
-      alert("Failed to save settings. Check server connection.");
+    } catch (e) {
+      const msg =
+        e?.response == null
+          ? "Could not reach the server. Check your connection and that the API is running."
+          : typeof e.response?.data === "object" && e.response.data?.error
+            ? String(e.response.data.error)
+            : "Failed to save settings.";
+      setSaveError(msg);
     } finally {
       setSaving(false);
     }
@@ -301,30 +372,20 @@ export default function Settings() {
     <div className="page-shell settings-page" style={{ maxWidth: 760 }}>
 
       {/* Header */}
-      <div className="settings-header" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32 }}>
+      <div className="settings-header" style={{ display: "flex", alignItems: "flex-start", marginBottom: 32 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 4px", fontFamily: "var(--font-heading)" }}>Settings</h1>
           <p style={{ color: "var(--text-3)", fontSize: 13, margin: 0 }}>
             Workspace-only—your branding, AI, and WhatsApp routing.
           </p>
         </div>
-        {canEditOrgSettings ? (
-          <button
-            onClick={save}
-            disabled={saving}
-            style={{
-              padding: "11px 24px", background: saved ? "#1E9E5E" : saving ? "var(--border)" : "var(--accent)",
-              color: saving ? "var(--text-3)" : "#fff", border: "none", borderRadius: 10,
-              fontSize: 13, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer",
-              fontFamily: "var(--font-body)", transition: "all 0.2s",
-              boxShadow: saved || saving ? "none" : "0 4px 14px rgba(67,97,238,0.3)",
-              flexShrink: 0,
-            }}
-          >
-            {saved ? "✓ Saved!" : saving ? "Saving..." : "Save Changes"}
-          </button>
-        ) : null}
       </div>
+
+      {saveError && canEditOrgSettings ? (
+        <div ref={saveErrorRef} className="analytics-error" style={{ marginBottom: 14 }}>
+          {saveError}
+        </div>
+      ) : null}
 
       {!canEditOrgSettings ? (
         <div
@@ -406,6 +467,16 @@ export default function Settings() {
       {/* WhatsApp webhook (business number + Meta IDs) */}
       <div id="settings-whatsapp" className="settings-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px", marginBottom: 20 }}>
         <SectionHeader title="WhatsApp webhook routing" desc="Route inbound WhatsApp to this workspace." />
+        <details className="settings-whatsapp-guide" style={{ marginBottom: 18, border: "1px solid var(--border)", borderRadius: 10, padding: "10px 14px", background: "var(--surface-2)" }}>
+          <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 13, color: "var(--text)" }}>
+            Meta setup checklist
+          </summary>
+          <ol style={{ margin: "10px 0 0", paddingLeft: 20, fontSize: 12, color: "var(--text-2)", lineHeight: 1.65 }}>
+            <li>In Meta Business Suite: WhatsApp → API — copy your <strong>Phone number ID</strong> into the field below.</li>
+            <li>Choose a secret <strong>Verify token</strong>; paste the same value here and in Meta’s webhook verification.</li>
+            <li>Point Meta’s callback URL to your server’s <code>/webhooks/whatsapp</code> (GET for verify, POST for messages).</li>
+          </ol>
+        </details>
         <FieldGroup label="WhatsApp Number" hint="Digits only, country code (same style as Meta).">
           <input disabled={orgLocked} style={inputStyle} value={settings.whatsappNumber || ""} onChange={e => setSettings(p => ({ ...p, whatsappNumber: e.target.value }))} placeholder="923001234567" />
         </FieldGroup>
@@ -419,11 +490,13 @@ export default function Settings() {
           />
         </FieldGroup>
         <FieldGroup label="Webhook Verify Token" hint="Pick a secret—paste the same in Meta webhooks.">
-          <input
+          <PasswordField
+            id="settings-wa-verify-token"
+            autoComplete="off"
             disabled={orgLocked}
             style={inputStyle}
             value={settings.whatsappVerifyToken || ""}
-            onChange={e => setSettings(p => ({ ...p, whatsappVerifyToken: e.target.value }))}
+            onChange={(e) => setSettings((p) => ({ ...p, whatsappVerifyToken: e.target.value }))}
             placeholder="e.g. my-company-wa-verify-token"
           />
         </FieldGroup>
@@ -433,16 +506,21 @@ export default function Settings() {
       </div>
 
       {/* Section 2: Countries */}
-      <div className="settings-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px", marginBottom: 20 }}>
+      <div id="settings-countries" className="settings-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px", marginBottom: 20 }}>
         <SectionHeader title="Enabled Countries" desc="AI talks about these destinations only—add from the list, remove with a chip." />
 
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
             Active (newest first)
           </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", minHeight: 44, alignItems: "flex-start" }}>
+          <div
+            className="settings-country-chip-scroll"
+            role="region"
+            aria-label="Enabled countries — scroll sideways to see all"
+          >
+            <div className="settings-country-chip-row">
             {enabledList.length === 0 ? (
-              <span style={{ fontSize: 13, color: "var(--text-3)" }}>Add a country below.</span>
+              <span style={{ fontSize: 13, color: "var(--text-3)", flexShrink: 0 }}>Add a country below.</span>
             ) : (
               enabledList.map((country) => (
                 <button
@@ -450,7 +528,8 @@ export default function Settings() {
                   type="button"
                   disabled={orgLocked}
                   onClick={() => disableCountry(country)}
-                  aria-label={`Disable ${country}`}
+                  aria-label={`Remove ${country} from enabled destinations`}
+                  className="settings-country-chip"
                   style={{
                     padding: "10px 14px",
                     borderRadius: 10,
@@ -476,11 +555,15 @@ export default function Settings() {
                       flexShrink: 0,
                     }}
                   />
-                  {country}
-                  <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.75 }}>tap off</span>
+                  <span>{country}</span>
+                  <span className="settings-country-chip-remove" aria-hidden>
+                    <span className="settings-country-chip-remove-x">×</span>
+                    <span className="settings-country-chip-remove-text">Remove</span>
+                  </span>
                 </button>
               ))
             )}
+            </div>
           </div>
           <div style={{ marginTop: 8, fontSize: 12, color: "var(--text-3)" }}>{enabledList.length} enabled</div>
         </div>
@@ -517,7 +600,7 @@ export default function Settings() {
       </div>
 
       {/* Section 3: AI Tone */}
-      <div className="settings-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px", marginBottom: 20 }}>
+      <div id="settings-ai" className="settings-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px", marginBottom: 20 }}>
         <SectionHeader title="AI Tone & Behavior" desc="How the assistant sounds on WhatsApp." />
 
         <FieldGroup label="Communication Tone">
@@ -610,7 +693,7 @@ export default function Settings() {
       </div>
 
       {/* Section 4: FAQs */}
-      <div className="settings-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px", marginBottom: 20 }}>
+      <div id="settings-faq" className="settings-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px", marginBottom: 20 }}>
         <SectionHeader title="FAQ Knowledge Base" desc="Q&A the AI can reuse." />
 
         {/* Preset FAQs */}
@@ -620,8 +703,16 @@ export default function Settings() {
             {PRESET_FAQS.map((faq, i) => {
               const exists = (settings.faqs || []).some(f => f.question === faq.question);
               return (
-                <button key={i} onClick={() => addPresetFaq(faq)} disabled={exists || orgLocked} style={{ padding: "5px 12px", fontSize: 12, fontWeight: 600, background: exists ? "var(--surface-2)" : "var(--accent-light)", color: exists ? "var(--text-3)" : "var(--accent)", border: `1px solid ${exists ? "var(--border)" : "var(--accent)"}`, borderRadius: 8, cursor: exists || orgLocked ? "default" : "pointer", fontFamily: "var(--font-body)" }}>
-                  {exists ? "✓ " : "+ "}{faq.question.slice(0, 30)}...
+                <button
+                  key={i}
+                  type="button"
+                  title={faq.question}
+                  onClick={() => addPresetFaq(faq)}
+                  disabled={exists || orgLocked}
+                  style={{ padding: "5px 12px", fontSize: 12, fontWeight: 600, background: exists ? "var(--surface-2)" : "var(--accent-light)", color: exists ? "var(--text-3)" : "var(--accent)", border: `1px solid ${exists ? "var(--border)" : "var(--accent)"}`, borderRadius: 8, cursor: exists || orgLocked ? "default" : "pointer", fontFamily: "var(--font-body)", maxWidth: "100%", textAlign: "left" }}
+                >
+                  {exists ? "✓ " : "+ "}
+                  <span className="settings-faq-preset-q">{faq.question.length > 36 ? `${faq.question.slice(0, 36)}…` : faq.question}</span>
                 </button>
               );
             })}
@@ -638,7 +729,15 @@ export default function Settings() {
                     <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>Q: {faq.question}</div>
                     <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.6 }}>A: {faq.answer}</div>
                   </div>
-                  <button type="button" disabled={orgLocked} onClick={() => removeFaq(i)} style={{ background: "none", border: "none", color: "var(--text-3)", cursor: orgLocked ? "not-allowed" : "pointer", fontSize: 16, padding: "0 0 0 12px", flexShrink: 0 }}>×</button>
+                  <button
+                    type="button"
+                    disabled={orgLocked}
+                    onClick={() => removeFaq(i)}
+                    aria-label={`Remove FAQ: ${faq.question}`}
+                    style={{ background: "none", border: "none", color: "var(--text-3)", cursor: orgLocked ? "not-allowed" : "pointer", fontSize: 16, padding: "0 0 0 12px", flexShrink: 0 }}
+                  >
+                    ×
+                  </button>
                 </div>
               </div>
             ))}
@@ -669,7 +768,7 @@ export default function Settings() {
       </div>
 
       {/* Account password */}
-      <div className="settings-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px", marginBottom: 20 }}>
+      <div id="settings-account" className="settings-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px", marginBottom: 20 }}>
         <SectionHeader title="Account & password" desc="Sign-in password only." />
         {pwError ? (
           <div style={{ background: "var(--danger-bg)", border: "1px solid rgb(252 165 165)", color: "var(--danger)", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 14 }}>
@@ -736,7 +835,7 @@ export default function Settings() {
       </div>
 
       {/* Help — opens full Help page (same as former sidebar item) */}
-      <div style={{ marginBottom: 20 }}>
+      <div id="settings-help" style={{ marginBottom: 20 }}>
         <button
           type="button"
           onClick={() => navigate("/help")}
