@@ -129,7 +129,7 @@ function Layout({ children }) {
      Single-pass is enough now that scroll-behavior is `auto` on the main area;
      the old double-rAF worked around smooth-scroll fighting the jump-to-top. */
   useLayoutEffect(() => {
-    const main = document.querySelector(".app-shell__main");
+    const main = mainScrollRef.current;
     if (main) main.scrollTop = 0;
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
@@ -193,13 +193,13 @@ export default function App() {
       import("./pages/Dashboard");
       import("./pages/Leads");
       import("./pages/Notifications");
-    }, 1400);
+    }, 800);
     // Tier 2 — secondary chunks after a longer idle gap so T1 loads finish first.
     const cancelT2 = runWhenIdle(() => {
       import("./pages/LeadProfile");
       import("./pages/Analytics");
       import("./pages/Settings");
-    }, 4000);
+    }, 2800);
     return () => {
       cancelT1();
       cancelT2();
