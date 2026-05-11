@@ -718,6 +718,11 @@
   line-height: 1.55;
 }
 
+/* Isolate off-screen deferred placeholders (lighter style/layout passes) */
+.defer-until-in-view {
+  contain: layout style;
+}
+
 /* App shell — desktop sidebar + mobile drawer
    Viewport-locked shell + min-height:0 on main so wheel/trackpad scroll always
    applies to .app-shell__main (avoids Chrome/Windows “stuck” scroll on long pages). */
