@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback, useDeferredValue } from "react";
 import api from "../api/api";
-import { useProgressiveRevealOneTier } from "../hooks/useProgressiveReveal";
 import SkeletonPulse from "../components/SkeletonPulse";
+import { useInViewSentinel } from "../hooks/useInViewSentinel";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { inferPhoneOrigin } from "../utils/phoneCountry";
 import { formatLastActivity } from "../utils/lastActivity";
@@ -57,6 +57,9 @@ function ScoreRing({ score, size = 38 }) {
 }
 
 const TABS = ["all", "new", "warm", "hot", "ready", "converted", "lost"];
+
+const INITIAL_VISIBLE_ROWS = 14;
+const ROW_CHUNK = 28;
 
 function LeadsTableRowsSkeleton({ rows = 8 }) {
   return (
@@ -143,6 +146,7 @@ export default function Leads() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [rowCap, setRowCap] = useState(INITIAL_VISIBLE_ROWS);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -201,6 +205,10 @@ export default function Leads() {
     );
   };
 
+  useEffect(() => {
+    setRowCap(INITIAL_VISIBLE_ROWS);
+  }, [status, sortMode, loading]);
+
   const filtered = useMemo(() => {
     if (!deferredSearch.trim()) return leads;
     const q = deferredSearch.toLowerCase();
@@ -221,10 +229,20 @@ export default function Leads() {
     });
   }, [leads, deferredSearch]);
 
-  const tablePaintReady = useProgressiveRevealOneTier(
-    !loading,
-    `${status}-${sortMode}-${loading ? "wait" : "ok"}`
+  const visibleLeads = useMemo(
+    () => filtered.slice(0, Math.min(rowCap, filtered.length)),
+    [filtered, rowCap]
   );
+
+  const { sentinelRef, inView } = useInViewSentinel({
+    enabled: !loading && filtered.length > 0 && rowCap < filtered.length,
+    resetKey: `${rowCap}-${filtered.length}`,
+  });
+
+  useEffect(() => {
+    if (!inView) return;
+    setRowCap((c) => Math.min(c + ROW_CHUNK, filtered.length));
+  }, [inView, filtered.length]);
 
   const initials = (lead) => {
     const name = lead.name || "WhatsApp User";
@@ -338,9 +356,7 @@ export default function Leads() {
           <span style={{ textAlign: "center" }}>Score</span>
         </div>
 
-        {!tablePaintReady && filtered.length > 0 ? (
-          <LeadsTableRowsSkeleton rows={Math.min(12, Math.max(6, filtered.length))} />
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="leads-empty">
             <div className="leads-empty__icon" aria-hidden>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -363,8 +379,9 @@ export default function Leads() {
               </button>
             ) : null}
           </div>
-        ) : tablePaintReady ? (
-          filtered.map((lead) => {
+        ) : (
+          <>
+            {visibleLeads.map((lead) => {
             const av = avatarColor(lead.score || 0);
             const origin = inferPhoneOrigin(lead.phone);
             const assignedRaw = lead.assignedTo;
@@ -486,8 +503,12 @@ export default function Leads() {
                 </div>
               </div>
             );
-          })
-        ) : null}
+          })}
+          {rowCap < filtered.length ? (
+            <div ref={sentinelRef} style={{ height: 1 }} aria-hidden />
+          ) : null}
+          </>
+        )}
       </div>
     </div>
   );

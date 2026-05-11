@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
-import { useProgressiveRevealOneTier } from "../hooks/useProgressiveReveal";
+import DeferUntilInView from "../components/DeferUntilInView";
 import SkeletonPulse from "../components/SkeletonPulse";
 import PasswordField from "../components/PasswordField";
 import OnboardingChecklist from "../components/OnboardingChecklist";
@@ -174,8 +174,6 @@ export default function Settings() {
   useEffect(() => {
     load();
   }, [load]);
-
-  const lowerSectionsReady = useProgressiveRevealOneTier(!loading, "settings-lower");
 
   useEffect(() => {
     if (loading) return;
@@ -460,9 +458,11 @@ export default function Settings() {
         </FieldGroup>
       </div>
 
-      {!lowerSectionsReady ? (
-        <SettingsLowerSkeleton />
-      ) : (
+      <DeferUntilInView
+        fallback={<SettingsLowerSkeleton />}
+        idleFallbackMs={850}
+        rootMargin="120px 0px"
+      >
         <>
       {/* WhatsApp webhook (business number + Meta IDs) */}
       <div id="settings-whatsapp" className="settings-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px", marginBottom: 20 }}>
@@ -892,7 +892,7 @@ export default function Settings() {
         <div style={{ paddingBottom: 40 }} />
       )}
         </>
-      )}
+      </DeferUntilInView>
     </div>
   );
 }

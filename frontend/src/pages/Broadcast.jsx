@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../api/api";
-import { useProgressiveRevealTwoTier } from "../hooks/useProgressiveReveal";
+import DeferUntilInView from "../components/DeferUntilInView";
 
 const STATUS_OPTIONS = [
   "all",
@@ -46,8 +46,6 @@ export default function Broadcast() {
     () => (status === "all" ? leads : leads.filter((l) => l.status === status)),
     [leads, status]
   );
-
-  const { primaryReady, secondaryReady } = useProgressiveRevealTwoTier(true, status);
 
   const toggleLead = (leadId) => {
     setSelectedIds((prev) =>
@@ -149,7 +147,6 @@ export default function Broadcast() {
         Text plus up to <strong>{MAX_ATTACHMENTS}</strong> files—bulk-send to the leads you choose below.
       </p>
 
-      {primaryReady ? (
       <div className="panel" style={{ padding: 16, marginBottom: 14 }}>
         <div className="broadcast-form-row" style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 12, alignItems: "center", marginBottom: 10 }}>
           <label className="label">Lead type</label>
@@ -188,14 +185,7 @@ export default function Broadcast() {
           </div>
         </div>
       </div>
-      ) : (
-        <div className="panel" style={{ padding: 16, marginBottom: 14 }}>
-          <div className="dashboard-skeleton-pulse" style={{ width: "45%", height: 14, marginBottom: 14 }} aria-hidden />
-          <div className="dashboard-skeleton-pulse" style={{ width: "100%", height: 88, borderRadius: 10 }} aria-hidden />
-        </div>
-      )}
 
-      {primaryReady ? (
       <div className="panel" style={{ padding: 16, marginBottom: 14 }}>
         <textarea
           placeholder="Write your message or caption…"
@@ -252,14 +242,24 @@ export default function Broadcast() {
           ) : null}
         </div>
       </div>
-      ) : (
-        <div className="panel" style={{ padding: 16, marginBottom: 14 }}>
-          <div className="dashboard-skeleton-pulse" style={{ width: "100%", height: 130, borderRadius: 10, marginBottom: 12 }} aria-hidden />
-          <div className="dashboard-skeleton-pulse" style={{ width: "100%", height: 56, borderRadius: 10 }} aria-hidden />
-        </div>
-      )}
 
-      {secondaryReady ? (
+      <DeferUntilInView
+        idleFallbackMs={900}
+        rootMargin="140px 0px"
+        fallback={
+          <>
+            <div className="panel" style={{ padding: 16, marginBottom: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                <div className="dashboard-skeleton-pulse" style={{ width: 160, height: 16 }} aria-hidden />
+                <div className="dashboard-skeleton-pulse" style={{ width: 80, height: 32, borderRadius: 8 }} aria-hidden />
+              </div>
+              <div className="dashboard-skeleton-pulse" style={{ width: "100%", height: 200, borderRadius: 8 }} aria-hidden />
+            </div>
+            <div className="dashboard-skeleton-pulse" style={{ width: 180, height: 44, borderRadius: 10 }} aria-hidden />
+          </>
+        }
+      >
+      <>
       <div className="panel" style={{ padding: 16, marginBottom: 14 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <h3 style={{ margin: 0, fontSize: 14 }}>Lead List ({selectableLeads.length})</h3>
@@ -299,17 +299,7 @@ export default function Broadcast() {
           </div>
         )}
       </div>
-      ) : primaryReady ? (
-        <div className="panel" style={{ padding: 16, marginBottom: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-            <div className="dashboard-skeleton-pulse" style={{ width: 160, height: 16 }} aria-hidden />
-            <div className="dashboard-skeleton-pulse" style={{ width: 80, height: 32, borderRadius: 8 }} aria-hidden />
-          </div>
-          <div className="dashboard-skeleton-pulse" style={{ width: "100%", height: 200, borderRadius: 8 }} aria-hidden />
-        </div>
-      ) : null}
 
-      {secondaryReady ? (
       <button
         onClick={sendBroadcast}
         disabled={sending}
@@ -318,9 +308,8 @@ export default function Broadcast() {
       >
         {sending ? "Sending..." : "Send Broadcast"}
       </button>
-      ) : primaryReady ? (
-        <div className="dashboard-skeleton-pulse" style={{ width: 180, height: 44, borderRadius: 10 }} aria-hidden />
-      ) : null}
+      </>
+      </DeferUntilInView>
     </div>
   );
 }

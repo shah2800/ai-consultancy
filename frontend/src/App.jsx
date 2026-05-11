@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, Suspense, lazy } from "react";
+import { useState, useEffect, useLayoutEffect, Suspense, lazy, useRef } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -11,6 +11,7 @@ import {
 } from "react-router-dom";
 import api from "./api/api";
 import { canPrefetchRoutes, runWhenIdle } from "./utils/performance";
+import { ShellScrollContext } from "./contexts/ShellScrollContext";
 
 const Navbar = lazy(() => import("./components/Navbar"));
 const Login = lazy(() => import("./pages/Login"));
@@ -109,7 +110,18 @@ function RegisterRoute() {
   return <Register inviteToken={invite || null} />;
 }
 
+function RouteLoadingFallback() {
+  return (
+    <div className="page-shell" style={{ padding: 28, maxWidth: 560 }}>
+      <div className="dashboard-skeleton-pulse" style={{ width: "min(100%, 320px)", height: 22, borderRadius: 8 }} aria-hidden />
+      <div className="dashboard-skeleton-pulse" style={{ width: "min(100%, 260px)", height: 12, borderRadius: 6, marginTop: 14 }} aria-hidden />
+      <p style={{ margin: "18px 0 0", fontSize: 13, color: "var(--text-3)" }}>Loading…</p>
+    </div>
+  );
+}
+
 function Layout({ children }) {
+  const mainScrollRef = useRef(null);
   const [navOpen, setNavOpen] = useState(false);
   const location = useLocation();
 
@@ -133,6 +145,7 @@ function Layout({ children }) {
   }, [navOpen]);
 
   return (
+    <ShellScrollContext.Provider value={mainScrollRef}>
     <div className="app-shell">
       <header className="mobile-nav-bar" aria-label="Mobile navigation">
         <button
@@ -166,8 +179,9 @@ function Layout({ children }) {
         </Suspense>
       </aside>
 
-      <main className="app-shell__main">{children}</main>
+      <main ref={mainScrollRef} className="app-shell__main">{children}</main>
     </div>
+    </ShellScrollContext.Provider>
   );
 }
 
@@ -194,13 +208,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <Suspense
-        fallback={
-          <div className="page-shell" style={{ padding: 24, color: "var(--text-2)" }}>
-            Loading...
-          </div>
-        }
-      >
+      <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
           <Route element={<AuthPageTransition />}>
             <Route path="/" element={<Login />} />

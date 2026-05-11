@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import api, { invalidateCachedGet } from "../api/api";
-import { useProgressiveRevealTwoTier } from "../hooks/useProgressiveReveal";
+import DeferUntilInView from "../components/DeferUntilInView";
 import PasswordField from "../components/PasswordField";
 import { parseJwtPayload } from "../utils/jwt";
 
@@ -115,11 +115,6 @@ export default function Team() {
     loadUsers();
     loadAppConfig();
   }, [canAccessTeam, location.pathname]);
-
-  const { primaryReady, secondaryReady } = useProgressiveRevealTwoTier(
-    canAccessTeam,
-    location.pathname
-  );
 
   useEffect(() => {
     if (!error && !ok) return;
@@ -309,7 +304,6 @@ export default function Team() {
         ) : null}
       </div>
 
-      {primaryReady ? (
       <div
         style={{
           background: "var(--surface)",
@@ -430,9 +424,7 @@ export default function Team() {
           </div>
         ) : null}
       </div>
-      ) : null}
 
-      {primaryReady ? (
       <div
         style={{
           background: "var(--surface)",
@@ -497,22 +489,24 @@ export default function Team() {
           </button>
         </div>
       </div>
-      ) : (
-        <div
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: 14,
-            padding: "20px 22px",
-            marginBottom: 18,
-          }}
-        >
-          <div className="dashboard-skeleton-pulse" style={{ width: 160, height: 18, marginBottom: 14 }} aria-hidden />
-          <div className="dashboard-skeleton-pulse" style={{ width: "100%", height: 120, borderRadius: 10 }} aria-hidden />
-        </div>
-      )}
 
-      {secondaryReady ? (
+      <DeferUntilInView
+        idleFallbackMs={1000}
+        rootMargin="160px 0px"
+        fallback={
+          <div
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: 14,
+              padding: "20px 22px",
+            }}
+          >
+            <div className="dashboard-skeleton-pulse" style={{ width: 80, height: 16, marginBottom: 14 }} aria-hidden />
+            <div className="dashboard-skeleton-pulse" style={{ width: "100%", height: 160, borderRadius: 10 }} aria-hidden />
+          </div>
+        }
+      >
       <>
       <div
         style={{
@@ -692,7 +686,7 @@ export default function Team() {
           </div>
         )}
       </div>
-      {primaryReady && canManagePublicSignup === true && isAdmin ? (
+      {canManagePublicSignup === true && isAdmin ? (
         <div
           style={{
             background: "var(--surface)",
@@ -746,19 +740,7 @@ export default function Team() {
         </div>
       ) : null}
       </>
-      ) : primaryReady ? (
-        <div
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: 14,
-            padding: "20px 22px",
-          }}
-        >
-          <div className="dashboard-skeleton-pulse" style={{ width: 80, height: 16, marginBottom: 14 }} aria-hidden />
-          <div className="dashboard-skeleton-pulse" style={{ width: "100%", height: 160, borderRadius: 10 }} aria-hidden />
-        </div>
-      ) : null}
+      </DeferUntilInView>
     </div>
   );
 }
