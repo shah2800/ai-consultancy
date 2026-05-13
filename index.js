@@ -1979,7 +1979,7 @@ ${universitiesSection}
 `;
 
   const reply = await groqChat({
-    model: "llama-3.1-8b-instant",
+    model: "llama-3.3-70b-versatile",
     messages: [
       {
         role: "system",
@@ -1987,8 +1987,8 @@ ${universitiesSection}
       },
       ...history.slice(-8),
     ],
-    temperature: 0.5,
-    max_tokens: 150,
+    temperature: 0.7,
+    max_tokens: 120,
   });
 
   return sanitizeReplyNameUsage(reply, confirmedStudentName, history);
