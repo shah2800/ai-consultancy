@@ -1985,7 +1985,7 @@ ${universitiesSection}
         role: "system",
         content: prompt,
       },
-      ...history.slice(-8),
+      ...history.slice(-16),
     ],
     temperature: 0.7,
     max_tokens: 120,
