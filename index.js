@@ -2928,19 +2928,31 @@ app.post("/auth/register-invite", authLimiter, async (req, res) => {
         error: "Invalid or expired verification code. Please request a new one.",
       });
     }
-    await SignupOtp.deleteOne({ email: emailNorm });
+    const claimedInvite = await SignupInvite.findOneAndUpdate(
+      {
+        _id: invite._id,
+        usedAt: null,
+        expiresAt: { $gt: new Date() },
+      },
+      { $set: { usedAt: new Date() } },
+      { new: true }
+    );
+    if (!claimedInvite) {
+      return res.status(400).json({
+        error: "Invalid or already used invite.",
+      });
+    }
 
     const hashed = await bcrypt.hash(password, 10);
 
-    if (invite.kind === "owner") {
+    if (claimedInvite.kind === "owner") {
       const user = await AuthUser.create({
         name,
         email: emailNorm,
         password: hashed,
         role: "manager",
       });
-      invite.usedAt = new Date();
-      await invite.save();
+      await SignupOtp.deleteOne({ email: emailNorm });
 
       const wid = String(user._id);
       const token = jwt.sign(
@@ -2959,8 +2971,8 @@ app.post("/auth/register-invite", authLimiter, async (req, res) => {
       });
     }
 
-    if (invite.kind === "member") {
-      const ownerId = invite.workspaceOwnerId;
+    if (claimedInvite.kind === "member") {
+      const ownerId = claimedInvite.workspaceOwnerId;
       if (!ownerId) {
         return res.status(400).json({
           error: "Invalid invite configuration.",
@@ -2973,7 +2985,7 @@ app.post("/auth/register-invite", authLimiter, async (req, res) => {
         });
       }
 
-      let finalRole = invite.role || "staff";
+      let finalRole = claimedInvite.role || "staff";
       if (!["admin", "manager", "staff", "viewer"].includes(finalRole)) {
         finalRole = "staff";
       }
@@ -2988,8 +3000,7 @@ app.post("/auth/register-invite", authLimiter, async (req, res) => {
         role: finalRole,
         workspaceOwnerId: ownerId,
       });
-      invite.usedAt = new Date();
-      await invite.save();
+      await SignupOtp.deleteOne({ email: emailNorm });
 
       const wid = String(ownerId);
       const token = jwt.sign(
