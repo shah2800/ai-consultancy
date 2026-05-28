@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="NextStep International is an education consultancy for MBBS, business and IT degrees in Georgia. Admissions, visa guidance, housing and arrival support — clear fees, documented process.">
+  <meta name="theme-color" content="#5b4dff">
+  <link rel="icon" type="image/webp" href="images/logo.webp">
+  <title>NextStep International | Education consultants for study in Georgia</title>
+  <link rel="canonical" href="/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="NextStep International">
+  <meta property="og:url" content="/">
+  <meta property="og:title" content="NextStep International | Study in Georgia">
+  <meta property="og:description" content="Professional admissions and visa support for students going to Georgia — MBBS, BBA, MBA and IT programmes.">
+  <meta property="og:image" content="/images/hero.webp">
+  <meta property="og:image:alt" content="NextStep International — education consultancy for study in Georgia">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="NextStep International | Study in Georgia">
+  <meta name="twitter:description" content="Education consultancy: Georgia admissions, documents, visa and arrival support.">
+  <meta name="twitter:image" content="/images/hero.webp">
+  <!-- Preload hero image — highest priority, needed for LCP -->
+  <link rel="preload" as="image" href="images/hero.webp" fetchpriority="high">
+  <!-- Non-blocking font load: page paints immediately with system font, Outfit swaps in -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap"></noscript>
+  <!-- DNS prefetch for external links -->
+  <link rel="dns-prefetch" href="https://wa.me">
+  <link rel="dns-prefetch" href="https://www.facebook.com">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "EducationalOrganization",
+    "name": "NextStep International",
+    "description": "Education consultancy supporting international students for university admission in Georgia.",
+    "@id": "/#organization",
+    "url": "/",
+    "email": "nextstepinternational25@gmail.com",
+    "telephone": "+923142638901",
+    "sameAs": ["https://www.facebook.com/profile.php?id=61589102386856"],
+    "areaServed": ["GE", "PK", "IN", "BD"],
+    "knowsAbout": ["Study in Georgia", "MBBS in Georgia", "International student admissions"]
+  }
+  </script>
+  <style>
+    :root {
+      --ink: #0c0a1d;
+      --ink-soft: #3d3a52;
+      --muted: #6b6580;
+      --line: rgba(91,77,255,0.14);
+      --bg: #f2f5ff;
+      --surface: #ffffff;
+      --brand: #5b4dff;
+      --brand-bright: #818cf8;
+      --brand-dark: #3730a3;
+      --brand-2: #06b6d4;
+      --accent: #ec4899;
+      --max: 1100px;
+      --radius: 14px;
+      --radius-sm: 10px;
+      --font: "Outfit", system-ui, sans-serif;
+      --section-pad: 52px 18px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+    body {
+      font-family: var(--font);
+      font-size: 1rem;
+      line-height: 1.65;
+      color: var(--ink-soft);
+      background-color: var(--bg);
+      background-image:
+        radial-gradient(ellipse 130% 80% at 0% -30%, rgba(91,77,255,0.18), transparent 55%),
+        radial-gradient(ellipse 90% 60% at 100% 10%, rgba(6,182,212,0.12), transparent 50%),
+        radial-gradient(ellipse 70% 50% at 60% 110%, rgba(236,72,153,0.08), transparent 45%);
+      background-attachment: scroll;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    a { color: inherit; }
+    img { max-width: 100%; height: auto; }
+    button, .btn, .nav-toggle, .program-card { touch-action: manipulation; }
+
+    .skip-link {
+      position: absolute; top: -100px; left: 12px; z-index: 9999;
+      padding: 10px 14px; background: var(--brand); color: #fff;
+      font-weight: 600; border-radius: 6px; text-decoration: none; font-size: 0.875rem;
+    }
+    .skip-link:focus { top: 12px; }
+
+    /* ── Header ── */
+    .site-header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.82);
+      border-bottom: 1px solid var(--line);
+      box-shadow: 0 2px 16px rgba(91,77,255,0.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    .header-inner {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 10px max(16px, env(safe-area-inset-left)) 10px max(16px, env(safe-area-inset-right));
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none; color: var(--ink); flex-shrink: 0;
+    }
+    .brand img {
+      width: 40px; height: 40px; object-fit: contain;
+      border-radius: 10px; box-shadow: 0 3px 12px rgba(91,77,255,0.22);
+    }
+    .brand-text { display: flex; flex-direction: column; gap: 1px; }
+    .brand-name {
+      font-weight: 800; font-size: 1.1rem; line-height: 1.2;
+      letter-spacing: -0.02em; color: var(--ink);
+    }
+    .brand-tagline {
+      font-size: 0.625rem; font-weight: 600; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--brand);
+    }
+    .nav-toggle {
+      display: flex; margin-left: auto;
+      width: 44px; height: 44px; align-items: center; justify-content: center;
+      border: 1px solid var(--line); border-radius: 8px; background: #fff; cursor: pointer;
+      flex-shrink: 0;
+    }
+    .nav-toggle svg { width: 22px; height: 22px; color: var(--ink); }
+    .site-nav {
+      display: none;
+      width: 100%;
+      flex-direction: column;
+      align-items: stretch;
+      padding: 6px 0 10px;
+      order: 10;
+      flex-basis: 100%;
+      border-top: 1px solid var(--line);
+      margin-top: 6px;
+    }
+    .site-nav.is-open { display: flex; }
+    .site-nav a {
+      text-decoration: none; font-size: 0.9375rem; font-weight: 600;
+      color: var(--ink-soft); padding: 10px 12px; border-radius: 8px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .site-nav a:hover, .site-nav a:focus { color: var(--brand); background: rgba(91,77,255,0.08); }
+    .header-cta {
+      display: none;
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 11px 22px; font-family: var(--font); font-size: 0.9375rem;
+      font-weight: 700; border-radius: 12px; border: none; cursor: pointer;
+      text-decoration: none; transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--brand) 0%, #7c3aed 50%, var(--accent) 100%);
+      background-size: 200% auto;
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(91,77,255,0.38);
+    }
+    .btn-primary:hover {
+      background-position: 100% center;
+      box-shadow: 0 8px 28px rgba(236,72,153,0.32);
+      transform: translateY(-1px);
+    }
+    .btn-outline {
+      background: #fff; color: var(--brand);
+      border: 2px solid rgba(91,77,255,0.35);
+    }
+    .btn-outline:hover {
+      border-color: var(--brand);
+      background: rgba(91,77,255,0.06);
+    }
+
+    /* ── Trust ribbon ── */
+    .trust-ribbon {
+      background: linear-gradient(90deg, #312e81 0%, var(--brand) 35%, var(--brand-2) 70%, #0891b2 100%);
+      color: #fff;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      text-align: center;
+      padding: 10px 16px;
+      letter-spacing: 0.03em;
+      line-height: 1.5;
+    }
+    .trust-ribbon span { opacity: 0.65; padding: 0 0.45rem; }
+
+    /* ── Mobile dock ── */
+    .mobile-dock {
+      display: flex;
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 95;
+      padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+      gap: 8px;
+      background: rgba(255,255,255,0.96);
+      border-top: 1px solid var(--line);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 -8px 32px rgba(91,77,255,0.12);
+    }
+    .mobile-dock-link {
+      flex: 1; text-align: center; padding: 11px 6px;
+      font-size: 0.8125rem; font-weight: 700; border-radius: 10px;
+      text-decoration: none; color: var(--ink-soft);
+      background: rgba(91,77,255,0.08);
+      border: 1px solid rgba(91,77,255,0.14);
+      transition: background 0.15s;
+    }
+    .mobile-dock-link--primary {
+      flex: 1.3;
+      background: linear-gradient(135deg, var(--brand) 0%, #7c3aed 50%, var(--accent) 100%);
+      color: #fff; border: none;
+      box-shadow: 0 3px 14px rgba(91,77,255,0.32);
+    }
+    body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative;
+      min-height: min(75vh, 580px);
+      display: flex; align-items: center;
+      padding: 40px 18px 48px;
+      background:
+        linear-gradient(130deg, rgba(12,10,29,0.9) 0%, rgba(91,77,255,0.5) 50%, rgba(6,182,212,0.4) 100%),
+        url("images/hero.webp") center / cover no-repeat;
+      color: #fff; overflow: hidden;
+    }
+    .hero::before {
+      content: ""; position: absolute; inset: -20%;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(236,72,153,0.3), transparent 42%),
+        radial-gradient(circle at 80% 60%, rgba(6,182,212,0.22), transparent 40%);
+      animation: heroGlow 16s ease-in-out infinite alternate;
+      pointer-events: none; z-index: 0;
+    }
+    @keyframes heroGlow {
+      0% { transform: translate(-4%,0) rotate(0deg); opacity: 0.7; }
+      100% { transform: translate(4%,2%) rotate(4deg); opacity: 1; }
+    }
+    .hero-inner { position: relative; z-index: 1; max-width: var(--max); margin: 0 auto; width: 100%; }
+    .hero-copy { min-width: 0; }
+    .hero-showcase { display: none; position: relative; align-self: center; }
+    .hero-showcase-frame {
+      border-radius: 18px; overflow: hidden;
+      border: 3px solid rgba(255,255,255,0.38);
+      box-shadow: 0 28px 56px rgba(0,0,0,0.42), 0 0 0 1px rgba(255,255,255,0.1) inset;
+      transform: rotate(2deg);
+    }
+    .hero-showcase-frame img { width: 100%; height: auto; display: block; vertical-align: top; }
+    .hero-showcase-badge {
+      position: absolute; top: 8px; right: -4px;
+      background: linear-gradient(135deg, var(--brand), var(--accent));
+      color: #fff; font-size: 0.75rem; font-weight: 800;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      padding: 8px 14px; border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+    .hero-showcase-note {
+      position: absolute; bottom: 16px; left: 12px;
+      font-size: 0.8125rem; font-weight: 700; color: #fff;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.7); letter-spacing: 0.02em;
+    }
+    .hero-eyebrow {
+      display: inline-block; font-size: 0.75rem; font-weight: 800;
+      letter-spacing: 0.12em; text-transform: uppercase; color: #fff;
+      margin-bottom: 12px; padding: 7px 13px; border-radius: 999px;
+      background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.28);
+    }
+    .hero h1 {
+      font-size: clamp(1.75rem, 5vw, 3.1rem);
+      font-weight: 800; line-height: 1.1; letter-spacing: -0.03em;
+      color: #fff; margin-bottom: 14px; text-wrap: balance;
+    }
+    .hero-strapline {
+      font-size: clamp(0.9375rem, 2.2vw, 1.125rem);
+      color: rgba(255,255,255,0.92); margin-bottom: 10px;
+      font-weight: 600; min-height: 1.6em;
+    }
+    .hero-strapline .caret {
+      display: inline-block; width: 2px; height: 1em;
+      background: linear-gradient(180deg, #67e8f9, #f472b6);
+      margin-left: 2px; vertical-align: -0.05em;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    .hero-lead {
+      font-size: 0.9375rem; color: rgba(255,255,255,0.78);
+      margin-bottom: 22px; line-height: 1.6;
+    }
+    .hero-actions {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px;
+    }
+    .hero-actions .btn { font-size: 0.9375rem; padding: 12px 22px; }
+    .hero-actions .btn-outline {
+      color: #fff; background: transparent;
+      border-color: rgba(255,255,255,0.38);
+    }
+    .hero-actions .btn-outline:hover {
+      background: rgba(255,255,255,0.12); border-color: #fff;
+    }
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+    }
+    .hero-stat {
+      padding: 14px 16px; border-radius: 12px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    }
+    .hero-stat strong {
+      display: block; font-size: 0.9375rem; font-weight: 700;
+      margin-bottom: 4px; color: #fff;
+    }
+    .hero-stat span { font-size: 0.8125rem; color: rgba(255,255,255,0.72); line-height: 1.45; }
+
+    /* ── Sections ── */
+    .section {
+      padding: var(--section-pad);
+      max-width: var(--max);
+      margin: 0 auto;
+    }
+    .section-heading {
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+      font-weight: 800; letter-spacing: -0.025em; color: var(--ink);
+      margin-bottom: 10px; padding-left: 16px; position: relative;
+    }
+    .section-heading::after {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+      width: 4px; border-radius: 2px;
+      background: linear-gradient(180deg, var(--brand), var(--brand-2));
+    }
+    .section-intro {
+      color: var(--muted); max-width: 40rem; margin-bottom: 26px; font-size: 0.9375rem;
+    }
+    .reveal-scroll {
+      opacity: 0; transform: translateY(14px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .reveal-scroll.is-visible { opacity: 1; transform: translateY(0); }
+
+    /* ── Cards ── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+    .info-card {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 22px 20px; border: 1px solid var(--line);
+      box-shadow: 0 3px 20px rgba(91,77,255,0.07);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      position: relative; overflow: hidden;
+    }
+    .info-card::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--brand), var(--brand-2), var(--accent));
+    }
+    .info-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 14px 36px rgba(91,77,255,0.13);
+    }
+    .info-card .icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, rgba(91,77,255,0.14), rgba(6,182,212,0.1));
+      color: var(--brand); margin-bottom: 12px;
+    }
+    .info-card .icon svg { width: 22px; height: 22px; }
+    .info-card h3 {
+      font-size: 1.0625rem; font-weight: 700;
+      letter-spacing: -0.02em; color: var(--ink); margin-bottom: 8px;
+    }
+    .info-card p { font-size: 0.9rem; color: var(--muted); line-height: 1.55; }
+
+    /* ── Process ── */
+    .process-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px; counter-reset: step; list-style: none;
+    }
+    .process-steps li {
+      counter-increment: step; position: relative;
+      padding: 20px 18px 20px 52px;
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: 0 3px 16px rgba(91,77,255,0.06);
+    }
+    .process-steps li::before {
+      content: counter(step); position: absolute; left: 14px; top: 20px;
+      width: 28px; height: 28px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      color: #fff; font-size: 0.8125rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 3px 10px rgba(91,77,255,0.32);
+    }
+    .process-steps strong { display: block; font-size: 0.9375rem; color: var(--ink); margin-bottom: 5px; }
+    .process-steps span { font-size: 0.875rem; color: var(--muted); line-height: 1.5; }
+
+    /* ── Programs ── */
+    .programs {
+      display: flex; overflow-x: auto; gap: 14px;
+      padding: 4px 2px 14px; margin-inline: -4px; padding-inline: 4px;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+    .programs::-webkit-scrollbar { height: 4px; }
+    .programs::-webkit-scrollbar-thumb { background: rgba(91,77,255,0.3); border-radius: 99px; }
+    .program-card {
+      flex: 0 0 min(82vw, 280px);
+      position: relative; border-radius: var(--radius);
+      overflow: hidden; cursor: pointer; height: 240px;
+      border: 1px solid var(--line); padding: 0;
+      background: var(--surface); text-align: left; font: inherit;
+      box-shadow: 0 5px 18px rgba(91,77,255,0.1);
+      scroll-snap-align: start;
+      transition: box-shadow 0.3s ease, transform 0.3s ease;
+    }
+    .program-card:hover { box-shadow: 0 20px 44px rgba(91,77,255,0.2); transform: translateY(-6px) scale(1.02); }
+    .program-card:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+    .image-wrapper { position: relative; width: 100%; height: 100%; background: #1e293b; }
+    .image-wrapper::after {
+      content: ""; position: absolute; inset: 0; z-index: 2;
+      background: linear-gradient(180deg, transparent 30%, rgba(12,10,29,0.84) 100%);
+      pointer-events: none;
+    }
+    .program-card img {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: cover; transition: opacity 1s ease-in-out; opacity: 1; z-index: 1;
+    }
+    .program-card img.next { z-index: 0; opacity: 0; }
+    .program-title {
+      position: absolute; bottom: 0; left: 0; right: 0; z-index: 3;
+      padding: 16px 18px; font-size: 1.125rem; font-weight: 800;
+      letter-spacing: -0.02em; color: #fff;
+    }
+    .program-hint {
+      display: block; font-size: 0.75rem; font-weight: 600;
+      color: rgba(255,255,255,0.85); margin-top: 3px;
+    }
+
+    /* ── FAQ ── */
+    .faq-list { display: flex; flex-direction: column; gap: 10px; }
+    details.faq-item {
+      background: var(--surface); border-radius: var(--radius);
+      border: 1px solid var(--line); overflow: hidden;
+    }
+    details.faq-item summary {
+      list-style: none; cursor: pointer; padding: 16px 18px;
+      font-weight: 600; color: var(--ink);
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px; font-size: 0.9375rem; user-select: none;
+    }
+    details.faq-item summary::-webkit-details-marker { display: none; }
+    details.faq-item summary::after {
+      content: ""; width: 8px; height: 8px; flex-shrink: 0;
+      border-right: 2px solid var(--brand); border-bottom: 2px solid var(--brand-2);
+      transform: rotate(45deg); transition: transform 0.2s;
+    }
+    details.faq-item[open] summary::after { transform: rotate(-135deg); }
+    details.faq-item .faq-body {
+      padding: 0 18px 16px; color: var(--muted); font-size: 0.9375rem; line-height: 1.6;
+    }
+
+    /* ── Contact ── */
+    .contact-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;
+    }
+    .contact-card {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 22px; border: 1px solid var(--line); text-align: center;
+      box-shadow: 0 3px 18px rgba(91,77,255,0.07);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .contact-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(91,77,255,0.12); }
+    .contact-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 7px; color: var(--ink); }
+    .contact-card p { font-size: 0.875rem; color: var(--muted); margin-bottom: 14px; }
+    .contact-card .btn { width: 100%; justify-content: center; }
+
+    /* ── Footer ── */
+    .site-footer {
+      background: linear-gradient(165deg, #0c0a1d 0%, #1e1b4b 45%, #312e81 100%);
+      color: rgba(255,255,255,0.78);
+      padding: 44px 18px 28px;
+      margin-top: 32px;
+    }
+    .footer-inner {
+      max-width: var(--max); margin: 0 auto;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px; align-items: start;
+    }
+    .footer-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .footer-brand img { width: 38px; height: 38px; border-radius: 8px; }
+    .footer-name { font-weight: 800; font-size: 1rem; letter-spacing: -0.02em; color: #fff; }
+    .footer-about { font-size: 0.875rem; line-height: 1.55; }
+    .footer-col h4 {
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: rgba(255,255,255,0.45); margin-bottom: 12px;
+    }
+    .footer-col a, .footer-col p {
+      display: block; font-size: 0.875rem; color: rgba(255,255,255,0.82);
+      text-decoration: none; margin-bottom: 8px;
+    }
+    .footer-col a:hover { color: #fff; text-decoration: underline; }
+    .footer-copy {
+      grid-column: 1 / -1; padding-top: 20px; margin-top: 4px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      font-size: 0.8125rem; color: rgba(255,255,255,0.45);
+    }
+
+    /* ── Modal ── */
+    .modal {
+      position: fixed; inset: 0; z-index: 1000;
+      display: none; align-items: flex-end; justify-content: center;
+      padding: 0; background: rgba(12,10,29,0.55);
+      backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    }
+    .modal.is-visible { display: flex; }
+    .modal-content {
+      position: relative; background: var(--surface);
+      border-radius: var(--radius) var(--radius) 0 0;
+      padding: 24px 20px 32px; width: 100%;
+      max-height: 82vh; overflow-y: auto;
+      box-shadow: 0 -16px 48px rgba(91,77,255,0.22);
+      border: 1px solid rgba(91,77,255,0.12);
+    }
+    .modal-close {
+      position: absolute; top: 12px; right: 12px;
+      width: 36px; height: 36px; border: none; border-radius: 8px;
+      background: var(--bg); color: var(--ink); font-size: 1.25rem;
+      line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .modal-close:hover { background: var(--line); }
+    .modal-handle {
+      width: 36px; height: 4px; border-radius: 2px;
+      background: rgba(0,0,0,0.15); margin: 0 auto 18px;
+    }
+    .modal-prose h2 {
+      font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em;
+      color: var(--brand); text-align: center; margin-bottom: 16px;
+      padding-bottom: 14px; position: relative;
+    }
+    .modal-prose h2::after {
+      content: ""; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: min(200px, 70%); height: 3px; border-radius: 3px;
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+    }
+    .modal-prose ul { list-style: none; font-size: 0.9375rem; color: var(--ink-soft); }
+    .modal-prose li { margin-bottom: 12px; line-height: 1.55; }
+    .modal-prose ul ul { list-style: disc; padding-left: 20px; margin-top: 8px; }
+    .modal-cta {
+      margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line);
+      display: flex; gap: 10px; flex-wrap: wrap;
+    }
+    .modal-cta .btn { flex: 1; min-width: 140px; justify-content: center; font-size: 0.9rem; }
+
+    /* ── Tablet (≥768px) ── */
+    @media (min-width: 768px) {
+      :root { --section-pad: 68px 24px; }
+      .header-inner { flex-wrap: nowrap; }
+      .nav-toggle { display: none; }
+      .site-nav {
+        display: flex !important; flex-direction: row; flex-wrap: wrap;
+        align-items: center; gap: 2px; padding: 0; order: 0;
+        width: auto; flex-basis: auto; border-top: none; margin-top: 0;
+        flex: 1; justify-content: center;
+      }
+      .site-nav a { font-size: 0.8125rem; padding: 7px 10px; }
+      .header-cta {
+        display: inline-flex; padding: 9px 16px; font-size: 0.8125rem;
+        flex-shrink: 0;
+      }
+      .mobile-dock { display: none; }
+      body { padding-bottom: 0; }
+      .hero {
+        min-height: min(82vh, 640px);
+        padding: 52px 24px 60px;
+      }
+      .hero h1 { max-width: 22ch; }
+      .hero-stats { grid-template-columns: repeat(3, minmax(0,1fr)); }
+      .programs {
+        display: grid; overflow-x: visible;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px; padding: 0; margin-inline: 0;
+      }
+      .program-card { flex: none; height: 260px; scroll-snap-align: none; }
+      .faq-list {
+        display: grid; grid-template-columns: 1fr 1fr;
+        gap: 10px 18px; align-items: start;
+      }
+      .modal {
+        align-items: center; padding: 20px;
+      }
+      .modal-content {
+        border-radius: var(--radius); max-width: 520px;
+        padding: 28px 26px;
+      }
+      .modal-handle { display: none; }
+      .site-footer { padding: 52px 24px 32px; }
+    }
+
+    /* ── Desktop (≥1025px) ── */
+    @media (min-width: 1025px) {
+      :root { --max: 1180px; --section-pad: 88px 28px; }
+      .hero-inner {
+        display: grid;
+        grid-template-columns: minmax(0,1fr) minmax(300px,420px);
+        gap: 40px 56px; align-items: center;
+      }
+      .hero-showcase { display: block; }
+      .hero h1 { font-size: 3.1rem; }
+      .process-steps {
+        grid-template-columns: repeat(4, minmax(0,1fr));
+        gap: 16px; padding-top: 24px;
+      }
+      .process-steps li { padding: 34px 16px 22px; text-align: center; }
+      .process-steps li::before { left: 50%; margin-left: -14px; top: -18px; }
+      .process-steps strong { margin-top: 6px; }
+      .site-nav a { font-size: 0.875rem; padding: 8px 11px; }
+    }
+
+    /* ── Small phones (≤400px) ── */
+    @media (max-width: 400px) {
+      .hero h1 { font-size: 1.65rem; }
+      .hero-actions .btn { width: 100%; justify-content: center; }
+      .hero-stat strong { font-size: 0.875rem; }
+      .hero-stat span { font-size: 0.75rem; }
+      .section-heading { font-size: 1.4rem; }
+      .program-card { flex: 0 0 88vw; height: 220px; }
+    }
+
+    /* ── Reduced motion ── */
+    @media (prefers-reduced-motion: reduce) {
+      .reveal-scroll { opacity: 1; transform: none; transition: none; }
+      .hero-strapline .caret { animation: none; }
+      .hero::before { animation: none; }
+      .btn-primary { background-size: auto; }
+      .info-card:hover, .program-card:hover, .contact-card:hover { transform: none; }
+      .btn-primary:hover { transform: none; }
+      .hero-showcase-frame { transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="#top" aria-label="NextStep International home">
+        <img src="images/logo.webp" width="40" height="40" alt="NextStep International logo" loading="eager">
+        <div class="brand-text">
+          <span class="brand-name">NextStep International</span>
+          <span class="brand-tagline">Student-first · Georgia admissions</span>
+        </div>
+      </a>
+      <button type="button" class="nav-toggle" id="nav-toggle" aria-controls="site-nav" aria-expanded="false" aria-label="Open menu">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <nav class="site-nav" id="site-nav" aria-label="Primary">
+        <a href="#about">About</a>
+        <a href="#process">Process</a>
+        <a href="#why-georgia">Georgia</a>
+        <a href="#services">Services</a>
+        <a href="#programs">Programs</a>
+        <a href="#faq">FAQ</a>
+        <a href="apply.html">Apply</a>
+        <a href="track.html">Track</a>
+        <a href="#contact">Contact</a>
+      </nav>
+      <a class="btn btn-primary header-cta" href="https://wa.me/923142638901" target="_blank" rel="noopener noreferrer">WhatsApp Us</a>
+    </div>
+  </header>
+
+  <div class="trust-ribbon" role="note">
+    Real talk on fees&ensp;<span>·</span>&ensp;Step-by-step docs&ensp;<span>·</span>&ensp;We've got you from offer to landing
+  </div>
+
+  <main id="main">
+    <section id="top" class="hero">
+      <div class="hero-inner">
+        <div class="hero-copy">
+          <p class="hero-eyebrow">Built for students who move</p>
+          <h1>Your Georgia degree starts with the right crew</h1>
+          <p class="hero-strapline" aria-live="polite"><span id="typing-text"></span><span class="caret" aria-hidden="true"></span></p>
+          <p class="hero-lead">MBBS, business, or tech — we help you cut through the paperwork, nail your application, and land in Tbilisi ready to study. Honest timelines, no fairy tales.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="https://wa.me/923142638901" target="_blank" rel="noopener noreferrer">Chat on WhatsApp</a>
+            <a class="btn btn-outline" href="#programs">Explore programmes</a>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat"><strong>No surprises</strong><span>Clear checklists for admission, visa, and arrival — you always know what's next.</span></div>
+            <div class="hero-stat"><strong>Georgia insiders</strong><span>Guidance that matches real campus and embassy rules, not random Google advice.</span></div>
+            <div class="hero-stat"><strong>Family-approved</strong><span>We break down costs and risks so your people can say yes with confidence.</span></div>
+          </div>
+        </div>
+        <aside class="hero-showcase" aria-hidden="true">
+          <div class="hero-showcase-frame">
+            <img src="images/hero.webp" alt="" width="560" height="640" loading="lazy" decoding="async">
+          </div>
+          <span class="hero-showcase-badge">Open intakes</span>
+          <span class="hero-showcase-note">MBBS · Business · IT</span>
+        </aside>
+      </div>
+    </section>
+
+    <section id="about" class="section reveal-scroll">
+      <h2 class="section-heading">Who we are</h2>
+      <p class="section-intro">NextStep International is the consultancy sidekick for students heading to Georgia. We geek out on documents, deadlines, and details — so you can focus on packing and dreaming about campus life.</p>
+      <div class="card-grid">
+        <div class="info-card">
+          <div class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+          <h3>Integrity in counselling</h3>
+          <p>We outline programme options, typical fees, and timelines before you commit. If a pathway is not suitable, we say so.</p>
+        </div>
+        <div class="info-card">
+          <div class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+          <h3>Document accuracy</h3>
+          <p>Applications and visa files are reviewed for completeness and consistency with university and embassy requirements.</p>
+        </div>
+        <div class="info-card">
+          <div class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+          <h3>End-to-end coordination</h3>
+          <p>Admission, pre-departure briefing, and arrival assistance — one coordinated plan for you and your family.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="process" class="section reveal-scroll">
+      <h2 class="section-heading">How we work with you</h2>
+      <p class="section-intro">A typical engagement follows these stages. Timing depends on your documents, intake deadlines, and embassy processing.</p>
+      <ol class="process-steps">
+        <li><strong>Initial assessment</strong><span>We review your academic record, programme interest, and budget, then summarise realistic options.</span></li>
+        <li><strong>Application &amp; offer</strong><span>We prepare submissions and track responses until you receive a formal offer and fee structure.</span></li>
+        <li><strong>Visa &amp; documentation</strong><span>We support translation, attestations where needed, embassy preparation, and travel compliance.</span></li>
+        <li><strong>Arrival &amp; settling</strong><span>Housing guidance, pre-departure briefing, and arranged pickup where agreed — so day one is organised.</span></li>
+      </ol>
+    </section>
+
+    <section id="why-georgia" class="section reveal-scroll">
+      <h2 class="section-heading">Why Georgia</h2>
+      <p class="section-intro">Georgia offers recognised English-medium programmes, competitive tuition, and a growing international student community — particularly strong for medicine, business, and technology.</p>
+      <div class="card-grid">
+        <div class="info-card">
+          <div class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+          <h3>Cost effectiveness</h3>
+          <p>Tuition and living costs are typically lower than in many Western European countries, with transparent semester fee structures.</p>
+        </div>
+        <div class="info-card">
+          <div class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg></div>
+          <h3>Student environment</h3>
+          <p>Major cities host diverse international cohorts, student services, and practical day-to-day infrastructure.</p>
+        </div>
+        <div class="info-card">
+          <div class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
+          <h3>Work alongside study</h3>
+          <p>Part-time work may be possible within local regulations; we discuss realistic expectations for your programme load.</p>
+        </div>
+        <div class="info-card">
+          <div class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+          <h3>English-medium options</h3>
+          <p>Many institutions offer English-taught tracks; IELTS is not always required — we match you to programmes that fit your background.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="services" class="section reveal-scroll">
+      <h2 class="section-heading">Consultancy services</h2>
+      <p class="section-intro">Everything listed below is delivered with written checklists and milestone updates suited to your case.</p>
+      <div class="card-grid">
+        <div class="info-card">
+          <div class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+          <h3>Admission consulting</h3>
+          <p>University comparison, application preparation, and liaison with institutions until your offer is confirmed.</p>
+        </div>
+        <div class="info-card">
+          <div class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg></div>
+          <h3>Visa &amp; compliance</h3>
+          <p>Document packs, appointment guidance, and interview preparation aligned to embassy requirements.</p>
+        </div>
+        <div class="info-card">
+          <div class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></div>
+          <h3>Accommodation advisory</h3>
+          <p>Shortlisting vetted housing relative to campus and budget; lease basics explained before payment.</p>
+        </div>
+        <div class="info-card">
+          <div class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg></div>
+          <h3>Travel &amp; arrival</h3>
+          <p>Briefings, airport meet-and-greet where agreed, and orientation to local essentials for your first days.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="programs" class="section reveal-scroll">
+      <h2 class="section-heading">Programmes we support</h2>
+      <p class="section-intro">Select a programme to view indicative universities, fee ranges, and documentation — exact fees are always confirmed on your official offer letter.</p>
+      <div class="programs">
+        <button type="button" class="program-card" id="mbbs-card" aria-label="Open MBBS programme details">
+          <div class="image-wrapper">
+            <img src="images/MBBS/1.webp" alt="MBBS in Georgia" id="mbbs-img" width="400" height="280" loading="lazy" decoding="async">
+            <div class="program-title">MBBS / MD<span class="program-hint">Medicine — tap for details</span></div>
+          </div>
+        </button>
+        <button type="button" class="program-card" id="bba-card" aria-label="Open BBA and MBA details">
+          <div class="image-wrapper">
+            <img src="images/BBA/1.webp" alt="BBA and MBA in Georgia" id="bba-img" width="400" height="280" loading="lazy" decoding="async">
+            <div class="program-title">BBA &amp; MBA<span class="program-hint">Business — tap for details</span></div>
+          </div>
+        </button>
+        <button type="button" class="program-card" id="it-card" aria-label="Open IT programme details">
+          <div class="image-wrapper">
+            <img src="images/IT/1.webp" alt="Computer Science and IT in Georgia" id="it-img" width="400" height="280" loading="lazy" decoding="async">
+            <div class="program-title">Computer Science &amp; IT<span class="program-hint">Technology — tap for details</span></div>
+          </div>
+        </button>
+      </div>
+    </section>
+
+    <section id="faq" class="section reveal-scroll">
+      <h2 class="section-heading">Frequently asked questions</h2>
+      <p class="section-intro">Straight answers we give in initial consultations. For case-specific guidance, contact us with your documents.</p>
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary>Is IELTS mandatory?</summary>
+          <div class="faq-body">Not always. Several Georgian universities admit students without IELTS, using prior academic English or internal assessment. We place you where your profile fits.</div>
+        </details>
+        <details class="faq-item">
+          <summary>Can I work while studying?</summary>
+          <div class="faq-body">Part-time work may be possible under local rules. Programme intensity — especially in clinical years — should be weighed before committing to work hours.</div>
+        </details>
+        <details class="faq-item">
+          <summary>What are typical semester fees?</summary>
+          <div class="faq-body">Many programmes fall roughly between USD $1,500 and $3,000 per semester depending on faculty and university. Your offer letter is the binding source.</div>
+        </details>
+        <details class="faq-item">
+          <summary>Who recognises the degree in my home country?</summary>
+          <div class="faq-body">Recognition is determined by national regulators and councils — not by a consultancy. We encourage families to verify requirements with official authorities early.</div>
+        </details>
+      </div>
+    </section>
+
+    <section id="contact" class="section reveal-scroll">
+      <h2 class="section-heading">Contact</h2>
+      <p class="section-intro">Reach us by the channel you prefer. For document attachments, email is usually easiest; for quick questions, use WhatsApp.</p>
+      <div class="contact-grid">
+        <div class="contact-card">
+          <h3>Email</h3>
+          <p><a href="mailto:nextstepinternational25@gmail.com" style="color:var(--brand);font-weight:600;text-decoration:none">nextstepinternational25@gmail.com</a></p>
+          <a class="btn btn-outline" href="mailto:nextstepinternational25@gmail.com">Send email</a>
+        </div>
+        <div class="contact-card">
+          <h3>WhatsApp</h3>
+          <p><strong style="color:var(--ink)">+92 314 2638901</strong></p>
+          <a class="btn btn-primary" href="https://wa.me/923142638901" target="_blank" rel="noopener noreferrer">Message on WhatsApp</a>
+        </div>
+        <div class="contact-card">
+          <h3>Facebook</h3>
+          <p>Updates and enquiries</p>
+          <a class="btn btn-outline" href="https://www.facebook.com/profile.php?id=61589102386856" target="_blank" rel="noopener noreferrer">Facebook page</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="mobile-dock" aria-label="Quick actions">
+    <a class="mobile-dock-link mobile-dock-link--primary" href="https://wa.me/923142638901" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+    <a class="mobile-dock-link" href="apply.html">Apply</a>
+    <a class="mobile-dock-link" href="track.html">Track</a>
+    <a class="mobile-dock-link" href="#contact">Contact</a>
+  </nav>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div>
+        <div class="footer-brand">
+          <img src="images/logo.webp" width="38" height="38" alt="" loading="lazy">
+          <span class="footer-name">NextStep International</span>
+        </div>
+        <p class="footer-about">Education consultancy assisting international students with admission to Georgian universities. We do not issue visas or degrees — universities and embassies make final decisions.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Contact</h4>
+        <a href="mailto:nextstepinternational25@gmail.com">nextstepinternational25@gmail.com</a>
+        <p>WhatsApp: +92 314 2638901</p>
+      </div>
+      <div class="footer-col">
+        <h4>Explore</h4>
+        <a href="#about">About</a>
+        <a href="#process">Our process</a>
+        <a href="#programs">Programmes</a>
+        <a href="apply.html">Apply online</a>
+        <a href="track.html">Track your file</a>
+        <a href="#contact">Contact</a>
+      </div>
+      <p class="footer-copy">© 2026 NextStep International. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-content">
+      <div class="modal-handle" aria-hidden="true"></div>
+      <button type="button" class="modal-close" id="modal-close" aria-label="Close dialog">×</button>
+      <div id="modal-body" class="modal-prose"></div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    "use strict";
+
+    /* ── Nav toggle ── */
+    var toggle = document.getElementById("nav-toggle");
+    var nav    = document.getElementById("site-nav");
+    if (toggle && nav) {
+      toggle.addEventListener("click", function () {
+        var open = nav.classList.toggle("is-open");
+        toggle.setAttribute("aria-expanded", open);
+        toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+      });
+      nav.querySelectorAll("a").forEach(function (a) {
+        a.addEventListener("click", function () {
+          nav.classList.remove("is-open");
+          toggle.setAttribute("aria-expanded", "false");
+          toggle.setAttribute("aria-label", "Open menu");
+        });
+      });
+    }
+
+    /* ── Modal ── */
+    var modal      = document.getElementById("modal");
+    var modalBody  = document.getElementById("modal-body");
+    var modalClose = document.getElementById("modal-close");
+    function openModal(html) {
+      modalBody.innerHTML = html;
+      modal.removeAttribute("hidden");
+      modal.classList.add("is-visible");
+      document.body.style.overflow = "hidden";
+      modalClose.focus();
+    }
+    function closeModal() {
+      modal.classList.remove("is-visible");
+      modal.setAttribute("hidden", "");
+      modalBody.innerHTML = "";
+      document.body.style.overflow = "";
+    }
+    modalClose.addEventListener("click", closeModal);
+    modal.addEventListener("click", function (e) { if (e.target === modal) closeModal(); });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && modal.classList.contains("is-visible")) closeModal();
+    });
+    var CTA = '<div class="modal-cta"><a class="btn btn-primary" href="apply.html">Start application</a><a class="btn btn-outline" href="https://wa.me/923142638901" target="_blank" rel="noopener noreferrer">Ask on WhatsApp</a></div>';
+    function bindCard(id, html) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener("click", function () { openModal(html + CTA); });
+      el.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openModal(html + CTA); }
+      });
+    }
+    bindCard("mbbs-card", '<h2 id="modal-title">MBBS in Georgia</h2><ul><li><strong>Universities:</strong><br>Georgian National University (SEU)<br>European University (EU)<br>Grigol Robakidze University<br>Alte University<br>Caucasus University</li><li><strong>Programs:</strong> MBBS / MD</li><li><strong>Fees:</strong> $2,500 – $3,000 per semester</li><li><strong>Required documents:</strong><ul><li>Passport</li><li>Matric mark sheet</li><li>Intermediate mark sheet</li><li>Graduation transcript and degree</li><li>Passport-size photographs</li><li>Authority letter</li></ul></li></ul>');
+    bindCard("bba-card", '<h2 id="modal-title">BBA &amp; MBA programs</h2><ul><li><strong>Universities:</strong><br>Georgian National University (SEU)<br>European University (EU)<br>Georgian Technical University (GTU)<br>International Black Sea University</li><li><strong>Programs:</strong> BBA, MBA</li><li><strong>Fees:</strong> $1,750 – $2,250 per semester</li><li><strong>Required documents:</strong><ul><li>Passport</li><li>Matric mark sheet</li><li>Intermediate mark sheet</li><li>Graduation transcript and degree</li><li>Passport-size photographs</li><li>Authority letter</li></ul></li></ul>');
+    bindCard("it-card", '<h2 id="modal-title">Computer Science &amp; IT</h2><ul><li><strong>Universities:</strong><br>Caucasus University<br>Georgian Technical University (GTU)<br>Alte University<br>International Black Sea University</li><li><strong>Programs:</strong> BS IT, Computer Science</li><li><strong>Fees:</strong> $1,500 – $2,250 per semester</li><li><strong>Required documents:</strong><ul><li>Passport</li><li>Matric mark sheet</li><li>Intermediate mark sheet</li><li>Graduation transcript and degree</li><li>Passport-size photographs</li><li>Authority letter</li></ul></li></ul>');
+
+    /* ── Image rotation — pauses when tab hidden to save CPU/network ── */
+    var lastUsed = { mbbs: -1, bba: -1, it: -1 };
+    var rotationTimer = null;
+    function getRandom(max, last) {
+      var r; do { r = Math.floor(Math.random() * max) + 1; } while (r === last && max > 1); return r;
+    }
+    function swap(imgId, folder, max, key) {
+      var cur = document.getElementById(imgId);
+      if (!cur) return;
+      var n = getRandom(max, lastUsed[key]);
+      var next = new Image();
+      next.src = "images/" + folder + "/" + n + ".webp";
+      next.className = "next"; next.alt = cur.alt;
+      next.width = 400; next.height = 280; next.loading = "lazy"; next.decoding = "async";
+      next.onload = function () {
+        if (!cur.parentNode) return;
+        cur.parentNode.appendChild(next);
+        requestAnimationFrame(function () {
+          next.style.opacity = 1; cur.style.opacity = 0;
+          setTimeout(function () {
+            next.id = imgId; next.className = "";
+            try { cur.parentNode.removeChild(cur); } catch(_) {}
+            lastUsed[key] = n;
+          }, 1050);
+        });
+      };
+    }
+    function rotateAll() {
+      if (document.visibilityState === "hidden") return; // skip when tab not visible
+      swap("mbbs-img", "MBBS", 12, "mbbs");
+      swap("bba-img",  "BBA",  12, "bba");
+      swap("it-img",   "IT",   10, "it");
+    }
+    function startRotation() {
+      if (rotationTimer) return;
+      rotationTimer = setInterval(rotateAll, 15000);
+    }
+    function stopRotation() {
+      if (rotationTimer) { clearInterval(rotationTimer); rotationTimer = null; }
+    }
+    document.addEventListener("visibilitychange", function () {
+      document.visibilityState === "hidden" ? stopRotation() : startRotation();
+    });
+    window.addEventListener("load", function () { rotateAll(); startRotation(); });
+
+    /* ── Typing animation ── */
+    var typingText = "Same-day vibes, serious support — we make Georgia admissions feel doable, not scary.";
+    var typingTarget = document.getElementById("typing-text");
+    if (typingTarget) {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        typingTarget.textContent = typingText;
+      } else {
+        var idx = 0;
+        function typeNext() {
+          if (idx >= typingText.length) return;
+          typingTarget.textContent += typingText.charAt(idx++);
+          setTimeout(typeNext, 44);
+        }
+        typeNext();
+      }
+    }
+
+    /* ── Scroll reveal ── */
+    if ("IntersectionObserver" in window) {
+      var obs = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) { e.target.classList.add("is-visible"); obs.unobserve(e.target); }
+        });
+      }, { rootMargin: "0px 0px -40px 0px", threshold: 0.05 });
+      document.querySelectorAll(".reveal-scroll").forEach(function (el) { obs.observe(el); });
+    } else {
+      document.querySelectorAll(".reveal-scroll").forEach(function (el) { el.classList.add("is-visible"); });
+    }
+
+  })();
+  </script>
+</body>
+</html>

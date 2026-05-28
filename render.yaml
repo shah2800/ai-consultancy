@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: ai-consultancy-api
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: WEBSITE_FORM_SECRET
+        value: NSI-WEB-FORM-SECURE-KEY-7k3m9p2qx
+      - key: CORS_ORIGINS
+        sync: false

@@ -97,7 +97,9 @@ app.use(
   })
 );
 
-const websiteDir = path.join(__dirname, "..", "website");
+const websiteDir = fs.existsSync(path.join(__dirname, "website"))
+  ? path.join(__dirname, "website")
+  : path.join(__dirname, "..", "website");
 if (fs.existsSync(websiteDir)) {
   app.use("/site", express.static(websiteDir));
 }
@@ -8578,7 +8580,7 @@ app.listen(PORT, () => {
   console.log(
     `   Website form: POST /public/website/apply   Track: GET /public/website/track?registrationId=`
   );
-  if (fs.existsSync(path.join(__dirname, "..", "website"))) {
+  if (fs.existsSync(path.join(__dirname, "website")) || fs.existsSync(path.join(__dirname, "..", "website"))) {
     console.log(
       `🌐 Website served at http://localhost:${PORT}/site/`
     );
