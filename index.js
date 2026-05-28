@@ -7785,7 +7785,7 @@ app.post(
         return res.status(413).json({ error: "File too large. Maximum 25 MB per file." });
       }
       console.error("POST /public/website/apply:", err?.message || err);
-      return res.status(500).json({ error: "Could not save application." });
+      return res.status(500).json({ error: "Could not save application. DEBUG: " + (err?.message || String(err)) });
     }
   }
 );
