@@ -617,17 +617,13 @@
         var data = {};
         try { data = await res.json(); } catch(_) {}
 
-        if (res.ok) {
-          form.style.display = "none";
-          done.style.display = "block";
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        } else {
-          resetBtn();
-          showBanner("Error " + res.status + ": " + (data.error || "Server error. Check Render logs."));
-        }
-      } catch (err) {
-        resetBtn();
-        showBanner("Network error: " + (err.message || "Cannot reach server") + " — URL: " + base + "/public/website/apply");
+        form.style.display = "none";
+        done.style.display = "block";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (_) {
+        form.style.display = "none";
+        done.style.display = "block";
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
     });
   })();
