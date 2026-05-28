@@ -7626,14 +7626,6 @@ app.post(
       const targetId = existingLead ? existingLead._id : new mongoose.Types.ObjectId();
       const isExisting = !!existingLead;
 
-      const uploadDir = path.join(
-        __dirname,
-        "uploads",
-        "website-leads",
-        String(targetId)
-      );
-      fs.mkdirSync(uploadDir, { recursive: true });
-
       const uploadsMeta = [];
       const allFiles = req.files || {};
       for (const [fieldName, files] of Object.entries(allFiles)) {
@@ -7641,13 +7633,29 @@ app.post(
           if (!file?.buffer?.length) continue;
           const safe = sanitizeWebsiteFilename(file.originalname);
           const fn = `${Date.now()}-${safe}`;
-          fs.writeFileSync(path.join(uploadDir, fn), file.buffer);
-          uploadsMeta.push({
-            storedPath: `/uploads/website-leads/${targetId}/${fn}`,
-            originalName: file.originalname || fn,
-            docType: fieldName.replace(/^doc_/, ""),
-            docLabel: DOC_FIELD_LABELS[fieldName] || fieldName,
-          });
+          try {
+            const uploadDir = path.join(__dirname, "uploads", "website-leads", String(targetId));
+            fs.mkdirSync(uploadDir, { recursive: true });
+            fs.writeFileSync(path.join(uploadDir, fn), file.buffer);
+            uploadsMeta.push({
+              storedPath: `/uploads/website-leads/${targetId}/${fn}`,
+              originalName: file.originalname || fn,
+              docType: fieldName.replace(/^doc_/, ""),
+              docLabel: DOC_FIELD_LABELS[fieldName] || fieldName,
+            });
+          } catch (_) {
+            try {
+              const tmpDir = path.join("/tmp", "website-leads", String(targetId));
+              fs.mkdirSync(tmpDir, { recursive: true });
+              fs.writeFileSync(path.join(tmpDir, fn), file.buffer);
+            } catch (_2) {}
+            uploadsMeta.push({
+              storedPath: null,
+              originalName: file.originalname || fn,
+              docType: fieldName.replace(/^doc_/, ""),
+              docLabel: DOC_FIELD_LABELS[fieldName] || fieldName,
+            });
+          }
         }
       }
 
