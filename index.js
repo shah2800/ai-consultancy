@@ -8562,11 +8562,13 @@ app.get("/", (req, res) => {
 /* Final error handler keeps malformed JSON responses consistent and stacktrace-free. */
 app.use((err, _req, res, next) => {
   if (err?.type === "entity.parse.failed" || err instanceof SyntaxError) {
-    return res.status(400).json({
-      error: "Invalid JSON payload",
-    });
+    return res.status(400).json({ error: "Invalid JSON payload" });
   }
-  return next(err);
+  if (err?.name === "MulterError" || err?.code === "LIMIT_FILE_SIZE") {
+    return res.status(413).json({ error: "File too large. Maximum 25 MB per file." });
+  }
+  console.error("[global-error]", err?.message || err);
+  return res.status(500).json({ error: "Internal server error. DEBUG: " + (err?.message || String(err)) });
 });
 
 /* ============================================================
