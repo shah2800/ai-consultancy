@@ -102,6 +102,8 @@ const websiteDir = fs.existsSync(path.join(__dirname, "website"))
   : path.join(__dirname, "..", "website");
 if (fs.existsSync(websiteDir)) {
   app.use("/site", express.static(websiteDir));
+  /* Also serve website at root so custom domain works without /site prefix */
+  app.use("/", express.static(websiteDir, { index: false }));
 }
 
 if (!process.env.MONGO_URI) {
@@ -8553,10 +8555,11 @@ app.get("/public/website/track", websiteTrackLimiter, async (req, res) => {
 ============================================================ */
 
 app.get("/", (req, res) => {
-  res.json({
-    success: true,
-    message: "CRM API Running 🚀",
-  });
+  const indexFile = path.join(websiteDir, "index.html");
+  if (fs.existsSync(indexFile)) {
+    return res.sendFile(indexFile);
+  }
+  res.json({ success: true, message: "CRM API Running 🚀" });
 });
 
 /* Final error handler keeps malformed JSON responses consistent and stacktrace-free. */
