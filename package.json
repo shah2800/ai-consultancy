@@ -1,0 +1,37 @@
+{
+  "name": "ai-consultancy",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "set-password": "node scripts/set-user-password.js",
+    "prune-team": "node scripts/prune-team-users.js",
+    "link-workspace": "node scripts/link-user-to-workspace.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.16.0",
+    "bcryptjs": "^3.0.3",
+    "body-parser": "^2.2.2",
+    "compression": "^1.8.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.0.0",
+    "form-data": "^4.0.5",
+    "groq-sdk": "^1.1.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongodb": "^7.2.0",
+    "mongoose": "^9.6.1",
+    "multer": "^2.1.1",
+    "nodemailer": "^7.0.13",
+    "openai": "^6.36.0",
+    "zod": "^4.4.3"
+  }
+}
