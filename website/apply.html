@@ -156,6 +156,16 @@
       .spinner,.success-ring{animation:none}
       .btn-submit:hover,.btn-ghost:hover{transform:none}
     }
+
+    /* Floating WhatsApp */
+    .wa-float{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom));right:24px;z-index:500}
+    .wa-pulse{position:absolute;inset:-4px;border-radius:50%;border:3px solid rgba(37,211,102,.5);animation:waPulse 2s ease-out infinite;pointer-events:none}
+    @keyframes waPulse{0%{opacity:1;transform:scale(1)}70%{opacity:0;transform:scale(1.5)}100%{opacity:0;transform:scale(1.5)}}
+    .wa-btn{position:relative;display:flex;align-items:center;justify-content:center;width:56px;height:56px;background:linear-gradient(135deg,#25d366,#128c7e);border-radius:50%;box-shadow:0 6px 24px rgba(37,211,102,.45);text-decoration:none;transition:transform .2s,box-shadow .2s}
+    .wa-btn:hover{transform:scale(1.08);box-shadow:0 10px 32px rgba(37,211,102,.55)}
+    .wa-btn svg{width:28px;height:28px;fill:#fff}
+    .wa-label{position:absolute;right:64px;top:50%;transform:translateY(-50%);background:#fff;color:#128c7e;font-size:.8rem;font-weight:700;padding:5px 12px;border-radius:20px;white-space:nowrap;box-shadow:0 2px 12px rgba(0,0,0,.12);opacity:0;pointer-events:none;transition:opacity .2s}
+    .wa-float:hover .wa-label{opacity:1}
   </style>
 </head>
 <body>
@@ -545,6 +555,15 @@
       </div>
 
     </div>
+  </div>
+
+  <!-- Floating WhatsApp -->
+  <div class="wa-float">
+    <div class="wa-pulse"></div>
+    <a class="wa-btn" href="https://wa.me/923142638901" target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.134.558 4.133 1.532 5.866L.057 23.857a.5.5 0 00.606.606l6.056-1.467A11.944 11.944 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.013-1.375l-.36-.213-3.733.904.921-3.648-.233-.376A9.818 9.818 0 1112 21.818z"/></svg>
+    </a>
+    <div class="wa-label">Chat with us</div>
   </div>
 
   <script src="js/ns-config.js"></script>
