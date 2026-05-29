@@ -152,7 +152,6 @@ function Layout({ children }) {
     <ShellScrollContext.Provider value={mainScrollRef}>
     <div className="app-shell">
       <header className="mobile-nav-bar" aria-label="Mobile navigation">
-        <span className="mobile-nav-brand">NextStep CRM</span>
         <button
           type="button"
           className="mobile-nav-toggle"
@@ -167,6 +166,7 @@ function Layout({ children }) {
           </svg>
           <span className="sr-only">Open menu</span>
         </button>
+        <span className="mobile-nav-brand">NextStep CRM</span>
       </header>
 
       <button
