@@ -55,6 +55,9 @@ const corsAllowlist = new Set(
   [
     process.env.FRONTEND_URL,
     process.env.CORS_ORIGINS,
+    /* Always allow the public website — form submissions come from here */
+    "https://nextstepinternationals.com",
+    "https://www.nextstepinternationals.com",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:4173",
