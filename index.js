@@ -2061,6 +2061,215 @@ async function updateLeadImportantDetailsFromStudentMessage(lead, messageText) {
   }
 }
 
+// ══════════════════════════════════════════════════════
+// GUIDED CONVERSATION FLOW — Smart step-by-step chat
+// ══════════════════════════════════════════════════════
+
+function guidedWelcome(cName) {
+  return `Assalam o Alaikum! 👋
+Welcome to *${cName}*
+
+Don't worry — we will guide you through everything! 😊
+
+First tell me — what do you want to become in life?
+
+1️⃣ Doctor (MBBS)
+2️⃣ Business (BBA / MBA)
+3️⃣ Computer Expert (IT)
+4️⃣ Engineer
+5️⃣ I don't know yet 🤔
+
+*Just reply with a number 1-5!*`;
+}
+
+const GUIDED_MBBS = `Great choice! 🏥 *MBBS — Become a Doctor!*
+
+Study MBBS abroad for much less than Pakistan private colleges!
+
+🇬🇪 *Georgia* — $2,500/semester ⭐ Most Popular
+🇦🇿 *Azerbaijan* — $3,000/semester
+🇷🇺 *Russia* — $3,500/semester
+🇹🇷 *Turkey* — $4,000/semester
+
+✅ No IELTS required
+✅ PMC recognised
+✅ Pakistani community there
+✅ Halal food available
+
+*Which country interests you?*
+Reply: Georgia / Azerbaijan / Russia / Turkey`;
+
+const GUIDED_BBA = `Great choice! 💼 *BBA / MBA — Business Degree!*
+
+🇬🇪 *Georgia* — $1,750/semester
+🇹🇷 *Turkey* — $2,000/semester
+
+✅ HEC recognised
+✅ English medium
+✅ 4 years BBA / 2 years MBA
+✅ No IELTS required
+✅ Great career opportunities
+
+Sounds good? Reply *YES* and I'll guide you to apply! 😊`;
+
+const GUIDED_IT = `Great choice! 💻 *IT / Computer Science!*
+
+🇬🇪 *Georgia* — $1,500/semester
+🇹🇷 *Turkey* — $2,000/semester
+
+✅ HEC recognised
+✅ English medium
+✅ 4 years degree
+✅ Excellent job market
+✅ No IELTS required
+
+Sounds good? Reply *YES* and I'll guide you to apply! 😊`;
+
+const GUIDED_ENG = `Great choice! ⚙️ *Engineering Degree!*
+
+🇬🇪 *Georgia* — $2,000/semester
+🇹🇷 *Turkey* — $2,500/semester
+🇨🇳 *China* — $2,000/semester
+
+✅ HEC recognised
+✅ English medium
+✅ 4 years degree
+✅ No IELTS required
+
+Sounds good? Reply *YES* and I'll guide you to apply! 😊`;
+
+const GUIDED_UNKNOWN = `No problem at all! 😊
+
+Tell me — which subjects did you like most in school?
+
+1️⃣ Biology / Science *(become a Doctor)*
+2️⃣ Maths / Computer *(IT or Engineering)*
+3️⃣ Business / Accounts *(BBA or MBA)*
+4️⃣ I'm not sure, I need guidance 🤔
+
+*Reply with a number!*`;
+
+const GUIDED_MBBS_REC = `Based on your subjects — *MBBS (Doctor)* is perfect for you! 🏥
+
+🇬🇪 *Georgia* — $2,500/semester ⭐ Most Popular
+✅ No IELTS required
+✅ PMC recognised
+✅ Pakistani community there
+
+Interested? Reply *YES* to take the next step! 😊`;
+
+const GUIDED_IT_REC = `Based on your subjects — *IT / Computer Science* is perfect for you! 💻
+
+🇬🇪 *Georgia* — $1,500/semester
+✅ No IELTS required
+✅ HEC recognised
+✅ Great job opportunities
+
+Interested? Reply *YES* to take the next step! 😊`;
+
+const GUIDED_BBA_REC = `Based on your subjects — *BBA / MBA* is perfect for you! 💼
+
+🇬🇪 *Georgia* — $1,750/semester
+✅ No IELTS required
+✅ HEC recognised
+✅ English medium
+
+Interested? Reply *YES* to take the next step! 😊`;
+
+const GUIDED_CONSULTANT = `No problem! 😊
+
+Our consultant will personally guide you and help you choose the best program.
+
+Please share:
+📝 *Your Name:*
+🏙️ *Your City:*
+📞 *Your WhatsApp Number:*
+
+We will call you within *24 hours*! ✅`;
+
+const GUIDED_ASK_DETAILS = `Amazing! 🎉
+
+You are just a few steps away from studying abroad!
+
+Please share these quick details:
+
+📝 *Name:*
+📊 *FSc / Matric %:*
+🏙️ *City:*
+
+That's it! Our consultant will contact you within *24 hours* 😊`;
+
+const GUIDED_THANKYOU = (name) => `Thank you *${name || ""}*! ✅ 🎉
+
+Your details have been saved!
+
+Our consultant will contact you on this WhatsApp number within *24 hours*.
+
+Meanwhile you can:
+📋 Fill full application: nextstepinternationals.com/apply.html
+❓ Ask me anything about studying abroad!`;
+
+const GUIDED_REPROMPT = `Please reply with a number between *1 and 5* 😊
+
+1️⃣ Doctor (MBBS)
+2️⃣ Business (BBA / MBA)
+3️⃣ Computer Expert (IT)
+4️⃣ Engineer
+5️⃣ I don't know yet 🤔`;
+
+function handleGuidedConversation(lead, inboundText, cName) {
+  const state  = String(lead.extractedData?.guidedState || "");
+  const text   = inboundText.trim().toLowerCase();
+  const numMatch = text.match(/^\s*([1-5])\b/);
+  const num    = numMatch ? numMatch[1] : null;
+  const isYes  = /^(yes|han|haan|ji|okay|ok|sure|interested|apply|want|chahta|chahti|bilkul|zaroor)\b/i.test(text);
+  const isGeorgia    = /georgia/i.test(text);
+  const isAzerbaijan = /azerbaijan|azarbaijan/i.test(text);
+  const isRussia     = /russia/i.test(text);
+  const isTurkey     = /turkey/i.test(text);
+
+  // First ever message → welcome menu
+  if (!state && lead.messages.length === 0) {
+    return { reply: guidedWelcome(cName), newState: "menu_sent" };
+  }
+
+  // Menu sent → handle 1-5 reply
+  if (state === "menu_sent") {
+    if (num === "1") return { reply: GUIDED_MBBS,    newState: "program_shown", course: "MBBS" };
+    if (num === "2") return { reply: GUIDED_BBA,     newState: "program_shown", course: "BBA/MBA" };
+    if (num === "3") return { reply: GUIDED_IT,      newState: "program_shown", course: "IT" };
+    if (num === "4") return { reply: GUIDED_ENG,     newState: "program_shown", course: "Engineering" };
+    if (num === "5") return { reply: GUIDED_UNKNOWN, newState: "subject_asked" };
+    return { reply: GUIDED_REPROMPT, newState: "menu_sent" };
+  }
+
+  // Subject asked → recommend program
+  if (state === "subject_asked") {
+    if (num === "1") return { reply: GUIDED_MBBS_REC, newState: "program_shown", course: "MBBS" };
+    if (num === "2") return { reply: GUIDED_IT_REC,   newState: "program_shown", course: "IT" };
+    if (num === "3") return { reply: GUIDED_BBA_REC,  newState: "program_shown", course: "BBA/MBA" };
+    return { reply: GUIDED_CONSULTANT, newState: "details_asked" };
+  }
+
+  // Program shown → country or yes/interested
+  if (state === "program_shown") {
+    if (isGeorgia)    return { reply: GUIDED_ASK_DETAILS, newState: "details_asked", country: "Georgia" };
+    if (isAzerbaijan) return { reply: GUIDED_ASK_DETAILS, newState: "details_asked", country: "Azerbaijan" };
+    if (isRussia)     return { reply: GUIDED_ASK_DETAILS, newState: "details_asked", country: "Russia" };
+    if (isTurkey)     return { reply: GUIDED_ASK_DETAILS, newState: "details_asked", country: "Turkey" };
+    if (isYes)        return { reply: GUIDED_ASK_DETAILS, newState: "details_asked" };
+    return null; // Let AI answer questions freely
+  }
+
+  // Details asked → save and thank
+  if (state === "details_asked") {
+    return { reply: null, newState: "completed", extractDetails: true };
+  }
+
+  // Completed → normal AI handles everything
+  return null;
+}
+
 async function extractAssessmentFormData(text) {
   try {
     const reply = await groqChat({
@@ -3749,75 +3958,58 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
               nextDailyCount = Math.min(configuredLimit, dailyCount + 1);
               nextResetAt = new Date(nowMs + 24 * 60 * 60 * 1000).toISOString();
             } else {
-              // ── Assessment form reply (2nd message) — extract & save details ──
-              const isAssessmentReply = lead.messages.length === 1;
-              if (isAssessmentReply && inboundText.length > 20) {
-                try {
-                  const details = await extractAssessmentFormData(inboundText);
-                  if (details) {
-                    if (details.name)           lead.name            = details.name;
-                    if (details.city)           lead.notes           = (lead.notes ? lead.notes + "\n" : "") + `City: ${details.city}`;
-                    if (details.courseInterest) lead.courseInterest  = details.courseInterest;
-                    if (details.countryInterest)lead.countryInterest = details.countryInterest;
-                    // Save extra details in importantDetails
-                    const extras = [];
-                    if (details.fatherName)    extras.push(`Father: ${details.fatherName}`);
-                    if (details.dob)           extras.push(`DOB: ${details.dob}`);
-                    if (details.qualification) extras.push(`Qualification: ${details.qualification}`);
-                    if (details.cgpa)          extras.push(`CGPA/Marks: ${details.cgpa}`);
-                    if (details.completionYear)extras.push(`Completion Year: ${details.completionYear}`);
-                    if (details.ieltsScore)    extras.push(`IELTS: ${details.ieltsScore}`);
-                    if (extras.length > 0) {
-                      lead.importantDetails = (lead.importantDetails ? lead.importantDetails + "\n" : "") + extras.join(" | ");
-                    }
-                    lead.markModified("importantDetails");
-                  }
-                } catch (_) {}
-                aiReply = "Thank you! ✅\n\nWe have received your details. Our consultant will contact you within *24 hours*. 😊\n\nMeanwhile feel free to ask any questions!";
-                nextDailyCount = dailyCount + 1;
-                lead.extractedData = { ...(lead.extractedData || {}), aiDailyDate: todayKey, aiDailyCount: nextDailyCount };
-                await lead.save();
-                if (aiReply) {
+              // ── Guided conversation flow ──
+              const cName = String(accountSettings?.consultancyName || "NextStep International");
+              const guidedResult = handleGuidedConversation(lead, inboundText, cName);
+
+              if (guidedResult) {
+                // Save guided state + course/country if detected
+                lead.extractedData = {
+                  ...(lead.extractedData || {}),
+                  guidedState: guidedResult.newState,
+                  aiDailyDate: todayKey,
+                  aiDailyCount: dailyCount + 1,
+                };
+                if (guidedResult.course)  lead.courseInterest  = guidedResult.course;
+                if (guidedResult.country) lead.countryInterest = guidedResult.country;
+
+                // Extract & save student details (when they reply with Name/FSc%/City)
+                if (guidedResult.extractDetails && inboundText.length > 5) {
                   try {
-                    await sendWhatsAppCloudText({
-                      phoneNumberId: accountSettings.whatsappPhoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID,
-                      to: fromPhone,
-                      text: aiReply,
-                    });
-                    lead.messages.push({ role: "assistant", content: aiReply, at: new Date() });
-                    await lead.save();
-                  } catch (_) {}
+                    const details = await extractAssessmentFormData(inboundText);
+                    if (details) {
+                      if (details.name)           lead.name           = details.name;
+                      if (details.courseInterest) lead.courseInterest = details.courseInterest;
+                      if (details.countryInterest)lead.countryInterest= details.countryInterest;
+                      const extras = [];
+                      if (details.fatherName)     extras.push(`Father: ${details.fatherName}`);
+                      if (details.city)           extras.push(`City: ${details.city}`);
+                      if (details.qualification)  extras.push(`Qual: ${details.qualification}`);
+                      if (details.cgpa)           extras.push(`CGPA: ${details.cgpa}`);
+                      if (details.completionYear) extras.push(`Year: ${details.completionYear}`);
+                      if (details.ieltsScore)     extras.push(`IELTS: ${details.ieltsScore}`);
+                      if (extras.length > 0) {
+                        lead.importantDetails = (lead.importantDetails ? lead.importantDetails + " | " : "") + extras.join(" | ");
+                        lead.markModified("importantDetails");
+                      }
+                      aiReply = GUIDED_THANKYOU(details.name);
+                    } else {
+                      aiReply = GUIDED_THANKYOU("");
+                    }
+                  } catch (_) {
+                    aiReply = GUIDED_THANKYOU("");
+                  }
+                } else {
+                  aiReply = guidedResult.reply || "";
                 }
-                continue;
-              }
 
-              // ── First message greeting + assessment form ──
-              const isFirstMessage = lead.messages.length === 0;
-              if (isFirstMessage) {
-                const cName = settings?.consultancyName || accountSettings?.consultancyName || "NextStep International";
-                aiReply =
-`Assalam o Alaikum! 👋 Welcome to *${cName}*
-
-Please fill out the details below for your *Free Initial Assessment*:
-
-1️⃣ Name:
-2️⃣ Father's Name:
-3️⃣ Date of Birth:
-4️⃣ City:
-5️⃣ Qualification:
-6️⃣ Percentage / CGPA:
-7️⃣ Completion Year:
-8️⃣ IELTS Score (if any):
-9️⃣ Course to Apply:
-🔟 Country of Interest:
-
-_Reply with your details and our consultant will contact you within 24 hours_ ✅`;
+                nextDailyCount = dailyCount + 1;
               } else {
+                // Normal AI conversation (after guided flow completes)
               const history = lead.messages.map((m) => ({
                 role: m.role === "admin" || m.role === "assistant" ? "assistant" : "user",
                 content: String(m.content || ""),
               }));
-
               aiReply = await askAI(history, accountSettings.userId);
               }
               if (!String(aiReply || "").trim()) {
