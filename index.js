@@ -2428,9 +2428,7 @@ async function askAI(history, userId) {
     smartRules.push("LANGUAGE: Reply in simple English. Avoid complex words.");
   }
 
-  if (!isOfficeHours) {
-    smartRules.push(`OFFICE HOURS: It is currently outside office hours in Pakistan (9am-6pm Mon-Sat). Mention politely that office is closed but you have noted their message and a consultant will reply in the morning. Still answer their question briefly.`);
-  }
+  // Office hours note removed — AI is available 24/7
 
   if (isAngry) {
     smartRules.push("ANGRY STUDENT: Student seems frustrated or upset. Start with a sincere apology. Be extra warm and empathetic. Promise immediate consultant follow-up. Do not be defensive.");
