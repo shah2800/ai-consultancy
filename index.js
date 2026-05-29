@@ -3713,12 +3713,35 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
               nextDailyCount = Math.min(configuredLimit, dailyCount + 1);
               nextResetAt = new Date(nowMs + 24 * 60 * 60 * 1000).toISOString();
             } else {
+              // ── First message greeting + assessment form ──
+              const isFirstMessage = lead.messages.length === 0;
+              if (isFirstMessage) {
+                const cName = settings?.consultancyName || accountSettings?.consultancyName || "NextStep International";
+                aiReply =
+`Assalam o Alaikum! 👋 Welcome to *${cName}*
+
+Please fill out the details below for your *Free Initial Assessment*:
+
+1️⃣ Name:
+2️⃣ Father's Name:
+3️⃣ Date of Birth:
+4️⃣ City:
+5️⃣ Qualification:
+6️⃣ Percentage / CGPA:
+7️⃣ Completion Year:
+8️⃣ IELTS Score (if any):
+9️⃣ Course to Apply:
+🔟 Country of Interest:
+
+_Reply with your details and our consultant will contact you within 24 hours_ ✅`;
+              } else {
               const history = lead.messages.map((m) => ({
                 role: m.role === "admin" || m.role === "assistant" ? "assistant" : "user",
                 content: String(m.content || ""),
               }));
 
               aiReply = await askAI(history, accountSettings.userId);
+              }
               if (!String(aiReply || "").trim()) {
                 aiReply = "Thanks for your message. Our consultant will reply shortly.";
               }
