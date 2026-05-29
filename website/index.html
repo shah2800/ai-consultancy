@@ -461,6 +461,30 @@
     .cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;position:relative;z-index:1}
     .cta-btns .btn{padding:15px 30px;font-size:1rem}
 
+    /* ─── Testimonials ─── */
+    .testi-grid{display:grid;grid-template-columns:1fr;gap:20px}
+    .testi-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:24px;box-shadow:0 4px 20px rgba(10,31,68,.06);transition:.2s}
+    .testi-card:hover{box-shadow:0 8px 32px rgba(10,31,68,.12);transform:translateY(-2px)}
+    .testi-stars{font-size:1.1rem;margin-bottom:12px}
+    .testi-text{color:var(--soft);font-size:.925rem;line-height:1.65;margin-bottom:16px;font-style:italic}
+    .testi-author{display:flex;align-items:center;gap:12px}
+    .testi-avatar{width:40px;height:40px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0}
+    .testi-author strong{font-size:.9rem;color:var(--ink)}
+    .testi-author span{font-size:.78rem;color:var(--soft)}
+
+    /* ─── Comparison Table ─── */
+    .compare-wrap{overflow-x:auto}
+    .compare-table-wrap{overflow-x:auto;border-radius:var(--r);box-shadow:0 4px 24px rgba(10,31,68,.10);border:1px solid var(--border)}
+    .compare-table{width:100%;border-collapse:collapse;font-size:.875rem;background:#fff}
+    .compare-table thead tr{background:var(--navy);color:#fff}
+    .compare-table th{padding:14px 16px;text-align:center;font-weight:700;white-space:nowrap}
+    .compare-table th:first-child{text-align:left}
+    .compare-table td{padding:12px 16px;text-align:center;border-bottom:1px solid var(--border);color:var(--soft)}
+    .compare-table td:first-child{text-align:left;font-weight:600;color:var(--ink);background:#f8f9fc}
+    .compare-table tbody tr:hover{background:#f0f4ff}
+    .compare-table .best{color:var(--navy);font-weight:700}
+    .compare-table tbody tr:last-child td{border-bottom:none}
+
     /* ─── Contact ─── */
     .contact-wrap{display:grid;grid-template-columns:1fr;gap:0;border-radius:var(--r);overflow:hidden;box-shadow:0 8px 40px rgba(10,31,68,.12);border:1px solid var(--border)}
     .contact-left{background:var(--navy);padding:28px 24px;display:flex;flex-direction:column;gap:16px}
@@ -529,6 +553,7 @@
       .why-grid{grid-template-columns:1fr 1fr}
     }
     @media(min-width:768px){
+      .testi-grid{grid-template-columns:1fr 1fr}
       .contact-wrap{grid-template-columns:1fr 1fr}
       .hdr-nav{display:flex}
       .hdr-track{display:inline-flex!important}
@@ -602,8 +627,8 @@
         <a href="#about">About</a>
         <a href="#programs">Programs</a>
         <a href="#georgia">Destinations</a>
+        <a href="scholarships.html">Scholarships</a>
         <a href="blog.html">Blog</a>
-        
       </nav>
 
       <!-- Desktop actions -->
@@ -1056,6 +1081,107 @@
         </a>
       </div>
     </div>
+
+    <!-- ══ TESTIMONIALS ══ -->
+    <section id="testimonials" class="sec reveal">
+      <div class="eyebrow">Student Reviews</div>
+      <h2 class="h2">What our students say</h2>
+      <p class="lead" style="margin-bottom:36px">Real students. Real results. Real stories from Pakistan to Georgia.</p>
+      <div class="testi-grid">
+        <div class="testi-card">
+          <div class="testi-stars">⭐⭐⭐⭐⭐</div>
+          <p class="testi-text">"I had no idea how to apply abroad. NextStep guided me step by step — from documents to visa. Now I'm studying MBBS in Georgia! Best decision of my life."</p>
+          <div class="testi-author">
+            <div class="testi-avatar">AH</div>
+            <div><strong>Ali Hassan</strong><br><span>MBBS — Tbilisi, Georgia 🇬🇪</span></div>
+          </div>
+        </div>
+        <div class="testi-card">
+          <div class="testi-stars">⭐⭐⭐⭐⭐</div>
+          <p class="testi-text">"Affordable fees, no IELTS, PMC recognised degree. NextStep made everything so easy. They even helped with hostel arrangements. Highly recommend!"</p>
+          <div class="testi-author">
+            <div class="testi-avatar">SF</div>
+            <div><strong>Sara Fatima</strong><br><span>MBBS — Batumi, Georgia 🇬🇪</span></div>
+          </div>
+        </div>
+        <div class="testi-card">
+          <div class="testi-stars">⭐⭐⭐⭐⭐</div>
+          <p class="testi-text">"I was worried about studying abroad alone. The NextStep team was available 24/7. Within 3 weeks I had my admission letter. Amazing service!"</p>
+          <div class="testi-author">
+            <div class="testi-avatar">UM</div>
+            <div><strong>Usman Malik</strong><br><span>BBA — Tbilisi, Georgia 🇬🇪</span></div>
+          </div>
+        </div>
+        <div class="testi-card">
+          <div class="testi-stars">⭐⭐⭐⭐⭐</div>
+          <p class="testi-text">"Mere parents bohot worried the. But NextStep ne sab kuch clear kar diya — fees, visa, hostel. Ab main IT kar raha hoon Georgia mein. Shukria!"</p>
+          <div class="testi-author">
+            <div class="testi-avatar">ZK</div>
+            <div><strong>Zain Khan</strong><br><span>IT/CS — Tbilisi, Georgia 🇬🇪</span></div>
+          </div>
+        </div>
+        <div class="testi-card">
+          <div class="testi-stars">⭐⭐⭐⭐⭐</div>
+          <p class="testi-text">"My FSc marks were not great but NextStep still found me a good university. They never gave up on me. Now I'm a medical student abroad!"</p>
+          <div class="testi-author">
+            <div class="testi-avatar">NA</div>
+            <div><strong>Nadia Akhtar</strong><br><span>MBBS — Kutaisi, Georgia 🇬🇪</span></div>
+          </div>
+        </div>
+        <div class="testi-card">
+          <div class="testi-stars">⭐⭐⭐⭐⭐</div>
+          <p class="testi-text">"From application to landing in Georgia — NextStep was with me every step. Visa got approved in 2 weeks. Fee structure is very transparent. No hidden charges!"</p>
+          <div class="testi-author">
+            <div class="testi-avatar">HB</div>
+            <div><strong>Hamza Baig</strong><br><span>MBBS — Tbilisi, Georgia 🇬🇪</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:36px">
+        <a class="btn btn-navy" href="apply.html">Join 200+ Students — Apply Free</a>
+      </div>
+    </section>
+
+    <!-- ══ UNIVERSITY COMPARISON ══ -->
+    <section id="compare" class="sec reveal">
+      <div class="eyebrow">Compare Countries</div>
+      <h2 class="h2">Which country is right for you?</h2>
+      <p class="lead" style="margin-bottom:36px">Compare MBBS programs side by side and choose the best fit for your budget and goals.</p>
+      <div class="compare-wrap">
+        <div class="compare-table-wrap">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>🇬🇪 Georgia</th>
+                <th>🇦🇿 Azerbaijan</th>
+                <th>🇷🇺 Russia</th>
+                <th>🇹🇷 Turkey</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Tuition/Semester</td><td class="best">$2,500 ⭐</td><td>$3,000</td><td>$3,500</td><td>$4,000</td></tr>
+              <tr><td>Total MBBS Cost</td><td class="best">~$30,000 ⭐</td><td>~$36,000</td><td>~$42,000</td><td>~$48,000</td></tr>
+              <tr><td>Duration</td><td>5–6 Years</td><td>6 Years</td><td>6 Years</td><td>6 Years</td></tr>
+              <tr><td>IELTS Required</td><td class="best">No ✅</td><td class="best">No ✅</td><td class="best">No ✅</td><td>Sometimes</td></tr>
+              <tr><td>PMC Recognised</td><td class="best">Yes ✅</td><td class="best">Yes ✅</td><td class="best">Yes ✅</td><td class="best">Yes ✅</td></tr>
+              <tr><td>Language</td><td class="best">English ✅</td><td class="best">English ✅</td><td>Russian</td><td class="best">English ✅</td></tr>
+              <tr><td>Halal Food</td><td class="best">Yes ✅</td><td class="best">Yes ✅</td><td>Available</td><td class="best">Yes ✅</td></tr>
+              <tr><td>Pakistani Community</td><td class="best">Large ✅</td><td>Medium</td><td>Medium</td><td>Medium</td></tr>
+              <tr><td>Safety</td><td class="best">Very Safe ✅</td><td class="best">Very Safe ✅</td><td>Moderate</td><td class="best">Safe ✅</td></tr>
+              <tr><td>Visa Approval Rate</td><td class="best">Very High ✅</td><td>High</td><td>High</td><td>High</td></tr>
+              <tr><td>Living Cost/Month</td><td class="best">$250–350 ⭐</td><td>$300–400</td><td>$300–450</td><td>$400–600</td></tr>
+              <tr><td>Our Recommendation</td><td class="best">🏆 Best Choice</td><td>✅ Good</td><td>✅ Good</td><td>✅ Good</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="text-align:center;margin-top:28px">
+          <p style="color:var(--soft);font-size:.9rem;margin-bottom:16px">🇬🇪 Georgia is our most popular destination — best value for money!</p>
+          <a class="btn btn-navy" href="apply.html" style="margin-right:12px">Apply for Georgia</a>
+          <a class="btn btn-wa" href="https://wa.me/923142638901?text=Assalam%20o%20Alaikum%2C%20I%20want%20to%20know%20about%20study%20abroad%20programs" target="_blank" rel="noopener">Ask on WhatsApp</a>
+        </div>
+      </div>
+    </section>
 
     <!-- ══ CONTACT ══ -->
     <section id="contact" class="sec">

@@ -4965,6 +4965,37 @@ app.patch(
   }
 );
 
+// ── POST /admin/leads/:id/ai-reply-suggestion ──────────────────────────────
+app.post(
+  "/admin/leads/:id/ai-reply-suggestion",
+  auth,
+  requireRoles("admin", "manager", "staff"),
+  validateId,
+  async (req, res) => {
+    try {
+      const lead = await Lead.findOne({
+        _id: req.params.id,
+        ...leadTenantUserIdMatch(tenantUserId(req)),
+      }).lean();
+      if (!lead) return res.status(404).json({ error: "Lead not found." });
+
+      const history = (lead.messages || []).slice(-10).map((m) => ({
+        role: m.role === "admin" || m.role === "assistant" ? "assistant" : "user",
+        content: String(m.content || ""),
+      }));
+
+      if (history.length === 0) {
+        return res.json({ suggestion: `Assalam o Alaikum ${lead.name || ""}! How can I help you today? 😊` });
+      }
+
+      const suggestion = await askAI(history, tenantUserId(req));
+      return res.json({ suggestion: suggestion || "Thank you for your message! Our consultant will get back to you shortly." });
+    } catch (err) {
+      res.status(500).json({ error: "Could not generate suggestion." });
+    }
+  }
+);
+
 app.get(
   "/admin/leads/:id/summary",
   auth,

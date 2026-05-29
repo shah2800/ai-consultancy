@@ -779,6 +779,8 @@ export default function LeadProfile() {
   const [msgInput, setMsgInput] = useState("");
   const [chatAttachments, setChatAttachments] = useState([]);
   const [sending, setSending] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState("");
+  const [loadingAiSug, setLoadingAiSug] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
 
@@ -2139,6 +2141,16 @@ export default function LeadProfile() {
               />
               📎
             </label>
+            {aiSuggestion && (
+              <div style={{ position: "absolute", bottom: "100%", left: 0, right: 0, background: "var(--surface)", border: "1.5px solid var(--accent)", borderRadius: 10, padding: "10px 12px", marginBottom: 6, boxShadow: "0 4px 16px rgba(0,0,0,.1)", zIndex: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", marginBottom: 6 }}>✨ AI Suggested Reply:</div>
+                <div style={{ fontSize: 12.5, color: "var(--text)", lineHeight: 1.5, marginBottom: 8, whiteSpace: "pre-wrap" }}>{aiSuggestion}</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => { setMsgInput(aiSuggestion); setAiSuggestion(""); }} style={{ padding: "5px 12px", background: "var(--accent)", color: "#fff", border: "none", borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Use This Reply</button>
+                  <button onClick={() => setAiSuggestion("")} style={{ padding: "5px 12px", background: "var(--surface-2)", color: "var(--text-2)", border: "1px solid var(--border)", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>Dismiss</button>
+                </div>
+              </div>
+            )}
             <textarea
               value={msgInput}
               onChange={e => setMsgInput(e.target.value)}
@@ -2146,6 +2158,20 @@ export default function LeadProfile() {
               rows={1}
               style={{ flex: 1, padding: "8px 12px", border: "1.5px solid var(--border)", borderRadius: 10, fontSize: 13, fontFamily: "var(--font-body)", color: "var(--text)", background: "var(--surface)", resize: "none", lineHeight: 1.35 }}
             />
+            <button
+              title="Get AI suggested reply"
+              onClick={async () => {
+                setLoadingAiSug(true);
+                setAiSuggestion("");
+                try {
+                  const res = await api.post(`/admin/leads/${lead._id}/ai-reply-suggestion`);
+                  setAiSuggestion(res.data?.suggestion || "");
+                } catch { setAiSuggestion("Could not get suggestion. Try again."); }
+                finally { setLoadingAiSug(false); }
+              }}
+              disabled={loadingAiSug}
+              style={{ padding: "8px 10px", height: 36, background: "var(--surface-2)", color: "var(--accent)", border: "1.5px solid var(--accent)", borderRadius: 9, fontSize: 15, cursor: loadingAiSug ? "not-allowed" : "pointer", flexShrink: 0, transition: "background 0.15s" }}
+            >{loadingAiSug ? "⏳" : "✨"}</button>
             <button
               onClick={sendMessage}
               disabled={sending || (!msgInput.trim() && chatAttachments.length === 0)}
