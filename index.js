@@ -4174,6 +4174,31 @@ app.get(
   }
 );
 
+// ── DELETE /admin/leads/:id ──────────────────────────────────────────────────
+app.delete(
+  "/admin/leads/:id",
+  auth,
+  requireRoles("admin", "manager"),
+  validateId,
+  async (req, res) => {
+    try {
+      const result = await Lead.deleteOne({
+        _id: req.params.id,
+        ...leadTenantUserIdMatch(tenantUserId(req)),
+      });
+
+      if (result.deletedCount === 0) {
+        return res.status(404).json({ error: "Lead not found or access denied." });
+      }
+
+      res.json({ ok: true, deleted: req.params.id });
+    } catch (err) {
+      console.error("DELETE /admin/leads/:id:", err.message);
+      res.status(500).json({ error: "Failed to delete lead." });
+    }
+  }
+);
+
 app.patch(
   "/admin/leads/:id/status",
   auth,
