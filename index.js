@@ -2383,36 +2383,100 @@ async function askAI(history, userId) {
     ? `ABOUT THIS CONSULTANCY (facts from your CRM — use these; do not contradict or invent):\n${consultancyNotes}`
     : "";
 
+  // ── Smart context detection ──
+  const lastMsg = recentUserMessage.toLowerCase();
+
+  // 1. Language detection
+  const isUrdu = /[؀-ۿ]/.test(recentUserMessage) ||
+    /\b(mujhe|chahiye|karna|hai|hain|aap|apka|mere|kya|nahi|nhi|kaisa|kaise|bhi|phir|abhi|yaar|bhai|agar|lekin|aur|sath|wala|wali|karein|karen|bata|batao|hogai|hogaya|liye|sirf|bohat|bahut|zyada|thoda|thori|pehle|baad|samajh|samjha|jaldi|zaroor|bilkul)\b/i.test(recentUserMessage);
+
+  // 2. Office hours (Pakistan time UTC+5)
+  const nowPK = new Date(Date.now() + 5 * 60 * 60 * 1000);
+  const hourPK = nowPK.getUTCHours();
+  const dayPK  = nowPK.getUTCDay(); // 0=Sun, 6=Sat
+  const isOfficeHours = dayPK >= 1 && dayPK <= 6 && hourPK >= 9 && hourPK < 18;
+
+  // 3. Angry/frustrated detection
+  const isAngry = /\b(koi reply nahi|no reply|jawab nahi|ignoring|ignore|fraud|fake|scam|waste|bakwas|bekar|pathetic|useless|frustrated|angry|fed up|fed-up|disgusting|cheating|cheat)\b/i.test(lastMsg);
+
+  // 4. Parent detection
+  const isParent = /\b(mere bete|meri beti|mere bachay|my son|my daughter|my child|my kid|apne bachay|apne bete|apni beti|humare bache|parents|والدین|بیٹے|بیٹی)\b/i.test(lastMsg);
+
+  // 5. Budget detection
+  const hasBudgetMention = /\b(budget|afford|kitna|cost|fees|expensive|cheap|sasta|mehnga|paisa|paise|rupees|dollars|money)\b/i.test(lastMsg);
+
+  // 6. Low qualification detection
+  const lowMarksMatch = lastMsg.match(/(\d{2})\s*%/);
+  const hasLowMarks   = lowMarksMatch && parseInt(lowMarksMatch[1]) < 50;
+
+  // 7. Urgency — upcoming intake
+  const intakeMonth = nowPK.getUTCMonth(); // 0=Jan
+  const nearIntake  = intakeMonth >= 5 && intakeMonth <= 7; // Jun-Aug = near Sep intake
+
+  // ── Smart instructions for AI ──
+  const smartRules = [];
+
+  if (isUrdu) {
+    smartRules.push("LANGUAGE: Student is writing in Urdu/Roman Urdu. Reply in simple Roman Urdu (e.g. Bilkul, Zaroor, Aap, etc.) mixed with English terms. Be warm and friendly like a Pakistani consultant.");
+  } else {
+    smartRules.push("LANGUAGE: Reply in simple English. Avoid complex words.");
+  }
+
+  if (!isOfficeHours) {
+    smartRules.push(`OFFICE HOURS: It is currently outside office hours in Pakistan (9am-6pm Mon-Sat). Mention politely that office is closed but you have noted their message and a consultant will reply in the morning. Still answer their question briefly.`);
+  }
+
+  if (isAngry) {
+    smartRules.push("ANGRY STUDENT: Student seems frustrated or upset. Start with a sincere apology. Be extra warm and empathetic. Promise immediate consultant follow-up. Do not be defensive.");
+  }
+
+  if (isParent) {
+    smartRules.push("PARENT: This appears to be a parent messaging about their child. Address them with extra respect (use Aap/Sir/Ma'am). Acknowledge their concern for their child's future. Be reassuring.");
+  }
+
+  if (hasBudgetMention) {
+    smartRules.push("BUDGET CONCERN: Student mentioned budget/fees. Reassure them that options are affordable. Mention scholarship possibilities. Offer free consultation to discuss financial planning.");
+  }
+
+  if (hasLowMarks) {
+    smartRules.push("LOW MARKS: Student mentioned low percentage (under 50%). Be encouraging! Tell them some universities still accept them. Do NOT discourage. Offer to find suitable options.");
+  }
+
+  if (nearIntake) {
+    smartRules.push("INTAKE URGENCY: September intake is approaching. Mention that seats are limited and they should apply soon. Create gentle urgency without being pushy.");
+  }
+
+  const smartRulesBlock = smartRules.length > 0
+    ? `\nSMART CONTEXT RULES (follow these carefully):\n${smartRules.map((r, i) => `${i + 1}. ${r}`).join("\n")}`
+    : "";
+
   const prompt = `
-You are a helpful study abroad consultant for ${name}.
+You are a friendly, smart study abroad consultant for ${name}. You talk like a real helpful Pakistani consultant — warm, simple, easy to understand.
 
 Tone: ${tone}
 
-Countries:
+Countries we offer:
 ${countries}
 
-CONSULTANCY CONTACT & LOCATION (only share details that appear below when students ask how to reach you):
+CONSULTANCY CONTACT (only share when student asks):
 ${contactFactsBlock}
 ${aboutBlock ? `\n${aboutBlock}\n` : ""}
 
-CONFIRMED STUDENT NAME (use only if explicitly confirmed by student):
-${confirmedStudentName || "(not confirmed)"}
+CONFIRMED STUDENT NAME:
+${confirmedStudentName || "(not confirmed — do NOT use any name)"}
+${smartRulesBlock}
 
-IMPORTANT RULES:
-- Keep replies SHORT
-- Max 80 words
-- WhatsApp style
-- Friendly and natural
-- Ask only 1-2 questions
-- No long paragraphs
-- Do not promise visa approval
-- Suggest human consultant after few messages
-- If confirmed student name is "(not confirmed)", DO NOT address the student by any name.
-- Never infer name from greetings/short words (hi, hey, nhi, ok, etc.).
-- Only use the exact confirmed student name when available.
+CORE RULES:
+- Max 80 words per reply
+- WhatsApp style — short paragraphs, emojis
+- Ask only 1 question at a time
+- Never promise visa approval or guaranteed admission
+- After 4-5 messages suggest talking to real consultant
+- Never invent fees, university names, or facts
+- If student seems ready → guide them to apply: nextstepinternationals.com/apply.html
 
 BUSINESS ALLOWED:
-${canSay || "mention consultation support and process guidance only"}
+${canSay || "consultation support and process guidance"}
 
 BUSINESS NOT ALLOWED:
 ${cannotSay || "never guarantee outcomes"}
@@ -2421,7 +2485,7 @@ CUSTOM RULES:
 ${customRules || "none"}
 
 FAQ KNOWLEDGE:
-${faqText || "No custom FAQs provided yet."}
+${faqText || "No FAQs added yet."}
 ${universitiesSection}
 `;
 
