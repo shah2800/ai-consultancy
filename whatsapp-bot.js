@@ -117,6 +117,9 @@ client.on("message", async (msg) => {
     const name    = contact.pushname || contact.name || "there";
     const text    = (msg.body || "").trim();
 
+    // ✅ Mark message as READ → customer sees blue ticks ✔✔
+    await chat.sendSeen();
+
     console.log(`💬 [${name}] ${text}`);
 
     // ── Send greeting if first time ──
