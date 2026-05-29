@@ -264,6 +264,7 @@
       </div>
 
       <form id="form" novalidate>
+        <input type="hidden" name="_formToken" value="NSI-WEB-FORM-SECURE-KEY-7k3m9p2qx">
         <div class="sec-body">
           <div class="field-grid col2">
             <div class="field">
@@ -676,12 +677,11 @@
       document.getElementById("btn-icon").outerHTML = '<span class="spinner" id="btn-icon"></span>';
       btnLabel.textContent = "Submitting…";
 
-      var cfg = window.NSI_CONFIG || {}, base = String(cfg.apiBase||"").replace(/\/+$/,""), headers = {};
-      // Always send the form token so the server accepts the submission
-      headers["X-Website-Form-Token"] = (cfg.formToken || "NSI-WEB-FORM-SECURE-KEY-7k3m9p2qx");
+      var cfg = window.NSI_CONFIG || {}, base = String(cfg.apiBase||"").replace(/\/+$/,"");
 
       try {
-        var res = await fetch(base + "/public/website/apply", { method:"POST", headers:headers, body:fd });
+        // No custom headers — token is in the form as hidden field _formToken
+        var res = await fetch(base + "/public/website/apply", { method:"POST", body:fd });
         if (!res.ok) {
           var errData = {};
           try { errData = await res.json(); } catch(_) {}

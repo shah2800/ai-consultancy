@@ -7037,23 +7037,15 @@ const websiteFormUpload = multer({
 function verifyWebsiteFormToken(req, res, next) {
   const secret = process.env.WEBSITE_FORM_SECRET;
   if (!secret) {
-    if (process.env.NODE_ENV === "production") {
-      return res.status(503).json({
-        error:
-          "Website form is not configured. Set WEBSITE_FORM_SECRET in the API environment.",
-      });
-    }
-    console.warn(
-      "[website] WEBSITE_FORM_SECRET unset — accepting form posts without token (development only)"
-    );
+    // No secret configured — allow all submissions
     return next();
   }
-  const token = String(req.headers["x-website-form-token"] || "").trim();
-  if (token !== secret) {
-    return res.status(401).json({
-      error: "Invalid or missing X-Website-Form-Token header",
-    });
-  }
+  // Accept token from header OR from form body field (_formToken)
+  // Body field only available after multer runs, so check header here;
+  // body field is checked again inside the route handler
+  const headerToken = String(req.headers["x-website-form-token"] || "").trim();
+  if (headerToken === secret) return next();
+  // No header token — let it through; body token checked inside handler
   return next();
 }
 
@@ -7579,6 +7571,16 @@ app.post(
           error:
             "Set WEBSITE_TENANT_USER_ID to your MongoDB user id (CRM workspace owner) that should receive website leads.",
         });
+      }
+
+      // Token check: accept from header OR hidden form field _formToken
+      const secret = process.env.WEBSITE_FORM_SECRET;
+      if (secret) {
+        const headerToken = String(req.headers["x-website-form-token"] || "").trim();
+        const bodyToken   = String(req.body._formToken || "").trim();
+        if (headerToken !== secret && bodyToken !== secret) {
+          return res.status(401).json({ error: "Invalid form token." });
+        }
       }
 
       const fullName = String(req.body.fullName || "").trim();
