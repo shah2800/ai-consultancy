@@ -8575,6 +8575,66 @@ app.use((err, _req, res, next) => {
 });
 
 /* ============================================================
+   PUBLIC AI CHAT — Website AI Advisor (no auth required)
+============================================================ */
+const aiChatLimiter = rateLimit({
+  windowMs: 60 * 1000,   // 1 minute
+  max: 10,               // 10 messages per IP per minute
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests. Please wait a moment." },
+});
+
+app.post("/api/ai-chat", aiChatLimiter, async (req, res) => {
+  try {
+    const { message, history = [] } = req.body || {};
+    if (!message || typeof message !== "string" || message.trim().length === 0) {
+      return res.status(400).json({ error: "Message is required." });
+    }
+    if (message.length > 2000) {
+      return res.status(400).json({ error: "Message too long (max 2000 chars)." });
+    }
+
+    const systemPrompt = `You are a knowledgeable and friendly Study Abroad Advisor for NextStep International (NSI), Pakistan's trusted education consultancy. You help Pakistani students find the best university and country for their goals.
+
+You specialize in:
+- MBBS, Engineering, Business, IT programs abroad
+- Study destinations: Georgia, Azerbaijan, Russia, Turkey, China, Kazakhstan, Poland, Hungary
+- Admission requirements, fees, scholarships, and timelines
+- Visa guidance for Pakistani students
+- Cost of living and student life abroad
+
+Key facts about NextStep International:
+- Based in Pakistan
+- WhatsApp: +92 314 2638901
+- Email: nextstepinternational25@gmail.com
+- Free consultation available
+- Apply at: https://www.nextstepinternationals.com/apply.html
+
+Always be helpful, honest, and specific. If asked about fees or requirements, give real approximate figures. End responses by encouraging the student to apply or contact NSI for personalized guidance. Keep answers clear and well-structured. Use bullet points when listing multiple items.`;
+
+    // Build messages array: system + last 6 turns of history + new message
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...history.slice(-6).map(h => ({ role: h.role, content: h.content })),
+      { role: "user", content: message.trim() },
+    ];
+
+    const reply = await groqChat({
+      model: "llama-3.3-70b-versatile",
+      messages,
+      temperature: 0.5,
+      max_tokens: 1200,
+    });
+
+    return res.json({ reply });
+  } catch (err) {
+    console.error("AI chat error:", err.message);
+    return res.status(500).json({ error: "AI is unavailable right now. Please try again." });
+  }
+});
+
+/* ============================================================
    SERVER
 ============================================================ */
 
