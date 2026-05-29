@@ -116,25 +116,38 @@
 
     /* ─── Header ─── */
     .site-header{position:sticky;top:0;z-index:400;background:#fff;border-bottom:1px solid var(--border);transition:box-shadow .3s}
-    .site-header.scrolled{box-shadow:0 2px 20px rgba(10,31,68,.1)}
-    .hdr{max-width:var(--max);margin:0 auto;padding:0 24px;height:68px;display:flex;align-items:center;gap:20px}
-    .logo-wrap{display:flex;align-items:center;gap:12px;flex-shrink:0}
-    .logo-mark{width:42px;height:42px;background:var(--navy);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .site-header.scrolled{box-shadow:0 4px 24px rgba(10,31,68,.10)}
+    /* Gold accent line under header on scroll */
+    .site-header::after{content:"";position:absolute;bottom:-1px;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--navy),var(--goldbright),var(--navy));opacity:0;transition:opacity .3s}
+    .site-header.scrolled::after{opacity:.5}
+    .hdr{max-width:var(--max);margin:0 auto;padding:0 28px;height:72px;display:flex;align-items:center;gap:0}
+
+    /* Logo */
+    .logo-wrap{display:flex;align-items:center;gap:13px;flex-shrink:0;text-decoration:none}
+    .logo-mark{width:44px;height:44px;background:linear-gradient(145deg,var(--navy2),var(--navy));border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 12px rgba(10,31,68,.22)}
     .logo-mark svg{width:24px;height:24px}
-    .logo-text{display:flex;flex-direction:column}
-    .logo-name{font-family:var(--serif);font-size:1.1rem;color:var(--ink);line-height:1.1;letter-spacing:-.01em}
-    .logo-sub{font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-top:1px}
-    .hdr-nav{display:none;gap:2px;margin:0 auto}
-    .hdr-nav a{font-size:.875rem;font-weight:500;color:var(--soft);padding:8px 13px;border-radius:7px;transition:.15s}
-    .hdr-nav a:hover{color:var(--navy);background:var(--navylight)}
-    .hdr-actions{margin-left:auto;display:flex;align-items:center;gap:10px}
-    .hdr-wa{display:none;align-items:center;gap:7px;font-size:.875rem;font-weight:700;color:var(--wa);padding:8px 14px;border-radius:7px;background:rgba(37,211,102,.08);border:1px solid rgba(37,211,102,.2);transition:.15s}
-    .hdr-wa:hover{background:rgba(37,211,102,.15)}
-    .hdr-wa svg{width:16px;height:16px}
-    .hdr-phone{display:none;align-items:center;gap:6px;font-size:.8rem;font-weight:700;color:var(--navy);padding:7px 12px;border-radius:7px;background:var(--navylight);border:1px solid var(--border);transition:.15s;white-space:nowrap}
-    .hdr-phone:hover{background:#dbeafe}
-    .hdr-apply{display:none}
-    .hamburger{width:42px;height:42px;border:1px solid var(--border);border-radius:8px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;transition:.15s;flex-shrink:0}
+    .logo-text{display:flex;flex-direction:column;gap:1px}
+    .logo-name{font-family:var(--serif);font-size:1.1rem;color:var(--ink);line-height:1.1;letter-spacing:-.01em;white-space:nowrap}
+    .logo-sub{font-size:.58rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+
+    /* Nav */
+    .hdr-nav{display:none;align-items:center;gap:1px;margin:0 auto;padding:0 24px}
+    .hdr-nav a{font-size:.875rem;font-weight:500;color:var(--soft);padding:8px 12px;border-radius:7px;transition:.15s;white-space:nowrap;position:relative}
+    .hdr-nav a::after{content:"";position:absolute;bottom:2px;left:12px;right:12px;height:2px;background:var(--goldbright);border-radius:2px;transform:scaleX(0);transition:transform .2s}
+    .hdr-nav a:hover{color:var(--navy)}
+    .hdr-nav a:hover::after{transform:scaleX(1)}
+
+    /* Actions */
+    .hdr-actions{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
+    .hdr-phone{display:none;align-items:center;gap:6px;font-size:.8rem;font-weight:600;color:var(--navy);padding:8px 13px;border-radius:8px;background:var(--navylight);border:1px solid var(--border);transition:.15s;white-space:nowrap;text-decoration:none}
+    .hdr-phone:hover{background:#dbeafe;border-color:#93c5fd}
+    .hdr-phone svg{flex-shrink:0}
+    .hdr-wa{display:none;align-items:center;gap:6px;font-size:.8rem;font-weight:700;color:#fff;padding:8px 14px;border-radius:8px;background:var(--wa);transition:.15s;white-space:nowrap;text-decoration:none}
+    .hdr-wa:hover{background:#1ebe5d;transform:translateY(-1px)}
+    .hdr-wa svg{width:15px;height:15px;flex-shrink:0}
+    .hdr-apply{display:none;white-space:nowrap}
+    .hdr-track{white-space:nowrap}
+    .hamburger{width:42px;height:42px;border:1px solid var(--border);border-radius:9px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;transition:.15s;flex-shrink:0}
     .hamburger:hover{background:var(--bg)}
     .hamburger span{display:block;width:18px;height:1.8px;background:var(--ink);border-radius:2px;transition:.25s}
 
@@ -356,9 +369,7 @@
       .contact-wrap{grid-template-columns:1fr 1fr}
       .hdr-nav{display:flex}
       .hdr-phone{display:flex}
-      .hdr-wa{display:flex}
       .hdr-apply{display:inline-flex}
-      .hdr-track{display:inline-flex!important}
       .hamburger{display:none}
       .prog-list{display:grid;grid-template-columns:1fr 1fr;gap:16px}
       .prog-img{width:110px}
@@ -373,6 +384,7 @@
       .footer-top{grid-template-columns:1.4fr 1fr 1fr}
     }
     @media(min-width:1025px){
+      .hdr-wa{display:flex}
       .hero-in{grid-template-columns:1fr 1fr;align-items:center}
       .hero-side{display:block}
       .prog-list{grid-template-columns:repeat(3,1fr)}
@@ -408,7 +420,9 @@
   <!-- Header -->
   <header class="site-header" id="hdr">
     <div class="hdr">
-      <a class="logo-wrap" href="#top" aria-label="NextStep International">
+
+      <!-- Logo -->
+      <a class="logo-wrap" href="index.html" aria-label="NextStep International — Home">
         <div class="logo-mark">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M5 18L9 14L13 16L19 8" stroke="#e8a020" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -422,31 +436,31 @@
         </div>
       </a>
 
+      <!-- Desktop nav — 5 clean items, no wrapping -->
       <nav class="hdr-nav" aria-label="Primary">
         <a href="#about">About</a>
         <a href="#programs">Programs</a>
-        <a href="#process">Process</a>
-        <a href="#georgia">Georgia</a>
+        <a href="#georgia">Destinations</a>
         <a href="blog.html">Blog</a>
-        <a href="ai-advisor.html">AI Advisor</a>
-        <a href="#contact">Contact</a>
+        <a href="ai-advisor.html">AI&nbsp;Advisor</a>
       </nav>
 
+      <!-- Desktop actions -->
       <div class="hdr-actions">
         <a class="hdr-phone" href="tel:+923142638901">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
           +92 314 2638901
         </a>
         <a class="hdr-wa" href="https://wa.me/923142638901" target="_blank" rel="noopener noreferrer">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.134.558 4.133 1.532 5.866L.057 23.857a.5.5 0 00.606.606l6.056-1.467A11.944 11.944 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.013-1.375l-.36-.213-3.733.904.921-3.648-.233-.376A9.818 9.818 0 1112 21.818z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.134.558 4.133 1.532 5.866L.057 23.857a.5.5 0 00.606.606l6.056-1.467A11.944 11.944 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.013-1.375l-.36-.213-3.733.904.921-3.648-.233-.376A9.818 9.818 0 1112 21.818z"/></svg>
           WhatsApp
         </a>
-        <a class="btn btn-sm hdr-track" href="track.html" style="display:none;background:var(--navylight);color:var(--navy);border:1.5px solid var(--border);font-weight:700">Track</a>
         <a class="btn btn-navy btn-sm hdr-apply" href="apply.html">Apply Now</a>
         <button class="hamburger" id="hbg" aria-label="Open menu">
           <span></span><span></span><span></span>
         </button>
       </div>
+
     </div>
   </header>
 
