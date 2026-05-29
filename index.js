@@ -7828,6 +7828,117 @@ app.post(
   }
 );
 
+/**
+ * Simple JSON endpoint for website apply form — no multer, no file uploads.
+ * More reliable across all browsers and security environments.
+ */
+app.post("/public/website/apply-json", websiteApplyLimiter, async (req, res) => {
+  try {
+    const tenantRaw = String(process.env.WEBSITE_TENANT_USER_ID || "").trim();
+    if (!tenantRaw || !mongoose.Types.ObjectId.isValid(tenantRaw)) {
+      return res.status(503).json({ error: "Server not configured for website leads." });
+    }
+
+    // Token check
+    const secret = process.env.WEBSITE_FORM_SECRET;
+    if (secret) {
+      const bodyToken = String(req.body._formToken || "").trim();
+      const headerToken = String(req.headers["x-website-form-token"] || "").trim();
+      if (bodyToken !== secret && headerToken !== secret) {
+        return res.status(401).json({ error: "Invalid form token." });
+      }
+    }
+
+    const fullName          = String(req.body.fullName          || "").trim();
+    const fatherName        = String(req.body.fatherName        || "").trim();
+    const dobRaw            = String(req.body.dob               || "").trim();
+    const gender            = String(req.body.gender            || "").trim();
+    const phone             = String(req.body.phone             || "").trim();
+    const email             = String(req.body.email             || "").trim();
+    const cityAddress       = String(req.body.cityAddress       || "").trim();
+    const passportNumber    = String(req.body.passportNumber    || "").trim();
+    const passportIssueRaw  = String(req.body.passportIssueDate || "").trim();
+    const passportExpiryRaw = String(req.body.passportExpiry    || "").trim();
+    const matricGrade       = String(req.body.matricGrade       || "").trim();
+    const fscGrade          = String(req.body.fscGrade          || "").trim();
+    const otherDegree       = String(req.body.otherDegree       || "").trim();
+    const ieltsScore        = String(req.body.ieltsScore        || "").trim();
+    const countryInterest   = String(req.body.countryInterest   || "").trim();
+    const universityInterest= String(req.body.universityInterest|| "Not decided").trim();
+    const courseInterest    = String(req.body.courseInterest    || "").trim();
+
+    if (!fullName || !fatherName || !dobRaw || !gender || !phone || !email ||
+        !passportNumber || !passportExpiryRaw || !countryInterest || !courseInterest) {
+      return res.status(400).json({ error: "Missing required fields." });
+    }
+
+    const dob             = dobRaw            ? new Date(dobRaw)            : null;
+    const passportExpiry  = passportExpiryRaw ? new Date(passportExpiryRaw) : null;
+    const passportIssueDate = passportIssueRaw ? new Date(passportIssueRaw) : null;
+
+    // Duplicate detection
+    const phoneDigits = phone.replace(/\D/g, "");
+    const existingLead = await Lead.findOne({
+      userId: tenantRaw,
+      isMerged: { $ne: true },
+      $or: [
+        ...(phoneDigits.length >= 6 ? [{ phone: { $regex: phoneDigits.slice(-8) } }] : []),
+        ...(email ? [{ email: { $regex: new RegExp(`^${escapeRegex(email)}$`, "i") } }] : []),
+      ],
+    });
+
+    const targetId  = existingLead ? existingLead._id : new mongoose.Types.ObjectId();
+    const isExisting = !!existingLead;
+
+    const admissionData = {
+      fullName, fatherName, dob, gender,
+      whatsappNumber: phone, emailAddress: email, cityAddress,
+      passportNumber, passportIssueDate, passportExpiry,
+      matricGrade, fscGrade, otherDegree, ieltsScore,
+      countryInterest, universityInterest, programInterest: courseInterest,
+    };
+
+    let savedLead;
+    if (isExisting) {
+      const setFields = { lastActivity: new Date() };
+      if (!existingLead.name || existingLead.name === existingLead.phone) setFields.name = fullName;
+      if (!existingLead.email) setFields.email = email;
+      for (const [k, v] of Object.entries(admissionData)) {
+        if (v !== null && v !== undefined && v !== "") setFields[`admissionProfile.${k}`] = v;
+      }
+      savedLead = await Lead.findByIdAndUpdate(targetId, {
+        $set: setFields,
+        $push: { activityLog: { type: "website_apply", description: "Website form re-submitted (JSON)", at: new Date(), by: "system" } },
+      }, { new: true });
+    } else {
+      savedLead = await Lead.create({
+        _id: targetId,
+        userId: tenantRaw,
+        name: fullName, phone, email,
+        countryInterest, courseInterest,
+        budget: "", source: "Website", status: "new",
+        lastActivity: new Date(),
+        admissionProfile: { ...admissionData, processStage: "registered", paymentReceived: false, uploadsMeta: [] },
+        messages: [],
+        activityLog: [{ type: "website_apply", description: "Application submitted from website (JSON)", at: new Date(), by: "system" }],
+      });
+    }
+
+    await createNotification(
+      tenantRaw, "website_application",
+      `${isExisting ? "Website form updated" : "New website application"} from ${fullName}`,
+      savedLead._id
+    );
+
+    console.log(`[website-apply-json] ${isExisting ? "MERGED" : "CREATED"} lead for ${fullName} (${phone})`);
+    return res.status(201).json({ ok: true, id: String(targetId), merged: isExisting, status: isExisting ? "Updated" : "Pending Review" });
+
+  } catch (err) {
+    console.error("[website-apply-json] ERROR:", err?.message, err?.stack);
+    return res.status(500).json({ error: err?.message || "Could not save application." });
+  }
+});
+
 /** Public track lookup by assigned Register ID (case-insensitive). */
 async function findWebsiteLeadForTrackQuery(ridRaw) {
   const rid = String(ridRaw || "").trim();
