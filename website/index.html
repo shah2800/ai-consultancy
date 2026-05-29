@@ -213,19 +213,31 @@
     .sbox-l{font-size:.72rem;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;margin-top:6px;font-weight:500}
 
     /* ─── Program cards ─── */
-    .prog-list{display:flex;flex-direction:column;gap:16px}
-    .prog{background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;display:flex;align-items:stretch;cursor:pointer;transition:.25s;box-shadow:0 1px 4px rgba(10,31,68,.05)}
-    .prog:hover{box-shadow:0 8px 30px rgba(10,31,68,.12);border-color:#bfdbfe;transform:translateY(-2px)}
-    .prog-img{width:120px;flex-shrink:0;position:relative;background:#0d1b2a;overflow:hidden}
-    .prog-img img{width:100%;height:100%;object-fit:cover;opacity:.9;transition:opacity 1s;position:absolute;inset:0}
-    .prog-img img.nxt{opacity:0}
-    .prog-data{padding:18px 20px;flex:1}
-    .prog-badge{font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--navy);background:var(--navylight);padding:3px 9px;border-radius:4px;display:inline-block;margin-bottom:8px}
-    .prog-name{font-family:var(--serif);font-size:1.1rem;color:var(--ink);margin-bottom:4px}
-    .prog-fee{font-size:.8125rem;color:var(--muted);display:flex;align-items:center;gap:6px}
-    .prog-fee span{font-weight:700;color:var(--gold)}
-    .prog-chevron{display:flex;align-items:center;padding:0 18px 0 0;color:#c0c9d6}
-    .prog-chevron svg{width:18px;height:18px}
+    .prog-list{display:grid;grid-template-columns:1fr;gap:20px}
+    .prog{background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden;cursor:pointer;transition:.28s;box-shadow:0 2px 12px rgba(10,31,68,.07);text-align:left;padding:0;position:relative;display:flex;flex-direction:column}
+    .prog:hover{box-shadow:0 16px 48px rgba(10,31,68,.15);border-color:rgba(10,31,68,.2);transform:translateY(-4px)}
+    .prog-img{width:100%;height:180px;flex-shrink:0;position:relative;background:var(--navy);overflow:hidden}
+    .prog-img img{width:100%;height:100%;object-fit:cover;opacity:.85;transition:transform .4s,opacity .4s;display:block}
+    .prog:hover .prog-img img{transform:scale(1.05);opacity:.95}
+    .prog-img img.nxt{opacity:0;position:absolute;inset:0}
+    /* Gradient overlay on image */
+    .prog-img::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(10,17,40,.7) 100%)}
+    /* Badge floats on top of image */
+    .prog-badge{position:absolute;top:14px;left:14px;z-index:2;font-size:.65rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:5px 11px;border-radius:6px;display:inline-block}
+    .prog-badge-red{background:#b91c1c;color:#fff}
+    .prog-badge-blue{background:var(--navy);color:#fff}
+    .prog-badge-green{background:#15803d;color:#fff}
+    /* Content below image */
+    .prog-data{padding:20px 22px 22px;flex:1;display:flex;flex-direction:column;gap:10px}
+    .prog-name{font-family:var(--serif);font-size:1.25rem;color:var(--ink);line-height:1.25}
+    .prog-meta{display:flex;flex-wrap:wrap;gap:8px}
+    .prog-pill{display:inline-flex;align-items:center;gap:5px;font-size:.75rem;font-weight:600;color:var(--soft);background:var(--bg);border:1px solid var(--border);padding:4px 10px;border-radius:20px}
+    .prog-fee-row{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:14px;border-top:1px solid var(--border)}
+    .prog-fee-label{font-size:.72rem;color:var(--muted);font-weight:500}
+    .prog-fee-val{font-family:var(--serif);font-size:1.35rem;color:var(--navy);line-height:1}
+    .prog-fee-sub{font-size:.7rem;color:var(--muted);margin-top:2px}
+    .prog-cta{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:700;color:var(--navy);background:var(--navylight);padding:8px 14px;border-radius:8px;border:1.5px solid rgba(10,31,68,.12);transition:.15s;width:fit-content}
+    .prog:hover .prog-cta{background:var(--navy);color:#fff;border-color:var(--navy)}
 
     /* ─── Why Georgia ─── */
     .benefit-grid{display:grid;grid-template-columns:1fr;gap:16px}
@@ -371,8 +383,7 @@
       .hdr-track{display:inline-flex!important}
       .hdr-apply{display:inline-flex}
       .hamburger{display:none}
-      .prog-list{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-      .prog-img{width:110px}
+      .prog-list{grid-template-columns:1fr 1fr;gap:20px}
       .modal{align-items:center;padding:20px}
       .modal-sh{max-width:460px;margin:0 auto;border-radius:16px;max-height:88vh}
       .modal-drag{display:none}
@@ -388,7 +399,6 @@
       .hero-in{grid-template-columns:1fr 1fr;align-items:center}
       .hero-side{display:block}
       .prog-list{grid-template-columns:repeat(3,1fr)}
-      .prog-img{width:100px;height:100%}
       .process-list{grid-template-columns:repeat(4,1fr)}
       .pstep:nth-child(even){border-right:1px solid var(--border)}
       .pstep:nth-last-child(-n+4){border-bottom:none}
@@ -585,43 +595,88 @@
     <section id="programs" class="sec">
       <div class="eyebrow">Programmes</div>
       <h2 class="h2">Degrees we place students in</h2>
-      <p class="lead">Tap any card to see universities, fees, and exactly which documents you need.</p>
+      <p class="lead">Click any card to see universities, fees, and exactly which documents you need.</p>
       <div class="prog-list">
 
+        <!-- MBBS -->
         <button class="prog" id="mbbs-btn" type="button" aria-label="MBBS details">
-          <div class="prog-img" style="min-height:90px">
-            <img src="images/MBBS/1.webp" alt="MBBS in Georgia" id="mbbs-img" loading="lazy">
+          <div class="prog-img">
+            <span class="prog-badge prog-badge-red">🏥 Most Popular</span>
+            <img src="images/MBBS/1.webp" alt="MBBS / Medicine abroad" id="mbbs-img" loading="lazy">
           </div>
           <div class="prog-data">
-            <span class="prog-badge">🏥 Most Popular</span>
             <div class="prog-name">MBBS / MD — Medicine</div>
-            <div class="prog-fee">From <span>$2,500</span> per semester · 5–6 years · English medium</div>
+            <div class="prog-meta">
+              <span class="prog-pill">⏱ 5–6 Years</span>
+              <span class="prog-pill">🌐 English Medium</span>
+              <span class="prog-pill">✅ PMC Recognised</span>
+            </div>
+            <div class="prog-fee-row">
+              <div>
+                <div class="prog-fee-label">Starting from</div>
+                <div class="prog-fee-val">$2,500</div>
+                <div class="prog-fee-sub">per semester</div>
+              </div>
+              <div class="prog-cta">
+                View Details
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+              </div>
+            </div>
           </div>
-          <div class="prog-chevron"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></div>
         </button>
 
+        <!-- BBA/MBA -->
         <button class="prog" id="bba-btn" type="button" aria-label="BBA/MBA details">
-          <div class="prog-img" style="min-height:90px">
-            <img src="images/BBA/1.webp" alt="Business in Georgia" id="bba-img" loading="lazy">
+          <div class="prog-img">
+            <span class="prog-badge prog-badge-blue">💼 Business</span>
+            <img src="images/BBA/1.webp" alt="BBA MBA Business abroad" id="bba-img" loading="lazy">
           </div>
           <div class="prog-data">
-            <span class="prog-badge">💼 Business</span>
             <div class="prog-name">BBA &amp; MBA — Business</div>
-            <div class="prog-fee">From <span>$1,750</span> per semester · 4 years · English medium</div>
+            <div class="prog-meta">
+              <span class="prog-pill">⏱ 4 Years</span>
+              <span class="prog-pill">🌐 English Medium</span>
+              <span class="prog-pill">🎓 HEC Recognised</span>
+            </div>
+            <div class="prog-fee-row">
+              <div>
+                <div class="prog-fee-label">Starting from</div>
+                <div class="prog-fee-val">$1,750</div>
+                <div class="prog-fee-sub">per semester</div>
+              </div>
+              <div class="prog-cta">
+                View Details
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+              </div>
+            </div>
           </div>
-          <div class="prog-chevron"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></div>
         </button>
 
+        <!-- IT/CS -->
         <button class="prog" id="it-btn" type="button" aria-label="IT/CS details">
-          <div class="prog-img" style="min-height:90px">
-            <img src="images/IT/1.webp" alt="IT in Georgia" id="it-img" loading="lazy">
+          <div class="prog-img">
+            <span class="prog-badge prog-badge-green">💻 Technology</span>
+            <img src="images/IT/1.webp" alt="Computer Science IT abroad" id="it-img" loading="lazy">
           </div>
           <div class="prog-data">
-            <span class="prog-badge">💻 Technology</span>
             <div class="prog-name">Computer Science &amp; IT</div>
-            <div class="prog-fee">From <span>$1,500</span> per semester · 4 years · English medium</div>
+            <div class="prog-meta">
+              <span class="prog-pill">⏱ 4 Years</span>
+              <span class="prog-pill">🌐 English Medium</span>
+              <span class="prog-pill">💡 Top Tech Programs</span>
+            </div>
+            <div class="prog-fee-row">
+              <div>
+                <div class="prog-fee-label">Starting from</div>
+                <div class="prog-fee-val">$1,500</div>
+                <div class="prog-fee-sub">per semester</div>
+              </div>
+              <div class="prog-cta">
+                View Details
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+              </div>
+            </div>
           </div>
-          <div class="prog-chevron"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></div>
         </button>
 
       </div>
