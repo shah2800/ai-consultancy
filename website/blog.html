@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Blog — Study Abroad Tips, MBBS Georgia, Consultancy Guide | NextStep International</title>
+  <meta name="description" content="Read expert articles on studying abroad from Pakistan. MBBS in Georgia, study abroad consultancy tips, visa guide, university admission advice and more by NextStep International.">
+  <meta name="keywords" content="study abroad pakistan, mbbs in georgia, study abroad consultancy pakistan, how to study abroad from pakistan, georgia university admission, education consultancy pakistan, abroad study guide, nextstep international blog">
+  <meta name="author" content="NextStep International">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#0a1f44">
+  <link rel="canonical" href="https://www.nextstepinternationals.com/blog.html">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://www.nextstepinternationals.com/blog.html">
+  <meta property="og:title" content="Blog — Study Abroad Tips & Guides | NextStep International">
+  <meta property="og:description" content="Expert articles on studying abroad from Pakistan. MBBS in Georgia, consultancy tips, visa guide and more.">
+  <meta property="og:image" content="https://www.nextstepinternationals.com/images/og-image.jpg">
+  <meta property="og:site_name" content="NextStep International">
+  <link rel="icon" href="images/logo.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="images/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root{
+      --navy:#0a1f44;--navy2:#1a3a6e;--navylight:#eef3fb;
+      --gold:#b8960c;--goldlight:#fdf6e3;--goldbright:#d4a843;
+      --ink:#0d1b2a;--soft:#3d4f63;--muted:#6b7280;
+      --bg:#f7f9fc;--surface:#fff;--border:#e5e7eb;
+      --r:12px;--rsm:8px;--max:1100px;
+      --serif:"DM Serif Display",Georgia,serif;
+      --sans:"Inter",system-ui,sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+    body{font-family:var(--sans);font-size:1rem;line-height:1.65;color:var(--soft);background:var(--bg);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    img{max-width:100%;display:block}
+
+    /* Header */
+    .site-header{position:sticky;top:0;z-index:400;background:#fff;border-bottom:1px solid var(--border);box-shadow:0 2px 16px rgba(10,31,68,.07)}
+    .hdr{max-width:var(--max);margin:0 auto;padding:0 24px;height:66px;display:flex;align-items:center;gap:16px}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand img{height:38px;width:auto}
+    .hdr-back{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:.875rem;font-weight:600;color:var(--navy);padding:8px 16px;border-radius:var(--rsm);border:1.5px solid var(--border);transition:.15s}
+    .hdr-back:hover{background:var(--navylight);border-color:var(--navy)}
+
+    /* Hero */
+    .page-hero{background:linear-gradient(135deg,var(--navy),var(--navy2));padding:52px 24px 44px;text-align:center;color:#fff;position:relative;overflow:hidden}
+    .page-hero::before{content:"";position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/svg%3E");pointer-events:none}
+    .page-hero h1{font-family:var(--serif);font-size:clamp(1.9rem,4vw,2.8rem);font-weight:400;margin-bottom:12px;position:relative}
+    .page-hero p{font-size:.9375rem;opacity:.82;max-width:520px;margin:0 auto;position:relative}
+    .gold-line{width:56px;height:3px;background:linear-gradient(90deg,var(--goldbright),var(--gold));border-radius:2px;margin:14px auto}
+
+    /* Tags bar */
+    .tags-bar{background:#fff;border-bottom:1px solid var(--border);padding:14px 24px;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+    .tags-inner{max-width:var(--max);margin:0 auto;display:flex;gap:8px}
+    .tag-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;font-size:.8rem;font-weight:600;border:1.5px solid var(--border);background:#fff;color:var(--soft);cursor:pointer;white-space:nowrap;transition:.15s;text-decoration:none}
+    .tag-btn:hover,.tag-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+    /* Layout */
+    .wrap{max-width:var(--max);margin:0 auto;padding:40px 20px 80px}
+    .blog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:24px}
+
+    /* Blog card */
+    .blog-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:transform .2s,box-shadow .2s;display:flex;flex-direction:column}
+    .blog-card:hover{transform:translateY(-4px);box-shadow:0 12px 36px rgba(10,31,68,.12)}
+    .card-img{height:190px;background:var(--navylight);display:flex;align-items:center;justify-content:center;font-size:3.5rem;position:relative;overflow:hidden}
+    .card-img .card-cat{position:absolute;top:12px;left:12px;background:var(--navy);color:#fff;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:4px 10px;border-radius:20px}
+    .card-body{padding:20px;flex:1;display:flex;flex-direction:column}
+    .card-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+    .card-tag{font-size:.7rem;font-weight:600;color:var(--navy);background:var(--navylight);padding:3px 9px;border-radius:20px}
+    .card-title{font-family:var(--serif);font-size:1.15rem;font-weight:400;color:var(--ink);line-height:1.35;margin-bottom:8px}
+    .card-desc{font-size:.875rem;color:var(--muted);line-height:1.6;flex:1;margin-bottom:14px}
+    .card-meta{display:flex;align-items:center;gap:10px;font-size:.78rem;color:var(--muted);border-top:1px solid var(--border);padding-top:12px;margin-top:auto}
+    .card-meta-dot{width:4px;height:4px;background:var(--border);border-radius:50%}
+    .card-read{margin-left:auto;font-size:.78rem;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:4px}
+    .card-read svg{width:13px;height:13px}
+
+    /* Floating WhatsApp */
+    .wa-float{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom));right:24px;z-index:500}
+    .wa-pulse{position:absolute;inset:-4px;border-radius:50%;border:3px solid rgba(37,211,102,.5);animation:waPulse 2s ease-out infinite;pointer-events:none}
+    @keyframes waPulse{0%{opacity:1;transform:scale(1)}70%{opacity:0;transform:scale(1.5)}100%{opacity:0;transform:scale(1.5)}}
+    .wa-btn{position:relative;display:flex;align-items:center;justify-content:center;width:56px;height:56px;background:linear-gradient(135deg,#25d366,#128c7e);border-radius:50%;box-shadow:0 6px 24px rgba(37,211,102,.45);text-decoration:none;transition:transform .2s}
+    .wa-btn:hover{transform:scale(1.08)}
+    .wa-btn svg{width:28px;height:28px;fill:#fff}
+    .wa-label{position:absolute;right:64px;top:50%;transform:translateY(-50%);background:var(--ink);color:#fff;font-size:.8rem;font-weight:600;padding:5px 12px;border-radius:20px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s}
+    .wa-float:hover .wa-label{opacity:1}
+
+    @media(max-width:600px){.blog-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="hdr">
+      <a class="brand" href="index.html"><img src="images/logo.svg" height="38" alt="NextStep International"></a>
+      <a class="hdr-back" href="index.html">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        Back to Home
+      </a>
+    </div>
+  </header>
+
+  <div class="page-hero">
+    <h1>Study Abroad Blog</h1>
+    <div class="gold-line"></div>
+    <p>Expert guides, tips and real student stories to help you study abroad from Pakistan</p>
+  </div>
+
+  <!-- Tags / Filter bar -->
+  <div class="tags-bar">
+    <div class="tags-inner">
+      <a class="tag-btn active" href="blog.html">🌍 All</a>
+      <a class="tag-btn" href="blog-mbbs-georgia.html">#MBBS Georgia</a>
+      <a class="tag-btn" href="blog-study-abroad.html">#Study Abroad</a>
+      <a class="tag-btn" href="blog-visa-guide.html">#Visa Guide</a>
+      <a class="tag-btn" href="blog-consultancy.html">#Consultancy Tips</a>
+      <a class="tag-btn" href="blog-scholarships.html">#Scholarships</a>
+      <a class="tag-btn" href="blog-georgia-life.html">#Life in Georgia</a>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="blog-grid">
+
+      <!-- Post 1 -->
+      <a class="blog-card" href="blog-mbbs-georgia.html">
+        <div class="card-img" style="background:linear-gradient(135deg,#eef3fb,#dbeafe)">
+          🏥
+          <div class="card-cat">MBBS</div>
+        </div>
+        <div class="card-body">
+          <div class="card-tags">
+            <span class="card-tag">#MBBS Georgia</span>
+            <span class="card-tag">#Medical</span>
+            <span class="card-tag">#Admission</span>
+          </div>
+          <div class="card-title">MBBS in Georgia for Pakistani Students — Complete 2025 Guide</div>
+          <div class="card-desc">Everything you need to know about studying MBBS in Georgia — top universities, fees, duration, eligibility and how to apply from Pakistan.</div>
+          <div class="card-meta">
+            <span>May 2025</span>
+            <span class="card-meta-dot"></span>
+            <span>8 min read</span>
+            <span class="card-read">Read <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg></span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Post 2 -->
+      <a class="blog-card" href="blog-study-abroad.html">
+        <div class="card-img" style="background:linear-gradient(135deg,#fdf6e3,#fef9c3)">
+          ✈️
+          <div class="card-cat">Study Abroad</div>
+        </div>
+        <div class="card-body">
+          <div class="card-tags">
+            <span class="card-tag">#Study Abroad</span>
+            <span class="card-tag">#Pakistan</span>
+            <span class="card-tag">#Guide</span>
+          </div>
+          <div class="card-title">How to Study Abroad from Pakistan in 2025 — Step by Step</div>
+          <div class="card-desc">A complete beginner's guide for Pakistani students who want to study abroad — which country to choose, how to apply, documents needed and more.</div>
+          <div class="card-meta">
+            <span>May 2025</span>
+            <span class="card-meta-dot"></span>
+            <span>10 min read</span>
+            <span class="card-read">Read <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg></span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Post 3 -->
+      <a class="blog-card" href="blog-consultancy.html">
+        <div class="card-img" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7)">
+          🏢
+          <div class="card-cat">Consultancy</div>
+        </div>
+        <div class="card-body">
+          <div class="card-tags">
+            <span class="card-tag">#Consultancy</span>
+            <span class="card-tag">#Tips</span>
+            <span class="card-tag">#Pakistan</span>
+          </div>
+          <div class="card-title">How to Choose the Right Study Abroad Consultancy in Pakistan</div>
+          <div class="card-desc">Not all consultancies are equal. Learn what to look for, red flags to avoid, and how to find a trustworthy education consultant in Pakistan.</div>
+          <div class="card-meta">
+            <span>May 2025</span>
+            <span class="card-meta-dot"></span>
+            <span>6 min read</span>
+            <span class="card-read">Read <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg></span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Post 4 -->
+      <a class="blog-card" href="blog-visa-guide.html">
+        <div class="card-img" style="background:linear-gradient(135deg,#fdf4ff,#f5d0fe)">
+          🛂
+          <div class="card-cat">Visa</div>
+        </div>
+        <div class="card-body">
+          <div class="card-tags">
+            <span class="card-tag">#Visa</span>
+            <span class="card-tag">#Georgia</span>
+            <span class="card-tag">#Documents</span>
+          </div>
+          <div class="card-title">Georgia Student Visa Guide for Pakistani Students 2025</div>
+          <div class="card-desc">Learn exactly how to get a student visa for Georgia from Pakistan — documents required, process, timeline and tips to avoid rejection.</div>
+          <div class="card-meta">
+            <span>May 2025</span>
+            <span class="card-meta-dot"></span>
+            <span>7 min read</span>
+            <span class="card-read">Read <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg></span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Post 5 -->
+      <a class="blog-card" href="blog-scholarships.html">
+        <div class="card-img" style="background:linear-gradient(135deg,#fff7ed,#fed7aa)">
+          🎓
+          <div class="card-cat">Scholarships</div>
+        </div>
+        <div class="card-body">
+          <div class="card-tags">
+            <span class="card-tag">#Scholarships</span>
+            <span class="card-tag">#Free Study</span>
+            <span class="card-tag">#Pakistan</span>
+          </div>
+          <div class="card-title">Top Scholarships for Pakistani Students to Study Abroad in 2025</div>
+          <div class="card-desc">Discover fully funded and partial scholarships available for Pakistani students who want to study in Georgia, Turkey, China, and Europe.</div>
+          <div class="card-meta">
+            <span>May 2025</span>
+            <span class="card-meta-dot"></span>
+            <span>9 min read</span>
+            <span class="card-read">Read <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg></span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Post 6 -->
+      <a class="blog-card" href="blog-georgia-life.html">
+        <div class="card-img" style="background:linear-gradient(135deg,#eef3fb,#e0f2fe)">
+          🇬🇪
+          <div class="card-cat">Life in Georgia</div>
+        </div>
+        <div class="card-body">
+          <div class="card-tags">
+            <span class="card-tag">#Georgia</span>
+            <span class="card-tag">#Student Life</span>
+            <span class="card-tag">#Living Cost</span>
+          </div>
+          <div class="card-title">Student Life in Georgia — Cost of Living, Food & Safety for Pakistanis</div>
+          <div class="card-desc">What is it really like to live in Georgia as a Pakistani student? Real answers on living cost, food, accommodation, weather and safety.</div>
+          <div class="card-meta">
+            <span>May 2025</span>
+            <span class="card-meta-dot"></span>
+            <span>7 min read</span>
+            <span class="card-read">Read <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg></span>
+          </div>
+        </div>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- Floating WhatsApp -->
+  <div class="wa-float">
+    <div class="wa-pulse"></div>
+    <a class="wa-btn" href="https://wa.me/923142638901" target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp">
+      <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.134.558 4.133 1.532 5.866L.057 23.857a.5.5 0 00.606.606l6.056-1.467A11.944 11.944 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.013-1.375l-.36-.213-3.733.904.921-3.648-.233-.376A9.818 9.818 0 1112 21.818z"/></svg>
+    </a>
+    <div class="wa-label">Chat with us</div>
+  </div>
+
+</body>
+</html>
