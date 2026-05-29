@@ -3531,6 +3531,18 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
           if (!fromPhone) continue;
           const inboundMessageId = String(parsedInbound.data.id || "").trim();
 
+          // ── Blue ticks: mark message as read ──
+          if (inboundMessageId && phoneNumberId) {
+            const waToken = String(process.env.WHATSAPP_TOKEN || "").trim();
+            if (waToken) {
+              axios.post(
+                `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
+                { messaging_product: "whatsapp", status: "read", message_id: inboundMessageId },
+                { headers: { Authorization: `Bearer ${waToken}`, "Content-Type": "application/json" } }
+              ).catch(() => {}); // fire-and-forget, don't block reply
+            }
+          }
+
           const summary = summarizeInboundWhatsAppMessage(msg || {});
 
           const introName =
