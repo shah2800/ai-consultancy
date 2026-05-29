@@ -2228,13 +2228,15 @@ function handleGuidedConversation(lead, inboundText, cName) {
   const isRussia     = /russia/i.test(text);
   const isTurkey     = /turkey/i.test(text);
 
-  // First ever message OR greeting without guided state → welcome menu
+  // First ever message only → welcome menu
   const isGreeting = /^(hi|hello|salam|assalam|hey|helo|hii|salaam|aoa|wslm|start|menu|help|info)\b/i.test(inboundText.trim());
-  if (!state && (lead.messages.length === 0 || isGreeting)) {
+  if (!state && lead.messages.length === 0) {
     return { reply: guidedWelcome(cName), newState: "menu_sent" };
   }
-  // If state is menu_sent but student sends greeting again → resend menu
-  if (state === "menu_sent" && isGreeting) {
+  // If no state but returning student says hi → let normal AI handle warmly
+  // Only resend menu if student explicitly types "menu" or "start"
+  const wantsMenu = /^(menu|start)\b/i.test(inboundText.trim());
+  if (wantsMenu) {
     return { reply: guidedWelcome(cName), newState: "menu_sent" };
   }
 
@@ -2454,7 +2456,7 @@ async function askAI(history, userId) {
     ? `\nSMART CONTEXT RULES (follow these carefully):\n${smartRules.map((r, i) => `${i + 1}. ${r}`).join("\n")}`
     : "";
 
-  const correctPhone = bizPhone || "+92 314 2638901";
+  const correctPhone = "+92 314 2638901";
   const correctWebsite = webUrl || "nextstepinternationals.com";
 
   const prompt = `
@@ -4114,6 +4116,8 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
               aiDailyCount: nextDailyCount,
               aiDailyLimit: configuredLimit,
               aiLimitResetAt: nextResetAt,
+              // preserve guidedState — do NOT overwrite it here
+              guidedState: lead.extractedData?.guidedState || "",
             };
           }
 
