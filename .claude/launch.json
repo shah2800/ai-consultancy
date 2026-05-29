@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "website",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "website", "--no-clipboard", "-p", "5501"],
+      "port": 5501
+    }
+  ]
+}
