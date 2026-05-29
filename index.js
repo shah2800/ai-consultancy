@@ -7555,18 +7555,24 @@ app.post(
   "/public/website/apply",
   websiteApplyLimiter,
   verifyWebsiteFormToken,
-  websiteFormUpload.fields([
-    { name: "doc_matric", maxCount: 1 },
-    { name: "doc_fsc", maxCount: 1 },
-    { name: "doc_passport", maxCount: 1 },
-    { name: "doc_photo", maxCount: 1 },
-    { name: "doc_cnic", maxCount: 1 },
-    { name: "doc_other", maxCount: 1 },
-    { name: "doc_complete", maxCount: 1 },
-    { name: "attachments", maxCount: 12 },
-  ]),
   async (req, res) => {
     try {
+      // Run multer inside try/catch so ANY upload error is handled gracefully
+      await new Promise((resolve, reject) => {
+        websiteFormUpload.fields([
+          { name: "doc_matric", maxCount: 1 },
+          { name: "doc_fsc", maxCount: 1 },
+          { name: "doc_passport", maxCount: 1 },
+          { name: "doc_photo", maxCount: 1 },
+          { name: "doc_cnic", maxCount: 1 },
+          { name: "doc_other", maxCount: 1 },
+          { name: "doc_complete", maxCount: 1 },
+          { name: "attachments", maxCount: 12 },
+        ])(req, res, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
       const tenantRaw = String(process.env.WEBSITE_TENANT_USER_ID || "").trim();
       if (!tenantRaw || !mongoose.Types.ObjectId.isValid(tenantRaw)) {
         return res.status(503).json({
@@ -7811,8 +7817,11 @@ app.post(
       if (err?.code === "LIMIT_FILE_SIZE" || err?.name === "MulterError") {
         return res.status(413).json({ error: "File too large. Maximum 25 MB per file." });
       }
-      console.error("POST /public/website/apply:", err?.message || err);
-      return res.status(500).json({ error: "Could not save application." });
+      console.error("POST /public/website/apply ERROR:", err?.message || err);
+      console.error("POST /public/website/apply STACK:", err?.stack);
+      console.error("POST /public/website/apply BODY KEYS:", Object.keys(req.body || {}));
+      console.error("POST /public/website/apply TENANT:", process.env.WEBSITE_TENANT_USER_ID);
+      return res.status(500).json({ error: err?.message || "Could not save application." });
     }
   }
 );
