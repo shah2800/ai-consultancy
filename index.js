@@ -2228,8 +2228,13 @@ function handleGuidedConversation(lead, inboundText, cName) {
   const isRussia     = /russia/i.test(text);
   const isTurkey     = /turkey/i.test(text);
 
-  // First ever message → welcome menu
-  if (!state && lead.messages.length === 0) {
+  // First ever message OR greeting without guided state → welcome menu
+  const isGreeting = /^(hi|hello|salam|assalam|hey|helo|hii|salaam|aoa|wslm|start|menu|help|info)\b/i.test(inboundText.trim());
+  if (!state && (lead.messages.length === 0 || isGreeting)) {
+    return { reply: guidedWelcome(cName), newState: "menu_sent" };
+  }
+  // If state is menu_sent but student sends greeting again → resend menu
+  if (state === "menu_sent" && isGreeting) {
     return { reply: guidedWelcome(cName), newState: "menu_sent" };
   }
 
@@ -2390,10 +2395,11 @@ async function askAI(history, userId) {
   const isUrdu = /[؀-ۿ]/.test(recentUserMessage) ||
     /\b(mujhe|chahiye|karna|hai|hain|aap|apka|mere|kya|nahi|nhi|kaisa|kaise|bhi|phir|abhi|yaar|bhai|agar|lekin|aur|sath|wala|wali|karein|karen|bata|batao|hogai|hogaya|liye|sirf|bohat|bahut|zyada|thoda|thori|pehle|baad|samajh|samjha|jaldi|zaroor|bilkul)\b/i.test(recentUserMessage);
 
-  // 2. Office hours (Pakistan time UTC+5)
-  const nowPK = new Date(Date.now() + 5 * 60 * 60 * 1000);
-  const hourPK = nowPK.getUTCHours();
-  const dayPK  = nowPK.getUTCDay(); // 0=Sun, 6=Sat
+  // 2. Office hours (Pakistan time = UTC+5)
+  const nowUTC = new Date();
+  const nowPK  = new Date(nowUTC.getTime() + 5 * 60 * 60 * 1000);
+  const hourPK = nowPK.getUTCHours();   // 0-23 in PKT
+  const dayPK  = nowPK.getUTCDay();     // 0=Sun, 6=Sat
   const isOfficeHours = dayPK >= 1 && dayPK <= 6 && hourPK >= 9 && hourPK < 18;
 
   // 3. Angry/frustrated detection
@@ -2450,16 +2456,35 @@ async function askAI(history, userId) {
     ? `\nSMART CONTEXT RULES (follow these carefully):\n${smartRules.map((r, i) => `${i + 1}. ${r}`).join("\n")}`
     : "";
 
+  const correctPhone = bizPhone || "+92 314 2638901";
+  const correctWebsite = webUrl || "nextstepinternationals.com";
+
   const prompt = `
 You are a friendly, smart study abroad consultant for ${name}. You talk like a real helpful Pakistani consultant — warm, simple, easy to understand.
 
 Tone: ${tone}
 
-Countries we offer:
-${countries}
+STRICTLY CORRECT FACTS (never change these numbers):
+- MBBS Georgia: $2,500 per semester (NOT $4000, NOT $8000)
+- BBA/MBA Georgia: $1,750 per semester
+- IT/CS Georgia: $1,500 per semester
+- MBBS Azerbaijan: $3,000 per semester
+- MBBS Russia: $3,500 per semester
+- MBBS Turkey: $4,000 per semester
+- Living cost Georgia: $250-350 per month
+- MBBS duration: 5-6 years
+- No IELTS required for Georgia
+- PMC recognised: Yes for Georgia, Azerbaijan, Russia
+- Website: ${correctWebsite}
+- Apply link: ${correctWebsite}/apply.html
+- WhatsApp/Phone: ${correctPhone}
 
-CONSULTANCY CONTACT (only share when student asks):
-${contactFactsBlock}
+COUNTRIES WE OFFER (ONLY these — do NOT mention other countries):
+Georgia 🇬🇪 (most popular), Azerbaijan 🇦🇿, Russia 🇷🇺, Turkey 🇹🇷
+
+CONSULTANCY CONTACT (share when student asks):
+- Phone/WhatsApp: ${correctPhone}
+- Website: ${correctWebsite}
 ${aboutBlock ? `\n${aboutBlock}\n` : ""}
 
 CONFIRMED STUDENT NAME:
@@ -2468,24 +2493,27 @@ ${smartRulesBlock}
 
 CORE RULES:
 - Max 80 words per reply
-- WhatsApp style — short paragraphs, emojis
+- WhatsApp style — short, friendly, emojis
 - Ask only 1 question at a time
-- Never promise visa approval or guaranteed admission
-- After 4-5 messages suggest talking to real consultant
-- Never invent fees, university names, or facts
-- If student seems ready → guide them to apply: nextstepinternationals.com/apply.html
+- NEVER mention countries we don't offer (no China, no UK, no Malaysia etc.)
+- NEVER give wrong fees — use STRICTLY CORRECT FACTS above
+- NEVER invent university names unless you are 100% sure
+- NEVER promise visa approval or guaranteed admission
+- If student asks about universities → say "we have partnered universities in Georgia, our consultant will share details"
+- After 5-6 messages suggest free consultation: WhatsApp ${correctPhone}
+- If student seems ready → guide to apply: ${correctWebsite}/apply.html
 
 BUSINESS ALLOWED:
-${canSay || "consultation support and process guidance"}
+${canSay || "consultation support and process guidance only"}
 
 BUSINESS NOT ALLOWED:
-${cannotSay || "never guarantee outcomes"}
+${cannotSay || "never guarantee outcomes, never give wrong fees"}
 
 CUSTOM RULES:
 ${customRules || "none"}
 
 FAQ KNOWLEDGE:
-${faqText || "No FAQs added yet."}
+${faqText || "No FAQs added yet — use STRICTLY CORRECT FACTS above."}
 ${universitiesSection}
 `;
 
