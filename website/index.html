@@ -63,9 +63,12 @@
   </script>
 
   <link rel="preload" as="image" href="images/hero.webp" fetchpriority="high">
+  <link rel="preload" as="image" href="images/MBBS/1.webp" fetchpriority="low">
   <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800&display=swap">
+  <!-- Non-blocking font load — prevents render delay -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
   <style>
     :root{
       --navy:#0a1f44; --navy2:#1a3a6e; --navylight:#eef3fb;
@@ -78,8 +81,8 @@
       --sans:"Inter",system-ui,sans-serif;
     }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
-    body{font-family:var(--sans);font-size:1rem;line-height:1.65;color:var(--soft);background:#fff;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+    html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;text-rendering:optimizeLegibility}
+    body{font-family:var(--sans);font-size:1rem;line-height:1.65;color:var(--soft);background:#fff;-webkit-font-smoothing:antialiased;overflow-x:hidden;overscroll-behavior-y:none}
     a{color:inherit;text-decoration:none}
     img{max-width:100%;height:auto;display:block}
     ::-webkit-scrollbar{width:4px}
@@ -214,30 +217,42 @@
 
     /* ─── Program cards ─── */
     .prog-list{display:grid;grid-template-columns:1fr;gap:20px}
-    .prog{background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden;cursor:pointer;transition:.28s;box-shadow:0 2px 12px rgba(10,31,68,.07);text-align:left;padding:0;position:relative;display:flex;flex-direction:column}
-    .prog:hover{box-shadow:0 16px 48px rgba(10,31,68,.15);border-color:rgba(10,31,68,.2);transform:translateY(-4px)}
-    .prog-img{width:100%;height:180px;flex-shrink:0;position:relative;background:var(--navy);overflow:hidden}
-    .prog-img img{width:100%;height:100%;object-fit:cover;opacity:.85;transition:transform .4s,opacity .4s;display:block}
-    .prog:hover .prog-img img{transform:scale(1.05);opacity:.95}
-    .prog-img img.nxt{opacity:0;position:absolute;inset:0}
-    /* Gradient overlay on image */
-    .prog-img::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(10,17,40,.7) 100%)}
-    /* Badge floats on top of image */
-    .prog-badge{position:absolute;top:14px;left:14px;z-index:2;font-size:.65rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:5px 11px;border-radius:6px;display:inline-block}
-    .prog-badge-red{background:#b91c1c;color:#fff}
-    .prog-badge-blue{background:var(--navy);color:#fff}
-    .prog-badge-green{background:#15803d;color:#fff}
-    /* Content below image */
+    .prog{background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden;cursor:pointer;transition:transform .28s cubic-bezier(.16,1,.3,1),border-color .28s;box-shadow:0 2px 12px rgba(10,31,68,.07);text-align:left;padding:0;position:relative;display:flex;flex-direction:column;will-change:transform}
+    /* Shadow via pseudo-element — GPU composited, no repaint */
+    .prog::before{content:"";position:absolute;inset:0;border-radius:16px;box-shadow:0 20px 56px rgba(10,31,68,.18);opacity:0;transition:opacity .28s;z-index:-1;pointer-events:none}
+    .prog:hover{transform:translateY(-5px);border-color:rgba(10,31,68,.18)}
+    .prog:hover::before{opacity:1}
+    /* Image container — 2 slots for smooth crossfade */
+    .prog-img{width:100%;height:200px;flex-shrink:0;position:relative;background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);overflow:hidden}
+    .prog-slide{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;will-change:opacity;transition:opacity 1.4s ease}
+    .prog-slide.show{opacity:.88;z-index:1}
+    .prog-slide.hide{opacity:0;z-index:0}
+    .prog:hover .prog-slide.show{transform:scale(1.04);transition:opacity 1.4s ease,transform 6s ease}
+    /* Gradient overlay */
+    .prog-img::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,17,40,.05) 30%,rgba(10,17,40,.72) 100%);z-index:2;pointer-events:none}
+    /* Badge on image */
+    .prog-badge{position:absolute;top:14px;left:14px;z-index:3;font-size:.62rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;padding:5px 11px;border-radius:6px;display:inline-block;backdrop-filter:blur(4px)}
+    .prog-badge-red{background:rgba(185,28,28,.9);color:#fff}
+    .prog-badge-blue{background:rgba(10,31,68,.9);color:#fff}
+    .prog-badge-green{background:rgba(21,128,61,.9);color:#fff}
+    /* Content */
     .prog-data{padding:20px 22px 22px;flex:1;display:flex;flex-direction:column;gap:10px}
     .prog-name{font-family:var(--serif);font-size:1.25rem;color:var(--ink);line-height:1.25}
     .prog-meta{display:flex;flex-wrap:wrap;gap:8px}
-    .prog-pill{display:inline-flex;align-items:center;gap:5px;font-size:.75rem;font-weight:600;color:var(--soft);background:var(--bg);border:1px solid var(--border);padding:4px 10px;border-radius:20px}
+    .prog-pill{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:600;color:var(--soft);background:var(--bg);border:1px solid var(--border);padding:4px 10px;border-radius:20px}
     .prog-fee-row{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:14px;border-top:1px solid var(--border)}
     .prog-fee-label{font-size:.72rem;color:var(--muted);font-weight:500}
     .prog-fee-val{font-family:var(--serif);font-size:1.35rem;color:var(--navy);line-height:1}
     .prog-fee-sub{font-size:.7rem;color:var(--muted);margin-top:2px}
-    .prog-cta{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:700;color:var(--navy);background:var(--navylight);padding:8px 14px;border-radius:8px;border:1.5px solid rgba(10,31,68,.12);transition:.15s;width:fit-content}
+    .prog-cta{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:700;color:var(--navy);background:var(--navylight);padding:8px 14px;border-radius:8px;border:1.5px solid rgba(10,31,68,.12);transition:background .18s,color .18s,border-color .18s;width:fit-content}
     .prog:hover .prog-cta{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+    /* ─── Section fade-in on scroll ─── */
+    .reveal{opacity:0;transform:translateY(28px);transition:opacity .65s cubic-bezier(.16,1,.3,1),transform .65s cubic-bezier(.16,1,.3,1)}
+    .reveal.in{opacity:1;transform:none}
+    .reveal-delay-1{transition-delay:.1s}
+    .reveal-delay-2{transition-delay:.2s}
+    .reveal-delay-3{transition-delay:.3s}
 
     /* ─── Why Georgia ─── */
     .benefit-grid{display:grid;grid-template-columns:1fr;gap:16px}
@@ -246,7 +261,7 @@
     .bcard-ico{width:44px;height:44px;border-radius:10px;background:var(--navylight);color:var(--navy);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.2rem}
 
     /* ─── Destination cards ─── */
-    .dest-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:20px 16px;text-align:center;cursor:pointer;transition:.2s;box-shadow:0 1px 4px rgba(10,31,68,.05)}
+    .dest-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:20px 16px;text-align:center;cursor:pointer;transition:transform .22s cubic-bezier(.16,1,.3,1),border-color .22s;box-shadow:0 1px 4px rgba(10,31,68,.05);will-change:transform}
     .dest-card:hover{transform:translateY(-4px);box-shadow:0 10px 28px rgba(10,31,68,.12);border-color:#bfdbfe}
     .dest-flag{font-size:2rem;margin-bottom:8px}
     .dest-name{font-family:var(--serif);font-size:1.05rem;color:var(--ink);margin-bottom:4px}
@@ -254,7 +269,7 @@
     .dest-fee{font-size:.78rem;font-weight:700;color:var(--gold);background:var(--goldlight);padding:3px 10px;border-radius:20px;display:inline-block}
 
     /* ─── Testimonials ─── */
-    .tcard{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:24px;box-shadow:0 2px 12px rgba(10,31,68,.05);transition:.2s}
+    .tcard{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:24px;box-shadow:0 2px 12px rgba(10,31,68,.05);transition:transform .22s cubic-bezier(.16,1,.3,1);will-change:transform}
     .tcard:hover{box-shadow:0 8px 28px rgba(10,31,68,.1);transform:translateY(-3px)}
     .tcard-stars{color:var(--goldbright);font-size:1rem;margin-bottom:12px;letter-spacing:2px}
     .tcard-text{font-size:.9rem;color:var(--soft);line-height:1.7;margin-bottom:18px;font-style:italic}
@@ -333,7 +348,7 @@
     .cm-arrow svg{width:16px;height:16px}
 
     /* ─── Footer ─── */
-    .footer{background:#0d1b2a;color:rgba(255,255,255,.6);padding:52px 24px 28px}
+    .footer{content-visibility:auto;contain-intrinsic-size:0 400px;background:#0d1b2a;color:rgba(255,255,255,.6);padding:52px 24px 28px}
     .footer-in{max-width:var(--max);margin:0 auto}
     .footer-top{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:36px}
     .f-brand{display:flex;align-items:center;gap:10px;margin-bottom:12px}
@@ -566,7 +581,7 @@
     </div>
 
     <!-- ══ ABOUT ══ -->
-    <section id="about" class="sec">
+    <section id="about" class="sec reveal">
       <div class="eyebrow">Who We Are</div>
       <h2 class="h2">Pakistan's most trusted<br>study abroad consultancy</h2>
       <p class="lead">NextStep International was built for one purpose: to give every student the same honest, thorough guidance that wealthy families get from expensive advisors — at zero cost to you.</p>
@@ -592,7 +607,7 @@
     <hr class="divider">
 
     <!-- ══ PROGRAMS ══ -->
-    <section id="programs" class="sec">
+    <section id="programs" class="sec reveal">
       <div class="eyebrow">Programmes</div>
       <h2 class="h2">Degrees we place students in</h2>
       <p class="lead">Click any card to see universities, fees, and exactly which documents you need.</p>
@@ -602,7 +617,8 @@
         <button class="prog" id="mbbs-btn" type="button" aria-label="MBBS details">
           <div class="prog-img">
             <span class="prog-badge prog-badge-red">🏥 Most Popular</span>
-            <img src="images/MBBS/1.webp" alt="MBBS / Medicine abroad" id="mbbs-img" loading="lazy">
+            <img class="prog-slide show" src="images/MBBS/1.webp" alt="MBBS / Medicine abroad" id="mbbs-a" decoding="async">
+            <img class="prog-slide hide" alt="" id="mbbs-b" aria-hidden="true" decoding="async">
           </div>
           <div class="prog-data">
             <div class="prog-name">MBBS / MD — Medicine</div>
@@ -629,7 +645,8 @@
         <button class="prog" id="bba-btn" type="button" aria-label="BBA/MBA details">
           <div class="prog-img">
             <span class="prog-badge prog-badge-blue">💼 Business</span>
-            <img src="images/BBA/1.webp" alt="BBA MBA Business abroad" id="bba-img" loading="lazy">
+            <img class="prog-slide show" src="images/BBA/1.webp" alt="BBA MBA Business abroad" id="bba-a" decoding="async">
+            <img class="prog-slide hide" alt="" id="bba-b" aria-hidden="true" decoding="async">
           </div>
           <div class="prog-data">
             <div class="prog-name">BBA &amp; MBA — Business</div>
@@ -656,7 +673,8 @@
         <button class="prog" id="it-btn" type="button" aria-label="IT/CS details">
           <div class="prog-img">
             <span class="prog-badge prog-badge-green">💻 Technology</span>
-            <img src="images/IT/1.webp" alt="Computer Science IT abroad" id="it-img" loading="lazy">
+            <img class="prog-slide show" src="images/IT/1.webp" alt="Computer Science IT abroad" id="it-a" decoding="async">
+            <img class="prog-slide hide" alt="" id="it-b" aria-hidden="true" decoding="async">
           </div>
           <div class="prog-data">
             <div class="prog-name">Computer Science &amp; IT</div>
@@ -684,7 +702,7 @@
 
     <!-- ══ STUDY DESTINATIONS ══ -->
     <div class="bg-light" style="border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
-      <section id="georgia" class="sec">
+      <section id="georgia" class="sec reveal">
         <div class="eyebrow">Study Destinations</div>
         <h2 class="h2">Top countries we place students in</h2>
         <p class="lead">We work with universities across 8+ countries. Our advisors help you choose the right destination based on your program, budget, and career goals.</p>
@@ -736,7 +754,7 @@
     </div>
 
     <!-- ══ TESTIMONIALS ══ -->
-    <section id="testimonials" class="sec">
+    <section id="testimonials" class="sec reveal">
       <div class="eyebrow">Student Reviews</div>
       <h2 class="h2">What our students say</h2>
       <p class="lead">Real students, real results. Hear from those who trusted us with their future.</p>
@@ -769,7 +787,7 @@
     </section>
 
     <!-- ══ PROCESS ══ -->
-    <section id="process" class="sec">
+    <section id="process" class="sec reveal">
       <div class="eyebrow">How It Works</div>
       <h2 class="h2">From consultation to your dream university — 4 steps</h2>
       <p class="lead">No guesswork. Every step is planned, tracked, and communicated to you in real time.</p>
@@ -1111,30 +1129,46 @@
         "BS IT, Computer Science", "$1,500 – $2,250", "4 years English medium"), FT);
     });
 
-    // Image rotation for programme cards
-    var last={mbbs:-1,bba:-1,it:-1};
-    function rnd(max,prev){ var r; do{r=Math.floor(Math.random()*max)+1;}while(r===prev&&max>1); return r; }
-    function rotate(id,folder,max,key){
-      var el=document.getElementById(id); if(!el) return;
-      var n=rnd(max,last[key]); last[key]=n;
-      var img=new Image();
-      img.src="images/"+folder+"/"+n+".webp";
-      img.onload=function(){
-        var parent=el.parentNode; if(!parent) return;
-        img.style.cssText="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 1s";
-        parent.appendChild(img);
-        requestAnimationFrame(function(){
-          img.style.opacity=".9";
-          el.style.transition="opacity 1s";
-          el.style.opacity="0";
-          setTimeout(function(){ img.id=id; img.style.position=""; try{parent.removeChild(el);}catch(_){} },1100);
-        });
+    // ── Image crossfade for programme cards ──
+    function rnd(max, prev){ var r; do{ r=Math.floor(Math.random()*max)+1; }while(r===prev && max>1); return r; }
+
+    var cards = [
+      { a: document.getElementById("mbbs-a"), b: document.getElementById("mbbs-b"), folder:"MBBS", max:12, last:1, slot:0 },
+      { a: document.getElementById("bba-a"),  b: document.getElementById("bba-b"),  folder:"BBA",  max:11, last:1, slot:0 },
+      { a: document.getElementById("it-a"),   b: document.getElementById("it-b"),   folder:"IT",   max:10, last:1, slot:0 },
+    ];
+
+    function rotateCard(c){
+      var n = rnd(c.max, c.last); c.last = n;
+      var curr = c.slot===0 ? c.a : c.b;
+      var next = c.slot===0 ? c.b : c.a;
+      next.src = "images/"+c.folder+"/"+n+".webp";
+      next.onload = function(){
+        next.className = "prog-slide show";
+        curr.className = "prog-slide hide";
+        c.slot = 1 - c.slot;
       };
     }
-    var timer;
-    function tick(){ if(document.visibilityState==="hidden")return; rotate("mbbs-img","MBBS",12,"mbbs"); rotate("bba-img","BBA",12,"bba"); rotate("it-img","IT",10,"it"); }
-    document.addEventListener("visibilitychange",function(){ document.visibilityState==="hidden"?clearInterval(timer):(timer=setInterval(tick,14000)); });
-    window.addEventListener("load",function(){ tick(); timer=setInterval(tick,14000); });
+
+    var slideTimer;
+    function tick(){ if(document.visibilityState==="hidden") return; cards.forEach(rotateCard); }
+    document.addEventListener("visibilitychange", function(){
+      if(document.visibilityState==="hidden"){ clearInterval(slideTimer); }
+      else { slideTimer = setInterval(tick, 5000); tick(); }
+    });
+    window.addEventListener("load", function(){ tick(); slideTimer = setInterval(tick, 5000); }, {once:true});
+
+    // ── Scroll reveal for sections ──
+    if("IntersectionObserver" in window){
+      var revealOb = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if(e.isIntersecting){ e.target.classList.add("in"); revealOb.unobserve(e.target); }
+        });
+      }, {threshold:0.08, rootMargin:"0px 0px -40px 0px"});
+      document.querySelectorAll(".reveal").forEach(function(el){ revealOb.observe(el); });
+    } else {
+      document.querySelectorAll(".reveal").forEach(function(el){ el.classList.add("in"); });
+    }
 
   })();
   </script>
