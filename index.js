@@ -2061,6 +2061,42 @@ async function updateLeadImportantDetailsFromStudentMessage(lead, messageText) {
   }
 }
 
+async function extractAssessmentFormData(text) {
+  try {
+    const reply = await groqChat({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "system",
+          content: `Extract student assessment form details from the message and return ONLY valid JSON.
+Fields to extract (use null if not found):
+{
+  "name": string,
+  "fatherName": string,
+  "dob": string,
+  "city": string,
+  "qualification": string,
+  "cgpa": string,
+  "completionYear": string,
+  "ieltsScore": string,
+  "courseInterest": string,
+  "countryInterest": string
+}
+Return ONLY the JSON object, nothing else.`,
+        },
+        { role: "user", content: text },
+      ],
+      temperature: 0.1,
+      max_tokens: 300,
+    });
+    const jsonMatch = String(reply || "").match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    return JSON.parse(jsonMatch[0]);
+  } catch {
+    return null;
+  }
+}
+
 async function askAI(history, userId) {
   const confirmedStudentName = extractConfirmedStudentName(history);
 
@@ -3713,6 +3749,48 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
               nextDailyCount = Math.min(configuredLimit, dailyCount + 1);
               nextResetAt = new Date(nowMs + 24 * 60 * 60 * 1000).toISOString();
             } else {
+              // ── Assessment form reply (2nd message) — extract & save details ──
+              const isAssessmentReply = lead.messages.length === 1;
+              if (isAssessmentReply && inboundText.length > 20) {
+                try {
+                  const details = await extractAssessmentFormData(inboundText);
+                  if (details) {
+                    if (details.name)           lead.name            = details.name;
+                    if (details.city)           lead.notes           = (lead.notes ? lead.notes + "\n" : "") + `City: ${details.city}`;
+                    if (details.courseInterest) lead.courseInterest  = details.courseInterest;
+                    if (details.countryInterest)lead.countryInterest = details.countryInterest;
+                    // Save extra details in importantDetails
+                    const extras = [];
+                    if (details.fatherName)    extras.push(`Father: ${details.fatherName}`);
+                    if (details.dob)           extras.push(`DOB: ${details.dob}`);
+                    if (details.qualification) extras.push(`Qualification: ${details.qualification}`);
+                    if (details.cgpa)          extras.push(`CGPA/Marks: ${details.cgpa}`);
+                    if (details.completionYear)extras.push(`Completion Year: ${details.completionYear}`);
+                    if (details.ieltsScore)    extras.push(`IELTS: ${details.ieltsScore}`);
+                    if (extras.length > 0) {
+                      lead.importantDetails = (lead.importantDetails ? lead.importantDetails + "\n" : "") + extras.join(" | ");
+                    }
+                    lead.markModified("importantDetails");
+                  }
+                } catch (_) {}
+                aiReply = "Thank you! ✅\n\nWe have received your details. Our consultant will contact you within *24 hours*. 😊\n\nMeanwhile feel free to ask any questions!";
+                nextDailyCount = dailyCount + 1;
+                lead.extractedData = { ...(lead.extractedData || {}), aiDailyDate: todayKey, aiDailyCount: nextDailyCount };
+                await lead.save();
+                if (aiReply) {
+                  try {
+                    await sendWhatsAppCloudText({
+                      phoneNumberId: accountSettings.whatsappPhoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID,
+                      to: fromPhone,
+                      text: aiReply,
+                    });
+                    lead.messages.push({ role: "assistant", content: aiReply, at: new Date() });
+                    await lead.save();
+                  } catch (_) {}
+                }
+                continue;
+              }
+
               // ── First message greeting + assessment form ──
               const isFirstMessage = lead.messages.length === 0;
               if (isFirstMessage) {
