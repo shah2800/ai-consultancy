@@ -3,6 +3,7 @@ import api, { invalidateCachedGet } from "../api/api";
 import SkeletonPulse from "../components/SkeletonPulse";
 import CmsMediaThumb, { isVideoMime } from "../components/CmsMediaThumb";
 import CmsMediaPlacementModal, { CmsPlacementGuideModal } from "../components/CmsMediaPlacementModal";
+import { prepareMediaForUpload, isVideoFile } from "../utils/mediaUploadOptimize";
 
 const TABS = [
   { id: "general", label: "General & SEO" },
@@ -102,6 +103,7 @@ export default function WebsiteCmsDashboard() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadPct, setUploadPct] = useState(0);
+  const [uploadPhase, setUploadPhase] = useState("");
   const [storageInfo, setStorageInfo] = useState(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -169,17 +171,25 @@ export default function WebsiteCmsDashboard() {
     if (!file) return;
     setUploading(true);
     setUploadPct(0);
+    setUploadPhase("");
     setError("");
     try {
+      setUploadPhase("optimizing");
+      const prepared = await prepareMediaForUpload(file, {
+        onPhase: (phase) => setUploadPhase(phase),
+      });
+      const uploadFile = prepared.file;
       const useR2 = storageInfo?.storage === "r2";
+      const forceServer = prepared.forceServerUpload || isVideoFile(uploadFile);
       let item;
-      const mime = file.type || "application/octet-stream";
+      const mime = uploadFile.type || "application/octet-stream";
 
       const uploadViaServer = async () => {
+        setUploadPhase("uploading");
         const fd = new FormData();
-        fd.append("file", file);
+        fd.append("file", uploadFile, uploadFile.name);
         const res = await api.post("/admin/website-cms/media", fd, {
-          timeout: 300000,
+          timeout: 600000,
           onUploadProgress: (e) => {
             if (e.total) setUploadPct(Math.min(100, Math.round((e.loaded / e.total) * 100)));
           },
@@ -187,20 +197,21 @@ export default function WebsiteCmsDashboard() {
         return res.data?.media;
       };
 
-      if (useR2) {
+      if (useR2 && !forceServer) {
         try {
+          setUploadPhase("uploading");
           setUploadPct(2);
           const presign = await api.post("/admin/website-cms/media/presign", {
-            name: file.name,
+            name: uploadFile.name,
             mime,
-            size: file.size,
+            size: uploadFile.size,
           });
           const { uploadUrl, key, publicUrl, headers } = presign.data || {};
           if (!uploadUrl || !key) throw new Error("Could not start Cloudflare upload.");
 
           await putFileWithProgress(
             uploadUrl,
-            file,
+            uploadFile,
             headers?.["Content-Type"] || mime,
             setUploadPct
           );
@@ -208,13 +219,13 @@ export default function WebsiteCmsDashboard() {
           setUploadPct(98);
           const done = await api.post("/admin/website-cms/media/complete", {
             key,
-            name: file.name,
+            name: uploadFile.name,
             mime,
-            size: file.size,
+            size: uploadFile.size,
           });
           item = done.data?.media;
           if (!item && publicUrl) {
-            item = { url: publicUrl, name: file.name, key, storage: "r2", id: key, mime };
+            item = { url: publicUrl, name: uploadFile.name, key, storage: "r2", id: key, mime };
           }
           setUploadPct(100);
         } catch (directErr) {
@@ -231,8 +242,14 @@ export default function WebsiteCmsDashboard() {
           ...prev,
           media: [item, ...(prev?.media || []).filter((m) => m.url !== item.url)],
         }));
+        const savedNote =
+          prepared.savedPct >= 3
+            ? ` Optimized (~${prepared.savedPct}% smaller, high quality).`
+            : item.optimized
+              ? " Optimized for fast loading."
+              : "";
         setMessage(
-          `Uploaded ${item.name}. Pick where it shows on the homepage, then Save website.`
+          `Uploaded ${item.name}.${savedNote} Pick where it shows on the homepage, then Save website.`
         );
         setPlacementMedia(item);
         invalidateCachedGet("/admin/website-cms");
@@ -246,6 +263,7 @@ export default function WebsiteCmsDashboard() {
       );
     } finally {
       setUploading(false);
+      setUploadPhase("");
       setTimeout(() => setUploadPct(0), 1200);
     }
   }
@@ -866,7 +884,7 @@ export default function WebsiteCmsDashboard() {
             <>
               <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Media library</h2>
               <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 8 }}>
-                Upload files to Cloudflare R2. Use <strong>Where to show?</strong> on each file to pick the exact homepage spot.
+                Upload files to Cloudflare R2. Photos are auto-compressed to high-quality WebP; videos are optimized on the server (fast-start MP4) so the public site stays smooth.
               </p>
               <button
                 type="button"
@@ -916,7 +934,7 @@ export default function WebsiteCmsDashboard() {
                   marginBottom: 20,
                 }}
               >
-                {uploading ? "Uploading…" : "Upload image or video"}
+                {uploading ? (uploadPhase === "optimizing" ? "Optimizing…" : "Uploading…") : "Upload image or video"}
                 <input
                   type="file"
                   accept="image/*,video/*,.pdf"
@@ -931,8 +949,8 @@ export default function WebsiteCmsDashboard() {
               {uploading && (
                 <div style={{ marginBottom: 20, maxWidth: 420 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
-                    <span>Uploading…</span>
-                    <span>{uploadPct}%</span>
+                    <span>{uploadPhase === "optimizing" ? "Optimizing for web (high quality)…" : "Uploading to Cloudflare…"}</span>
+                    <span>{uploadPhase === "optimizing" ? "…" : `${uploadPct}%`}</span>
                   </div>
                   <div
                     style={{
@@ -945,9 +963,10 @@ export default function WebsiteCmsDashboard() {
                     <div
                       style={{
                         height: "100%",
-                        width: `${uploadPct}%`,
+                        width: uploadPhase === "optimizing" ? "35%" : `${uploadPct}%`,
                         background: "var(--accent)",
                         transition: "width 0.2s ease",
+                        animation: uploadPhase === "optimizing" ? "cms-upload-pulse 1.2s ease-in-out infinite alternate" : "none",
                       }}
                     />
                   </div>

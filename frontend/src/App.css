@@ -2748,6 +2748,17 @@
   overflow: hidden;
 }
 
+@keyframes cms-upload-pulse {
+  from {
+    width: 22%;
+    opacity: 0.72;
+  }
+  to {
+    width: 42%;
+    opacity: 1;
+  }
+}
+
 @media (max-width: 900px) {
   .website-cms-page.page-shell {
     padding: 12px 12px 36px !important;

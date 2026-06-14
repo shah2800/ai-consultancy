@@ -27,6 +27,7 @@ try {
 
 const { calculatePriority, enrichLead } = require("./utils/calculatePriority");
 const { mergeWebsiteCmsContent, deepMerge } = require("./lib/website-cms-defaults");
+const { optimizeMediaUpload } = require("./lib/media-optimize");
 const {
   isR2Configured,
   buildCmsObjectKey,
@@ -5764,11 +5765,20 @@ app.post(
       let item;
 
       if (isR2Configured() && req.file.buffer) {
-        const key = buildCmsObjectKey(tenant, req.file.originalname, req.file.mimetype);
+        let buffer = req.file.buffer;
+        let mime = String(req.file.mimetype || "");
+        let uploadName = String(req.file.originalname || "upload");
+
+        const optimized = await optimizeMediaUpload(buffer, mime, uploadName);
+        buffer = optimized.buffer;
+        mime = optimized.mime || mime;
+        uploadName = optimized.name || uploadName;
+
+        const key = buildCmsObjectKey(tenant, uploadName, mime);
         await uploadBufferToR2({
           key,
-          buffer: req.file.buffer,
-          contentType: req.file.mimetype,
+          buffer,
+          contentType: mime,
         });
         const url = publicUrlForKey(key);
         item = {
@@ -5776,9 +5786,33 @@ app.post(
           key,
           url,
           storage: "r2",
-          name: String(req.file.originalname || key.split("/").pop()),
-          mime: String(req.file.mimetype || ""),
-          size: req.file.size || 0,
+          name: uploadName,
+          mime,
+          size: buffer.length,
+          optimized: Boolean(optimized.optimized),
+          uploadedAt: new Date().toISOString(),
+        };
+      } else if (req.file.buffer) {
+        let buffer = req.file.buffer;
+        let mime = String(req.file.mimetype || "");
+        let uploadName = String(req.file.originalname || "upload");
+        const optimized = await optimizeMediaUpload(buffer, mime, uploadName);
+        buffer = optimized.buffer;
+        mime = optimized.mime || mime;
+        uploadName = optimized.name || uploadName;
+        const ext = path.extname(uploadName) || path.extname(String(req.file.originalname || "")) || "";
+        const safeExt = ext.match(/^\.(jpe?g|png|gif|webp|mp4|webm|mov|pdf)$/i) ? ext : ".webp";
+        const filename = `${Date.now()}-${crypto.randomBytes(5).toString("hex")}${safeExt}`;
+        fs.writeFileSync(path.join(websiteCmsUploadDir, filename), buffer);
+        const url = `/uploads/website-cms/${filename}`;
+        item = {
+          id: filename,
+          url,
+          storage: "local",
+          name: uploadName,
+          mime,
+          size: buffer.length,
+          optimized: Boolean(optimized.optimized),
           uploadedAt: new Date().toISOString(),
         };
       } else {

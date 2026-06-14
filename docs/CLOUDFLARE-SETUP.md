@@ -237,7 +237,9 @@ Render **does not** serve your homepage or large media files anymore.
 
 4. **Program images lazy-load** — they download only when the visitor scrolls to Programs (not on first page load).
 
-5. **Compress before upload:** [squoosh.app](https://squoosh.app) → WebP, width 1200px max.
+5. **Compress before upload:** [squoosh.app](https://squoosh.app) → WebP, width 1200px max — or let **CRM auto-optimize** on upload (high-quality WebP / fast-start MP4).
+
+6. **CRM auto-optimize (built-in):** Images → WebP ~92% quality, max 1920px in the browser. Videos → server ffmpeg (H.264 CRF 23, `faststart` for smooth playback). Original kept if already small.
 
 ---
 
