@@ -9909,9 +9909,9 @@ app.listen(PORT, () => {
     `   Website health: GET /public/website/health`
   );
   console.log(
-    `   Website form: POST /public/website/apply   Track: GET /public/website/track?registrationId=`
-    `\n   Website review: POST /public/website/review-json   Reviews: GET /public/website/reviews`
-    `\n   Website CMS: GET/PUT /admin/website-cms   Public: GET /public/website/content`
+    `   Website form: POST /public/website/apply   Track: GET /public/website/track?registrationId=` +
+      `\n   Website review: POST /public/website/review-json   Reviews: GET /public/website/reviews` +
+      `\n   Website CMS: GET/PUT /admin/website-cms   Public: GET /public/website/content`
   );
   if (fs.existsSync(path.join(__dirname, "website")) || fs.existsSync(path.join(__dirname, "..", "website"))) {
     console.log(
