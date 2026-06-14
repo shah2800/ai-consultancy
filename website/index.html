@@ -32,6 +32,7 @@
   <!-- Favicon -->
   <link rel="icon" href="images/logo.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="images/logo.svg">
+  <link rel="preload" as="image" href="images/hero.webp" fetchpriority="high">
 
   <!-- Structured Data (Google Rich Results) -->
   <!-- FAQ Rich Snippet Schema -->
@@ -335,8 +336,8 @@
 
     /* ─── Hero ─── */
     .hero{position:relative;min-height:min(90vh,720px);display:flex;align-items:center;color:#fff;overflow:hidden}
-    .hero-img{position:absolute;inset:0;background:linear-gradient(135deg,#0a1f44 0%,#1a3a6e 55%,#0d2847 100%) center/cover no-repeat}
-    .hero-overlay{position:absolute;inset:0;background:linear-gradient(100deg,rgba(8,17,40,.96) 0%,rgba(8,17,40,.82) 45%,rgba(8,17,40,.45) 100%)}
+    .hero-img{position:absolute;inset:0;background:#0a1f44 url("images/hero.webp") center/cover no-repeat}
+    .hero-overlay{position:absolute;inset:0;background:linear-gradient(100deg,rgba(8,17,40,.92) 0%,rgba(8,17,40,.72) 42%,rgba(8,17,40,.35) 100%)}
     .hero-in{position:relative;z-index:2;max-width:var(--max);margin:0 auto;width:100%;padding:60px 24px 72px;display:grid;grid-template-columns:1fr;gap:40px}
     .hero-pill{display:inline-flex;align-items:center;gap:8px;background:rgba(212,168,67,.15);border:1px solid rgba(212,168,67,.4);color:#ffd369;font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:7px 16px;border-radius:999px;margin-bottom:22px}
     .hero-pill i{width:7px;height:7px;background:#4ade80;border-radius:50%;animation:dot 1.8s ease-in-out infinite;font-style:normal;display:block}

@@ -96,6 +96,30 @@
   registerLazySection("programs", loadProgramImages);
   registerLazySection("video-gallery", loadVideoGalleryMedia);
 
+  var HERO_FALLBACK = "images/hero.webp";
+
+  function applyHeroBackground(imgEl, imgUrl) {
+    var preload = document.querySelector("link[data-cms-hero-preload]");
+    if (!preload) {
+      preload = document.createElement("link");
+      preload.rel = "preload";
+      preload.as = "image";
+      preload.setAttribute("data-cms-hero-preload", "1");
+      document.head.appendChild(preload);
+    }
+    preload.href = imgUrl;
+    var safe = imgUrl.replace(/'/g, "%27");
+    imgEl.style.backgroundImage = "url('" + safe + "')";
+
+    var probe = new Image();
+    probe.onerror = function () {
+      if (imgUrl.indexOf(HERO_FALLBACK) === -1) {
+        applyHeroBackground(imgEl, HERO_FALLBACK);
+      }
+    };
+    probe.src = imgUrl;
+  }
+
   function applyHero(content) {
     var hero = content.hero || {};
     var contact = content.contact || {};
@@ -126,17 +150,7 @@
         if (imgEl) {
           var imgUrl = String(hero.heroImage).trim();
           if (imgUrl) {
-            var preload = document.querySelector("link[data-cms-hero-preload]");
-            if (!preload) {
-              preload = document.createElement("link");
-              preload.rel = "preload";
-              preload.as = "image";
-              preload.setAttribute("data-cms-hero-preload", "1");
-              document.head.appendChild(preload);
-            }
-            preload.href = imgUrl;
-            var safe = imgUrl.replace(/'/g, "%27");
-            imgEl.style.backgroundImage = "url('" + safe + "')";
+            applyHeroBackground(imgEl, imgUrl);
           }
         }
         var oldVid = $(".hero-video");

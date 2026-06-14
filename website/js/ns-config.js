@@ -23,7 +23,8 @@ window.NSI_CONFIG = {
     }
 
     if (host === "www.nextstepinternationals.com" || host === "nextstepinternationals.com") {
-      return "https://api.nextstepinternationals.com";
+      /* api.* DNS may be unset; Render host serves /public/website/content */
+      return "https://ai-consultancy-2dk0.onrender.com";
     }
 
     return loc.origin;
