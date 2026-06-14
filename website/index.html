@@ -653,34 +653,6 @@
   </style>
 </head>
 <body>
-  <div id="nsi-wake-overlay" hidden aria-live="polite" aria-busy="true" style="position:fixed;inset:0;z-index:99999;background:rgba(10,31,68,.92);color:#fff;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:system-ui,sans-serif">
-    <div>
-      <div style="width:40px;height:40px;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;margin:0 auto 16px;animation:nsiSpin .8s linear infinite"></div>
-      <p style="margin:0;font-size:1.05rem;font-weight:700">Starting website…</p>
-      <p style="margin:8px 0 0;font-size:.875rem;opacity:.85;max-width:280px">First visit after idle may take up to a minute on free hosting.</p>
-    </div>
-  </div>
-  <style>@keyframes nsiSpin{to{transform:rotate(360deg)}}</style>
-  <script>
-    (function () {
-      var overlay = document.getElementById("nsi-wake-overlay");
-      var shown = false;
-      var showTimer = setTimeout(function () {
-        if (overlay) { overlay.hidden = false; shown = true; }
-      }, 2800);
-      function hide() {
-        clearTimeout(showTimer);
-        if (overlay) overlay.hidden = true;
-      }
-      var ping = (location.origin || "") + "/ping";
-      var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-      var abortTimer = ctrl ? setTimeout(function () { ctrl.abort(); }, 120000) : null;
-      fetch(ping, { method: "GET", cache: "no-store", signal: ctrl ? ctrl.signal : undefined })
-        .catch(function () {})
-        .finally(hide);
-      if (abortTimer) setTimeout(function () { clearTimeout(abortTimer); }, 121000);
-    })();
-  </script>
 
   <!-- Floating WhatsApp -->
   <a class="wa-float" href="https://wa.me/923142638901?text=Assalam%20o%20Alaikum%2C%20I%20want%20to%20know%20about%20study%20abroad%20programs" target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp">
