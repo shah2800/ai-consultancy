@@ -123,6 +123,34 @@ app.use(
 
 const websiteCmsUploadDir = path.join(__dirname, "uploads", "website-cms");
 fs.mkdirSync(websiteCmsUploadDir, { recursive: true });
+const adminDistDir = path.join(__dirname, "frontend", "dist");
+
+/** Browser refresh on /admin/* must load the CRM SPA, not JSON API routes with the same path. */
+function isAdminSpaDocumentRequest(req) {
+  if (req.method !== "GET" && req.method !== "HEAD") return false;
+  const p = String(req.path || "");
+  if (!/^\/admin(\/|$)/.test(p)) return false;
+  if (/\.[a-z0-9]+$/i.test(p.split("?")[0])) return false;
+  if (/^Bearer\s+/i.test(String(req.headers.authorization || ""))) return false;
+  const dest = String(req.headers["sec-fetch-dest"] || "").toLowerCase();
+  if (dest === "document") return true;
+  const accept = String(req.headers.accept || "").toLowerCase();
+  if (accept.includes("text/html")) {
+    const jsonIdx = accept.indexOf("application/json");
+    const htmlIdx = accept.indexOf("text/html");
+    if (jsonIdx === -1 || htmlIdx < jsonIdx) return true;
+  }
+  return false;
+}
+
+function serveAdminSpaIfBrowser(req, res, next) {
+  if (!isAdminSpaDocumentRequest(req)) return next();
+  const indexFile = path.join(adminDistDir, "index.html");
+  if (!fs.existsSync(indexFile)) return next();
+  return res.sendFile(indexFile);
+}
+
+app.use(serveAdminSpaIfBrowser);
 app.use(
   "/uploads/website-cms",
   express.static(websiteCmsUploadDir, {
@@ -10806,11 +10834,11 @@ app.get("/", (req, res) => {
 });
 
 /* CRM admin dashboard — same domain at /admin (nextstepinternationals.com/admin) */
-const adminDistDir = path.join(__dirname, "frontend", "dist");
 if (fs.existsSync(adminDistDir)) {
   app.use("/admin", express.static(adminDistDir, { index: false }));
   app.get(/^\/admin(\/.*)?$/, (req, res, next) => {
-    if (req.method !== "GET") return next();
+    if (req.method !== "GET" && req.method !== "HEAD") return next();
+    if (!isAdminSpaDocumentRequest(req)) return next();
     res.sendFile(path.join(adminDistDir, "index.html"));
   });
   console.log("📊 Admin dashboard served at /admin");

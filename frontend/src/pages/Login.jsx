@@ -1,17 +1,19 @@
 import { useState, useEffect } from "react";
 import API from "../api/api";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import PasswordField from "../components/PasswordField";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState("");
   const [allowPublicRegister, setAllowPublicRegister] = useState(
     import.meta.env.VITE_ALLOW_PUBLIC_REGISTER !== "false"
   );
   const nav = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     let cancelled = false;
@@ -28,6 +30,30 @@ export default function Login() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setCheckingSession(false);
+      return undefined;
+    }
+    (async () => {
+      try {
+        await API.get("/admin/me");
+        if (!cancelled) {
+          const dest = location.state?.from || "/dashboard";
+          nav(dest, { replace: true });
+        }
+      } catch {
+        localStorage.removeItem("token");
+        if (!cancelled) setCheckingSession(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [location.state?.from, nav]);
+
   const login = async () => {
     if (!email || !password) {
       setError("Please fill in all fields.");
@@ -38,7 +64,8 @@ export default function Login() {
     try {
       const res = await API.post("/auth/login", { email, password });
       localStorage.setItem("token", res.data.token);
-      nav("/dashboard");
+      const dest = location.state?.from || "/dashboard";
+      nav(dest, { replace: true });
     } catch (err) {
       setError(err.response?.data?.error || "Login failed. Check your credentials.");
     } finally {
@@ -49,6 +76,14 @@ export default function Login() {
   const handleKey = (e) => {
     if (e.key === "Enter") login();
   };
+
+  if (checkingSession) {
+    return (
+      <div className="auth-shell" style={{ alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <p style={{ color: "var(--text-3)", fontSize: 14 }}>Loading…</p>
+      </div>
+    );
+  }
 
   const features = [
     { title: "AI-assisted", desc: "Student conversations" },

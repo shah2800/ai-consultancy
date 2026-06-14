@@ -97,7 +97,9 @@ api.interceptors.response.use(
       const basePath = import.meta.env.VITE_BASE_PATH || "";
       const path = window.location?.pathname || "";
       const loginPath = basePath ? `${basePath}/` : "/";
-      if (path !== loginPath && !path.endsWith("/forgot-password") && !path.endsWith("/reset-password")) {
+      const authPaths = [loginPath, `${basePath}/register`, `${basePath}/forgot-password`, `${basePath}/reset-password`];
+      const onAuthPage = authPaths.some((p) => path === p || path.endsWith(p.replace(basePath, "")));
+      if (!onAuthPage) {
         window.location.href = loginPath;
       }
     }

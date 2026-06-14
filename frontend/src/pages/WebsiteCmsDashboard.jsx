@@ -816,7 +816,8 @@ export default function WebsiteCmsDashboard() {
             <>
               <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Media showcase (homepage)</h2>
               <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 16 }}>
-                Photos and videos you pick in Media library → &quot;Show on homepage showcase&quot; appear in a responsive grid on the site.
+                Photos and videos you pick in Media library appear in a responsive grid on the site (between About and Programs).
+                The section stays hidden until at least one file is added and you click <strong>Save website</strong>.
               </p>
               <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, fontSize: 13 }}>
                 <input

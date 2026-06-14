@@ -126,6 +126,20 @@ function RouteLoadingFallback() {
   );
 }
 
+function ProtectedLayout() {
+  const location = useLocation();
+  const token = localStorage.getItem("token");
+  if (!token) {
+    const from = `${location.pathname}${location.search}`;
+    return <Navigate to="/" replace state={{ from: from === "/" ? undefined : from }} />;
+  }
+  return (
+    <Layout>
+      <Outlet />
+    </Layout>
+  );
+}
+
 function Layout({ children }) {
   const mainScrollRef = useRef(null);
   const [navOpen, setNavOpen] = useState(false);
@@ -234,22 +248,24 @@ export default function App() {
           </Route>
           <Route path="/apply" element={<StudentRegistrationPage />} />
           <Route path="/track" element={<StudentTrackerPage />} />
-          <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
-          <Route path="/website-applications" element={<Layout><WebsiteApplicationsDashboard /></Layout>} />
-          <Route path="/website-reviews" element={<Layout><WebsiteReviewsDashboard /></Layout>} />
-          <Route path="/website-cms" element={<Layout><WebsiteCmsDashboard /></Layout>} />
-          <Route path="/leads" element={<Layout><Leads /></Layout>} />
-          <Route path="/website-intake/:id" element={<Layout><WebsiteIntakePage /></Layout>} />
-          <Route path="/leads/:id" element={<Layout><LeadProfile /></Layout>} />
-          <Route path="/analytics" element={<Layout><Analytics /></Layout>} />
-          <Route path="/notifications" element={<Layout><Notifications /></Layout>} />
-          <Route path="/team" element={<Layout><Team /></Layout>} />
-          <Route path="/broadcast" element={<Layout><Broadcast /></Layout>} />
-          <Route path="/universities" element={<Layout><Universities /></Layout>} />
+          <Route element={<ProtectedLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/website-applications" element={<WebsiteApplicationsDashboard />} />
+            <Route path="/website-reviews" element={<WebsiteReviewsDashboard />} />
+            <Route path="/website-cms" element={<WebsiteCmsDashboard />} />
+            <Route path="/leads" element={<Leads />} />
+            <Route path="/website-intake/:id" element={<WebsiteIntakePage />} />
+            <Route path="/leads/:id" element={<LeadProfile />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/team" element={<Team />} />
+            <Route path="/broadcast" element={<Broadcast />} />
+            <Route path="/universities" element={<Universities />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/help" element={<Help />} />
+          </Route>
           <Route path="/assigned-leads" element={<Navigate to="/leads" replace />} />
           <Route path="/assigned-team" element={<Navigate to="/leads" replace />} />
-          <Route path="/settings" element={<Layout><Settings /></Layout>} />
-          <Route path="/help" element={<Layout><Help /></Layout>} />
         </Routes>
       </Suspense>
     </BrowserRouter>
