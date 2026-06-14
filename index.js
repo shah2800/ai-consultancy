@@ -124,7 +124,6 @@ const websiteDir = fs.existsSync(path.join(__dirname, "website"))
   ? path.join(__dirname, "website")
   : path.join(__dirname, "..", "website");
 if (fs.existsSync(websiteDir)) {
-  registerWebsiteCleanUrlRoutes(app, websiteDir);
   app.use("/site", express.static(websiteDir, {
     maxAge: process.env.NODE_ENV === "production" ? "1d" : 0,
     etag: true,
