@@ -35,6 +35,8 @@ const {
   uploadBufferToR2,
   createPresignedPutUrl,
   deleteR2Object,
+  getR2ObjectStream,
+  resolveKeyFromPublicUrl,
   testR2Connection,
   getR2StorageStatus,
 } = require("./lib/r2-storage");
@@ -5606,6 +5608,36 @@ app.get("/admin/website-cms/storage", auth, requireRoles("admin", "manager"), as
     });
   } catch (err) {
     res.status(500).json({ error: err?.message || "Storage check failed." });
+  }
+});
+
+app.get("/admin/website-cms/media/preview", auth, requireRoles("admin", "manager"), async (req, res) => {
+  try {
+    let key = String(req.query.key || "").trim();
+    const url = String(req.query.url || "").trim();
+    if (!key && url) {
+      if (url.startsWith("/uploads/website-cms/")) {
+        const filename = path.basename(url);
+        const full = path.join(websiteCmsUploadDir, filename);
+        if (!fs.existsSync(full)) return res.status(404).json({ error: "File not found." });
+        return res.sendFile(full);
+      }
+      if (isR2Configured()) {
+        key = resolveKeyFromPublicUrl(url);
+      }
+    }
+    if (!key || !key.startsWith("cms/")) {
+      if (/^https?:\/\//i.test(url)) return res.redirect(302, url);
+      return res.status(400).json({ error: "Invalid media reference." });
+    }
+    const { body, contentType } = await getR2ObjectStream(key);
+    res.set("Content-Type", contentType);
+    res.set("Cache-Control", "private, max-age=3600");
+    if (body?.pipe) body.pipe(res);
+    else res.send(body);
+  } catch (err) {
+    console.error("GET /admin/website-cms/media/preview:", err?.message || err);
+    res.status(404).json({ error: "Preview not available." });
   }
 });
 

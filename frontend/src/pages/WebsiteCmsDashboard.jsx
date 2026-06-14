@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import api, { invalidateCachedGet } from "../api/api";
 import SkeletonPulse from "../components/SkeletonPulse";
+import CmsMediaThumb, { isVideoMime } from "../components/CmsMediaThumb";
+import CmsMediaPlacementModal, { CmsPlacementGuideModal } from "../components/CmsMediaPlacementModal";
 
 const TABS = [
   { id: "general", label: "General & SEO" },
@@ -11,7 +13,7 @@ const TABS = [
   { id: "contact", label: "Contact" },
   { id: "footer", label: "Footer" },
   { id: "media", label: "Media library" },
-  { id: "videos", label: "Video section" },
+  { id: "videos", label: "Media showcase" },
 ];
 
 function Field({ label, hint, children }) {
@@ -35,18 +37,35 @@ const inputStyle = {
   color: "var(--text)",
 };
 
-function isVideoMime(mime, url) {
-  if (String(mime || "").startsWith("video/")) return true;
-  return /\.(mp4|webm|mov)(\?|$)/i.test(String(url || ""));
-}
-
 function getMediaPlacements(content, url) {
   if (!url) return [];
   const places = [];
   if (content?.hero?.heroVideo === url) places.push("Hero video");
   if (content?.hero?.heroImage === url) places.push("Hero image");
-  if ((content?.videoGallery?.items || []).some((v) => v.url === url)) places.push("Video gallery");
+  if ((content?.videoGallery?.items || []).some((v) => v.url === url)) places.push("Media showcase");
+  (content?.programs?.items || []).forEach((p) => {
+    if (p.image === url) places.push(`Program: ${p.name || p.id || "course"}`);
+  });
   return places;
+}
+
+function putFileWithProgress(uploadUrl, file, contentType, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.upload.addEventListener("progress", (e) => {
+      if (e.lengthComputable && onProgress) {
+        onProgress(Math.min(100, Math.round((e.loaded / e.total) * 100)));
+      }
+    });
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve(xhr);
+      else reject(new Error(`Cloudflare upload failed (${xhr.status})`));
+    });
+    xhr.addEventListener("error", () => reject(new Error("Network error during upload")));
+    xhr.open("PUT", uploadUrl);
+    xhr.setRequestHeader("Content-Type", contentType);
+    xhr.send(file);
+  });
 }
 
 function clearMediaFromSite(content, url) {
@@ -82,10 +101,13 @@ export default function WebsiteCmsDashboard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadPct, setUploadPct] = useState(0);
   const [storageInfo, setStorageInfo] = useState(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [updatedAt, setUpdatedAt] = useState(null);
+  const [placementMedia, setPlacementMedia] = useState(null);
+  const [showPlacementGuide, setShowPlacementGuide] = useState(false);
 
   const sitePreviewUrl = "https://www.nextstepinternationals.com/";
 
@@ -146,51 +168,58 @@ export default function WebsiteCmsDashboard() {
   async function uploadMedia(file) {
     if (!file) return;
     setUploading(true);
+    setUploadPct(0);
     setError("");
     try {
       const useR2 = storageInfo?.storage === "r2";
       let item;
+      const mime = file.type || "application/octet-stream";
 
       const uploadViaServer = async () => {
         const fd = new FormData();
         fd.append("file", file);
-        const res = await api.post("/admin/website-cms/media", fd, { timeout: 300000 });
+        const res = await api.post("/admin/website-cms/media", fd, {
+          timeout: 300000,
+          onUploadProgress: (e) => {
+            if (e.total) setUploadPct(Math.min(100, Math.round((e.loaded / e.total) * 100)));
+          },
+        });
         return res.data?.media;
       };
 
       if (useR2) {
         try {
+          setUploadPct(2);
           const presign = await api.post("/admin/website-cms/media/presign", {
             name: file.name,
-            mime: file.type || "application/octet-stream",
+            mime,
             size: file.size,
           });
           const { uploadUrl, key, publicUrl, headers } = presign.data || {};
           if (!uploadUrl || !key) throw new Error("Could not start Cloudflare upload.");
 
-          const putRes = await fetch(uploadUrl, {
-            method: "PUT",
-            headers: {
-              "Content-Type": headers?.["Content-Type"] || file.type || "application/octet-stream",
-            },
-            body: file,
-          });
-          if (!putRes.ok) {
-            throw new Error(`Cloudflare direct upload failed (${putRes.status}). Trying server upload…`);
-          }
+          await putFileWithProgress(
+            uploadUrl,
+            file,
+            headers?.["Content-Type"] || mime,
+            setUploadPct
+          );
 
+          setUploadPct(98);
           const done = await api.post("/admin/website-cms/media/complete", {
             key,
             name: file.name,
-            mime: file.type || "",
+            mime,
             size: file.size,
           });
           item = done.data?.media;
           if (!item && publicUrl) {
-            item = { url: publicUrl, name: file.name, key, storage: "r2", id: key };
+            item = { url: publicUrl, name: file.name, key, storage: "r2", id: key, mime };
           }
+          setUploadPct(100);
         } catch (directErr) {
           console.warn("R2 direct upload failed, using server:", directErr?.message);
+          setUploadPct(0);
           item = await uploadViaServer();
         }
       } else {
@@ -203,21 +232,21 @@ export default function WebsiteCmsDashboard() {
           media: [item, ...(prev?.media || []).filter((m) => m.url !== item.url)],
         }));
         setMessage(
-          useR2
-            ? `Uploaded to Cloudflare R2: ${item.name}. Use buttons below to show it on the website, then Save.`
-            : `Uploaded ${item.name} (local disk — configure R2 on Render for CDN).`
+          `Uploaded ${item.name}. Pick where it shows on the homepage, then Save website.`
         );
+        setPlacementMedia(item);
         invalidateCachedGet("/admin/website-cms");
       }
     } catch (err) {
       const raw = err?.response?.data?.error || err?.message || "Upload failed.";
       setError(
         raw === "Failed to fetch" || /failed to fetch/i.test(raw)
-          ? "Upload failed — add R2 CORS for https://api.nextstepinternationals.com in Cloudflare bucket settings (see docs/CLOUDFLARE-SETUP.md), then retry."
+          ? "Upload failed — check R2 CORS for api.nextstepinternationals.com or retry (server fallback runs automatically)."
           : raw
       );
     } finally {
       setUploading(false);
+      setTimeout(() => setUploadPct(0), 1200);
     }
   }
 
@@ -253,28 +282,51 @@ export default function WebsiteCmsDashboard() {
     setMessage(`Removed ${m.name || "file"} from website slots. Click Save website to apply.`);
   }
 
-  function addToVideoGallery(m) {
-    if (!isVideoMime(m.mime, m.url)) {
-      setError("Only videos can be added to the video gallery section.");
-      return;
-    }
+  function addToShowcase(m) {
     setContent((prev) => {
       const items = [...(prev?.videoGallery?.items || [])];
       if (items.some((v) => v.url === m.url)) {
-        setMessage("Already in video gallery.");
+        setMessage("Already in media showcase.");
         return prev;
       }
       items.push({
         id: m.id || m.key || m.url,
         url: m.url,
-        title: m.name || "Student video",
+        title: m.name || (isVideoMime(m.mime, m.url) ? "Student video" : "Photo"),
+        mime: m.mime || "",
       });
       return {
         ...prev,
         videoGallery: { ...(prev?.videoGallery || {}), enabled: true, items },
       };
     });
-    setMessage(`Added to video gallery — click Save website.`);
+    setMessage(`Added to homepage media showcase — click Save website.`);
+  }
+
+  function setProgramImage(programIndex, url) {
+    setContent((prev) => {
+      const items = [...(prev?.programs?.items || [])];
+      if (!items[programIndex]) return prev;
+      const progName = items[programIndex].name || "Program";
+      items[programIndex] = { ...items[programIndex], image: url };
+      setMessage(`Set ${progName} card image — click Save website.`);
+      return { ...prev, programs: { ...(prev.programs || {}), items } };
+    });
+  }
+
+  function handleMediaPlacement({ zone, programIndex, media: m }) {
+    if (!m?.url) return;
+    if (zone === "heroImage") {
+      patch("hero.heroImage", m.url);
+      setMessage(`"${m.name || "Image"}" → hero background. Save website to publish.`);
+    } else if (zone === "heroVideo") {
+      patch("hero.heroVideo", m.url);
+      setMessage(`"${m.name || "Video"}" → hero video. Save website to publish.`);
+    } else if (zone === "showcase") {
+      addToShowcase(m);
+    } else if (zone.startsWith("program-") && typeof programIndex === "number") {
+      setProgramImage(programIndex, m.url);
+    }
   }
 
   if (loading) {
@@ -298,6 +350,14 @@ export default function WebsiteCmsDashboard() {
 
   return (
     <div className="page-shell" style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 20px 48px" }}>
+      <CmsMediaPlacementModal
+        open={Boolean(placementMedia)}
+        media={placementMedia}
+        content={c}
+        onClose={() => setPlacementMedia(null)}
+        onPlace={handleMediaPlacement}
+      />
+      <CmsPlacementGuideModal open={showPlacementGuide} content={c} onClose={() => setShowPlacementGuide(false)} />
       <div
         style={{
           display: "flex",
@@ -594,7 +654,10 @@ export default function WebsiteCmsDashboard() {
 
           {tab === "programs" && (
             <>
-              <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Programs</h2>
+              <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Programs</h2>
+              <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 16 }}>
+                Card images: upload in <strong>Media library</strong>, then click &quot;Set program image&quot; on each file.
+              </p>
               <Field label="Eyebrow">
                 <input style={inputStyle} value={c.programs?.eyebrow || ""} onChange={(e) => patch("programs.eyebrow", e.target.value)} />
               </Field>
@@ -607,6 +670,14 @@ export default function WebsiteCmsDashboard() {
               {(c.programs?.items || []).map((item, i) => (
                 <div key={item.id || i} style={{ borderTop: "1px solid var(--border)", paddingTop: 16, marginTop: 16 }}>
                   <div style={{ fontWeight: 700, marginBottom: 10 }}>{item.name || `Program ${i + 1}`}</div>
+                  {item.image ? (
+                    <div style={{ marginBottom: 12, maxWidth: 280, borderRadius: 10, overflow: "hidden", border: "1px solid var(--border)" }}>
+                      <CmsMediaThumb media={{ url: item.image, mime: "image/", storage: item.image.includes("cms/") ? "r2" : "" }} height={120} />
+                      <div style={{ fontSize: 11, padding: "6px 10px", color: "var(--text-3)", wordBreak: "break-all" }}>{item.image}</div>
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 12 }}>No image selected — pick from Media library.</p>
+                  )}
                   <Field label="Name">
                     <input
                       style={inputStyle}
@@ -641,7 +712,7 @@ export default function WebsiteCmsDashboard() {
                         }}
                       />
                     </Field>
-                    <Field label="Image URL">
+                    <Field label="Image URL (or pick from Media library)">
                       <input
                         style={inputStyle}
                         value={item.image || ""}
@@ -653,6 +724,13 @@ export default function WebsiteCmsDashboard() {
                       />
                     </Field>
                   </div>
+                  <button
+                    type="button"
+                    style={{ ...mediaBtnStyle, marginTop: 4 }}
+                    onClick={() => setTab("media")}
+                  >
+                    Open Media library to choose image
+                  </button>
                 </div>
               ))}
             </>
@@ -736,9 +814,9 @@ export default function WebsiteCmsDashboard() {
 
           {tab === "videos" && (
             <>
-              <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Video section (homepage)</h2>
+              <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Media showcase (homepage)</h2>
               <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 16 }}>
-                Videos you add from the Media library appear here. Pick videos in Media → &quot;Show in gallery&quot;.
+                Photos and videos you pick in Media library → &quot;Show on homepage showcase&quot; appear in a responsive grid on the site.
               </p>
               <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, fontSize: 13 }}>
                 <input
@@ -746,7 +824,7 @@ export default function WebsiteCmsDashboard() {
                   checked={c.videoGallery?.enabled !== false}
                   onChange={(e) => patch("videoGallery.enabled", e.target.checked)}
                 />
-                Show video section on website
+                Show this section on website
               </label>
               <Field label="Section eyebrow">
                 <input
@@ -766,7 +844,7 @@ export default function WebsiteCmsDashboard() {
                 Live on website ({(c.videoGallery?.items || []).length})
               </h3>
               {(c.videoGallery?.items || []).length === 0 ? (
-                <p style={{ fontSize: 13, color: "var(--text-3)" }}>No videos selected yet — use Media library.</p>
+                <p style={{ fontSize: 13, color: "var(--text-3)" }}>Nothing selected yet — upload in Media library and click &quot;Show on homepage showcase&quot;.</p>
               ) : (
                 (c.videoGallery?.items || []).map((v, i) => (
                   <div
@@ -781,7 +859,17 @@ export default function WebsiteCmsDashboard() {
                       marginBottom: 8,
                     }}
                   >
-                    <video src={v.url} style={{ width: 100, height: 56, objectFit: "cover", borderRadius: 6 }} muted />
+                    <div style={{ width: 120, flexShrink: 0, borderRadius: 6, overflow: "hidden" }}>
+                      <CmsMediaThumb
+                        media={{
+                          url: v.url,
+                          mime: v.mime || "",
+                          key: v.id,
+                          storage: String(v.url || "").includes("/cms/") ? "r2" : "",
+                        }}
+                        height={68}
+                      />
+                    </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <input
                         style={{ ...inputStyle, marginBottom: 6 }}
@@ -816,8 +904,25 @@ export default function WebsiteCmsDashboard() {
             <>
               <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Media library</h2>
               <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 8 }}>
-                Upload files to Cloudflare R2. You choose what appears on the site — hero, gallery, or hidden.
+                Upload files to Cloudflare R2. Use <strong>Where to show?</strong> on each file to pick the exact homepage spot.
               </p>
+              <button
+                type="button"
+                onClick={() => setShowPlacementGuide(true)}
+                style={{
+                  marginBottom: 16,
+                  padding: "8px 14px",
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  background: "var(--surface-2)",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  color: "var(--accent)",
+                }}
+              >
+                View website placement map
+              </button>
               {storageInfo ? (
                 <p
                   style={{
@@ -861,11 +966,37 @@ export default function WebsiteCmsDashboard() {
                   }}
                 />
               </label>
+              {uploading && (
+                <div style={{ marginBottom: 20, maxWidth: 420 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+                    <span>Uploading…</span>
+                    <span>{uploadPct}%</span>
+                  </div>
+                  <div
+                    style={{
+                      height: 8,
+                      borderRadius: 999,
+                      background: "var(--surface-2)",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${uploadPct}%`,
+                        background: "var(--accent)",
+                        transition: "width 0.2s ease",
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16 }}>
                 {(c.media || []).map((m) => {
                   const placements = getMediaPlacements(c, m.url);
                   const onSite = placements.length > 0;
                   const isVid = isVideoMime(m.mime, m.url);
+                  const inShowcase = placements.includes("Media showcase");
                   return (
                     <div
                       key={m.id || m.url}
@@ -876,11 +1007,7 @@ export default function WebsiteCmsDashboard() {
                         background: "var(--surface)",
                       }}
                     >
-                      {isVid ? (
-                        <video src={m.url} style={{ width: "100%", height: 140, objectFit: "cover", background: "#000" }} muted controls playsInline />
-                      ) : (
-                        <img src={m.url} alt="" style={{ width: "100%", height: 140, objectFit: "cover" }} />
-                      )}
+                      <CmsMediaThumb media={m} height={140} />
                       <div style={{ padding: 12, fontSize: 12 }}>
                         <div style={{ fontWeight: 700, marginBottom: 4, wordBreak: "break-word" }}>{m.name}</div>
                         {onSite ? (
@@ -905,21 +1032,50 @@ export default function WebsiteCmsDashboard() {
                           <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8 }}>Not on website</div>
                         )}
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <button
+                            type="button"
+                            style={{
+                              ...mediaBtnStyle,
+                              background: "var(--accent)",
+                              color: "#fff",
+                              border: "none",
+                              fontWeight: 700,
+                              textAlign: "center",
+                            }}
+                            onClick={() => setPlacementMedia(m)}
+                          >
+                            Where to show?
+                          </button>
                           {isVid ? (
-                            <>
-                              <button type="button" style={mediaBtnStyle} onClick={() => { patch("hero.heroVideo", m.url); setMessage("Set as hero video — Save website."); }}>
-                                {c.hero?.heroVideo === m.url ? "✓ Hero video" : "Set hero video"}
-                              </button>
-                              <button type="button" style={mediaBtnStyle} onClick={() => addToVideoGallery(m)}>
-                                {placements.includes("Video gallery") ? "✓ In gallery" : "Show in gallery"}
-                              </button>
-                            </>
+                            <button type="button" style={mediaBtnStyle} onClick={() => { patch("hero.heroVideo", m.url); setMessage("Set as hero video — Save website."); }}>
+                              {c.hero?.heroVideo === m.url ? "✓ Hero video" : "Set hero video"}
+                            </button>
                           ) : (
-                            <>
-                              <button type="button" style={mediaBtnStyle} onClick={() => { patch("hero.heroImage", m.url); setMessage("Set as hero image — Save website."); }}>
-                                {c.hero?.heroImage === m.url ? "✓ Hero image" : "Set hero image"}
-                              </button>
-                            </>
+                            <button type="button" style={mediaBtnStyle} onClick={() => { patch("hero.heroImage", m.url); setMessage("Set as hero image — Save website."); }}>
+                              {c.hero?.heroImage === m.url ? "✓ Hero image" : "Set hero image"}
+                            </button>
+                          )}
+                          <button type="button" style={mediaBtnStyle} onClick={() => addToShowcase(m)}>
+                            {inShowcase ? "✓ On homepage showcase" : "Show on homepage showcase"}
+                          </button>
+                          {!isVid && (c.programs?.items || []).length > 0 && (
+                            <select
+                              style={{ ...mediaBtnStyle, padding: "6px 8px" }}
+                              value=""
+                              onChange={(e) => {
+                                const idx = Number(e.target.value);
+                                if (Number.isFinite(idx) && idx >= 0) setProgramImage(idx, m.url);
+                                e.target.value = "";
+                              }}
+                            >
+                              <option value="">Set program card image…</option>
+                              {(c.programs?.items || []).map((p, pi) => (
+                                <option key={p.id || pi} value={pi}>
+                                  {p.name || `Program ${pi + 1}`}
+                                  {p.image === m.url ? " ✓" : ""}
+                                </option>
+                              ))}
+                            </select>
                           )}
                           {onSite && (
                             <button type="button" style={{ ...mediaBtnStyle, color: "#b45309" }} onClick={() => removeMediaFromSite(m)}>
