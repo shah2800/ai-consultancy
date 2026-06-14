@@ -72,6 +72,34 @@ const RESPONSIVE_STYLES = `
     white-space: nowrap;
     flex-shrink: 0;
   }
+  .wad-btn-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    border: 1px solid rgba(220, 38, 38, 0.35);
+    background: rgba(220, 38, 38, 0.08);
+    color: #b91c1c;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.15s;
+    padding: 0;
+  }
+  .wad-btn-remove:hover:not(:disabled) {
+    background: rgba(220, 38, 38, 0.16);
+    border-color: rgba(220, 38, 38, 0.55);
+    transform: scale(1.04);
+  }
+  .wad-btn-remove:disabled {
+    opacity: 0.55;
+    cursor: wait;
+  }
+  .wad-btn-remove svg {
+    width: 16px;
+    height: 16px;
+  }
   .wad-meta-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -230,6 +258,7 @@ export default function WebsiteApplicationsDashboard() {
   const [alertTesting, setAlertTesting] = useState(false);
   const [alertMsg, setAlertMsg] = useState("");
   const [alertErr, setAlertErr] = useState("");
+  const [deletingId, setDeletingId] = useState("");
 
   const loadAlerts = useCallback(async () => {
     try {
@@ -326,6 +355,29 @@ export default function WebsiteApplicationsDashboard() {
     return () => poll.dispose();
   }, [load, loadAlerts]);
 
+  const removeApplication = async (lead) => {
+    const id = String(lead?._id || "");
+    const label = lead?.name || lead?.email || lead?.phone || "this applicant";
+    if (!id) return;
+    const ok = window.confirm(
+      `Remove ${label} completely?\n\nThis deletes the lead, chat history, and uploaded documents from the CRM. This cannot be undone.`
+    );
+    if (!ok) return;
+
+    setDeletingId(id);
+    try {
+      await api.delete(`/admin/leads/${id}`);
+      setLeads((prev) => prev.filter((l) => String(l._id) !== id));
+      invalidateCachedGet("/admin/leads");
+      invalidateCachedGet("/admin/website-applications");
+      window.dispatchEvent(new CustomEvent("crm-notifications-updated"));
+    } catch (e) {
+      window.alert(e?.response?.data?.error || "Could not remove this application.");
+    } finally {
+      setDeletingId("");
+    }
+  };
+
   const websiteLeads = useMemo(
     () =>
       [...(leads || [])].sort((a, b) => {
@@ -376,7 +428,8 @@ export default function WebsiteApplicationsDashboard() {
         </h1>
         <p className="page-subtitle" style={{ margin: 0, maxWidth: 560, fontSize: "clamp(12px, 2.5vw, 14px)" }}>
           Submissions from the public <strong>Apply</strong> form create leads here. Use{" "}
-          <strong>Review</strong> to see uploads and <strong>Chat Profile</strong> for the full lead view.
+          <strong>Review</strong> for uploads, <strong>Chat Profile</strong> for the full lead view, and the{" "}
+          <strong>red trash icon</strong> to remove an applicant completely.
         </p>
       </header>
 
@@ -626,16 +679,38 @@ export default function WebsiteApplicationsDashboard() {
             const n = Array.isArray(lead.admissionProfile?.uploadsMeta)
               ? lead.admissionProfile.uploadsMeta.length
               : 0;
-            const rid = String(lead.admissionProfile?.registrationId || "\u2014");
+            const rid = String(lead.admissionProfile?.registrationId || "").trim();
             const stage = String(lead.admissionProfile?.processStage || "registered").replace(/_/g, " ");
+            const isDeleting = deletingId === String(lead._id);
             return (
               <div key={lead._id} className="wad-card">
                 <div className="wad-card-header">
                   <div className="wad-name">{lead.name || "\u2014"}</div>
-                  <div className="wad-rid">{rid}</div>
+                  <button
+                    type="button"
+                    className="wad-btn-remove"
+                    title="Remove applicant completely"
+                    aria-label={`Remove ${lead.name || "applicant"} completely`}
+                    disabled={isDeleting}
+                    onClick={() => removeApplication(lead)}
+                  >
+                    {isDeleting ? (
+                      <span style={{ fontSize: 11, fontWeight: 700 }}>...</span>
+                    ) : (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16" />
+                      </svg>
+                    )}
+                  </button>
                 </div>
 
                 <div className="wad-meta-grid">
+                  {rid ? (
+                    <div className="wad-meta-item" style={{ gridColumn: "1 / -1" }}>
+                      <span className="wad-meta-label">Register ID</span>
+                      <span className="wad-meta-value mono">{rid}</span>
+                    </div>
+                  ) : null}
                   <div className="wad-meta-item" style={{ gridColumn: "1 / -1" }}>
                     <span className="wad-meta-label">Email</span>
                     <span className="wad-meta-value mono muted">{lead.email || "\u2014"}</span>
