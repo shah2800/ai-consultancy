@@ -1748,6 +1748,42 @@ function escapeRegex(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+const WEBSITE_APPLY_EMAIL_RE =
+  /^[a-z0-9](?:[a-z0-9._%+-]{0,62}[a-z0-9])?@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
+
+function normalizeWebsiteApplyEmail(raw) {
+  return String(raw || "").trim().toLowerCase();
+}
+
+function isValidWebsiteApplyEmail(raw) {
+  const email = normalizeWebsiteApplyEmail(raw);
+  if (!email || email.length > 120) return false;
+  return WEBSITE_APPLY_EMAIL_RE.test(email);
+}
+
+function normalizePassportNumber(raw) {
+  return String(raw || "")
+    .trim()
+    .replace(/\s+/g, "")
+    .toUpperCase();
+}
+
+function isValidPassportNumber(raw) {
+  const passport = normalizePassportNumber(raw);
+  if (!passport || passport.length < 6 || passport.length > 20) return false;
+  return /^[A-Z0-9]+$/.test(passport);
+}
+
+function validateWebsiteApplyContactFields({ email, passportNumber }) {
+  if (!isValidWebsiteApplyEmail(email)) {
+    return "Enter a valid email address (e.g. you@gmail.com).";
+  }
+  if (!isValidPassportNumber(passportNumber)) {
+    return "Passport number must be CAPITAL letters and numbers only (e.g. AB1234567).";
+  }
+  return "";
+}
+
 function normalizePhoneKey(raw) {
   return String(raw || "").replace(/\D+/g, "");
 }
@@ -8998,9 +9034,9 @@ app.post(
       const dobRaw = String(req.body.dob || "").trim();
       const gender = String(req.body.gender || "").trim();
       const phone = String(req.body.phone || "").trim();
-      const email = String(req.body.email || "").trim();
+      const email = normalizeWebsiteApplyEmail(req.body.email);
       const cityAddress = String(req.body.cityAddress || req.body.city || "").trim();
-      const passportNumber = String(req.body.passportNumber || "").trim();
+      const passportNumber = normalizePassportNumber(req.body.passportNumber);
       const passportIssueRaw = String(req.body.passportIssueDate || "").trim();
       const passportExpiryRaw = String(req.body.passportExpiry || "").trim();
       const matricGrade = String(req.body.matricGrade || "").trim();
@@ -9024,6 +9060,11 @@ app.post(
         !courseInterest
       ) {
         return res.status(400).json({ error: "Missing required fields." });
+      }
+
+      const contactErr = validateWebsiteApplyContactFields({ email, passportNumber });
+      if (contactErr) {
+        return res.status(400).json({ error: contactErr });
       }
 
       let passportExpiry = null;
@@ -9274,9 +9315,9 @@ app.post("/public/website/apply-json", websiteApplyLimiter, async (req, res) => 
     const dobRaw            = String(req.body.dob               || "").trim();
     const gender            = String(req.body.gender            || "").trim();
     const phone             = String(req.body.phone             || "").trim();
-    const email             = String(req.body.email             || "").trim();
+    const email             = normalizeWebsiteApplyEmail(req.body.email);
     const cityAddress       = String(req.body.cityAddress       || "").trim();
-    const passportNumber    = String(req.body.passportNumber    || "").trim();
+    const passportNumber    = normalizePassportNumber(req.body.passportNumber);
     const passportIssueRaw  = String(req.body.passportIssueDate || "").trim();
     const passportExpiryRaw = String(req.body.passportExpiry    || "").trim();
     const matricGrade       = String(req.body.matricGrade       || "").trim();
@@ -9290,6 +9331,11 @@ app.post("/public/website/apply-json", websiteApplyLimiter, async (req, res) => 
     if (!fullName || !fatherName || !dobRaw || !gender || !phone || !email ||
         !passportNumber || !passportExpiryRaw || !countryInterest || !courseInterest) {
       return res.status(400).json({ error: "Missing required fields." });
+    }
+
+    const contactErr = validateWebsiteApplyContactFields({ email, passportNumber });
+    if (contactErr) {
+      return res.status(400).json({ error: contactErr });
     }
 
     const dob             = dobRaw            ? new Date(dobRaw)            : null;

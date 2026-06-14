@@ -304,7 +304,8 @@
             </div>
             <div class="field">
               <label for="f-email">Email Address <span class="req">*</span></label>
-              <input id="f-email" name="email" type="email" required autocomplete="email" placeholder="you@email.com">
+              <input id="f-email" name="email" type="email" required autocomplete="email" inputmode="email" spellcheck="false" placeholder="you@gmail.com">
+              <span class="field-hint">Use a valid Gmail or email you check regularly.</span>
             </div>
           </div>
           <div class="field" style="margin-top:16px">
@@ -326,7 +327,8 @@
           <div class="field-grid col2">
             <div class="field" style="grid-column:1/-1">
               <label for="f-passport">Passport Number <span class="req">*</span></label>
-              <input id="f-passport" name="passportNumber" required autocomplete="off" placeholder="AB1234567" type="text">
+              <input id="f-passport" name="passportNumber" required autocomplete="off" autocapitalize="characters" maxlength="20" placeholder="AB1234567" type="text" style="text-transform:uppercase">
+              <span class="field-hint">CAPITAL letters and numbers only — e.g. AB1234567</span>
             </div>
             <div class="field">
               <label>Issue Date</label>
@@ -637,6 +639,52 @@
       gender:"Gender", phone:"WhatsApp Number", email:"Email Address",
       passportNumber:"Passport Number", passportExpiry:"Passport Expiry",
       countryInterest:"Country of Interest", courseInterest:"Program" };
+
+    var EMAIL_RE = /^[a-z0-9](?:[a-z0-9._%+-]{0,62}[a-z0-9])?@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
+    var PASSPORT_RE = /^[A-Z0-9]{6,20}$/;
+
+    function normalizeEmail(raw) {
+      return String(raw || "").trim().toLowerCase();
+    }
+
+    function normalizePassport(raw) {
+      return String(raw || "").trim().replace(/\s+/g, "").toUpperCase();
+    }
+
+    function isValidEmail(raw) {
+      var email = normalizeEmail(raw);
+      return email && email.length <= 120 && EMAIL_RE.test(email);
+    }
+
+    function isValidPassport(raw) {
+      return PASSPORT_RE.test(normalizePassport(raw));
+    }
+
+    var emailInput = document.getElementById("f-email");
+    var passportInput = document.getElementById("f-passport");
+
+    if (passportInput) {
+      passportInput.addEventListener("input", function () {
+        var start = passportInput.selectionStart;
+        var end = passportInput.selectionEnd;
+        var next = normalizePassport(passportInput.value);
+        if (passportInput.value !== next) {
+          passportInput.value = next;
+          if (start != null && end != null) {
+            passportInput.setSelectionRange(start, end);
+          }
+        }
+      });
+    }
+
+    if (emailInput) {
+      emailInput.addEventListener("blur", function () {
+        emailInput.value = normalizeEmail(emailInput.value);
+        if (emailInput.value && !isValidEmail(emailInput.value)) {
+          emailInput.classList.add("error-field");
+        }
+      });
+    }
 
     function setStep(n) {
       steps.forEach(function(s, i) { s.className = "ps"+(i<n-1?" done":i===n-1?" active":""); });
