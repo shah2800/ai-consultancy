@@ -5,6 +5,13 @@ import CmsMediaThumb, { isVideoMime } from "../components/CmsMediaThumb";
 import CmsMediaPlacementModal, { CmsPlacementGuideModal } from "../components/CmsMediaPlacementModal";
 import { prepareMediaForUpload, isVideoFile } from "../utils/mediaUploadOptimize";
 
+function stripMediaFilename(name) {
+  return String(name || "")
+    .replace(/\.(jpe?g|png|gif|webp|avif|mp4|webm|mov|m4v|pdf)$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 const TABS = [
   { id: "general", label: "General & SEO" },
   { id: "hero", label: "Hero & video" },
@@ -310,7 +317,7 @@ export default function WebsiteCmsDashboard() {
       items.push({
         id: m.id || m.key || m.url,
         url: m.url,
-        title: m.name || (isVideoMime(m.mime, m.url) ? "Student video" : "Photo"),
+        title: stripMediaFilename(m.name) || (isVideoMime(m.mime, m.url) ? "Student video" : "Photo"),
         mime: m.mime || "",
       });
       return {

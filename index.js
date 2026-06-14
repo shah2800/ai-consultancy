@@ -27,6 +27,7 @@ try {
 
 const { calculatePriority, enrichLead } = require("./utils/calculatePriority");
 const { mergeWebsiteCmsContent, deepMerge } = require("./lib/website-cms-defaults");
+const { stripMediaFilename, isLikelyCmsMediaUrl } = require("./lib/media-display");
 const { optimizeMediaUpload } = require("./lib/media-optimize");
 const {
   isR2Configured,
@@ -37,6 +38,7 @@ const {
   createPresignedPutUrl,
   deleteR2Object,
   getR2ObjectStream,
+  headR2Object,
   resolveKeyFromPublicUrl,
   testR2Connection,
   getR2StorageStatus,
@@ -5395,6 +5397,38 @@ const websiteCmsUpload = multer({
 async function loadWebsiteCmsForTenant(tenantRaw) {
   const row = await WebsiteContent.findOne({ userId: tenantRaw }).lean();
   return mergeWebsiteCmsContent(row?.content || {});
+}
+
+function publicCmsMediaProxyUrl(rawUrl) {
+  const u = String(rawUrl || "").trim();
+  if (!u || !isLikelyCmsMediaUrl(u)) return u;
+  return `/public/website/media?url=${encodeURIComponent(u)}`;
+}
+
+function sanitizePublicWebsiteContent(content) {
+  const c = content && typeof content === "object" ? { ...content } : {};
+  if (c.hero && typeof c.hero === "object") {
+    c.hero = { ...c.hero };
+    if (c.hero.heroImage) c.hero.heroImage = publicCmsMediaProxyUrl(c.hero.heroImage);
+    if (c.hero.heroVideo) c.hero.heroVideo = publicCmsMediaProxyUrl(c.hero.heroVideo);
+  }
+  if (Array.isArray(c.videoGallery?.items)) {
+    c.videoGallery = { ...c.videoGallery, items: c.videoGallery.items.map((item) => {
+      if (!item || typeof item !== "object") return item;
+      return {
+        ...item,
+        url: publicCmsMediaProxyUrl(item.url),
+        title: stripMediaFilename(item.title) || item.title,
+      };
+    }) };
+  }
+  if (Array.isArray(c.programs)) {
+    c.programs = c.programs.map((p) => {
+      if (!p || typeof p !== "object") return p;
+      return p.image ? { ...p, image: publicCmsMediaProxyUrl(p.image) } : p;
+    });
+  }
+  return c;
 }
 
 async function saveWebsiteCmsForTenant(tenantRaw, patch, updatedBy) {
@@ -10797,12 +10831,75 @@ app.get("/public/website/content", websiteTrackLimiter, async (req, res) => {
     if (!tenantRaw || !mongoose.Types.ObjectId.isValid(tenantRaw)) {
       return res.status(503).json({ error: "Website content is not configured." });
     }
-    const content = await loadWebsiteCmsForTenant(tenantRaw);
+    const content = sanitizePublicWebsiteContent(await loadWebsiteCmsForTenant(tenantRaw));
     res.set("Cache-Control", "public, max-age=60");
     res.json({ ok: true, content });
   } catch (err) {
     console.error("GET /public/website/content:", err?.message || err);
     res.status(500).json({ error: "Could not load website content." });
+  }
+});
+
+app.get("/public/website/media", websiteTrackLimiter, async (req, res) => {
+  try {
+    const tenantRaw = resolveWebsiteTenantUserId();
+    if (!tenantRaw) {
+      return res.status(503).json({ error: "Website media is not configured." });
+    }
+    const allowedPrefix = cmsKeyPrefixForTenant(tenantRaw);
+    let key = String(req.query.key || "").trim();
+    const url = String(req.query.url || "").trim();
+    if (!key && url) {
+      if (url.startsWith("/uploads/website-cms/")) {
+        const filename = path.basename(url);
+        const full = path.join(websiteCmsUploadDir, filename);
+        if (!fs.existsSync(full)) return res.status(404).json({ error: "File not found." });
+        res.set("Cache-Control", "public, max-age=86400");
+        return res.sendFile(full);
+      }
+      if (isR2Configured()) key = resolveKeyFromPublicUrl(url);
+    }
+    if (!key || !key.startsWith(allowedPrefix)) {
+      return res.status(404).json({ error: "Media not found." });
+    }
+
+    const rangeHeader = String(req.headers.range || "").trim();
+    if (rangeHeader.startsWith("bytes=")) {
+      const meta = await headR2Object(key);
+      const total = Number(meta.contentLength || 0);
+      const parts = rangeHeader.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : total > 0 ? total - 1 : undefined;
+      if (!Number.isFinite(start) || start < 0) {
+        return res.status(416).json({ error: "Invalid range." });
+      }
+      const { body, contentType, contentLength, contentRange } = await getR2ObjectStream(key, {
+        start,
+        end,
+      });
+      res.status(206);
+      res.set("Content-Type", contentType);
+      res.set("Accept-Ranges", "bytes");
+      if (contentRange) res.set("Content-Range", contentRange);
+      else if (total > 0) {
+        res.set("Content-Range", `bytes ${start}-${end != null ? end : total - 1}/${total}`);
+      }
+      if (contentLength) res.set("Content-Length", String(contentLength));
+      res.set("Cache-Control", "public, max-age=86400");
+      if (body?.pipe) return body.pipe(res);
+      return res.send(body);
+    }
+
+    const { body, contentType, contentLength } = await getR2ObjectStream(key);
+    res.set("Content-Type", contentType);
+    res.set("Accept-Ranges", "bytes");
+    if (contentLength) res.set("Content-Length", String(contentLength));
+    res.set("Cache-Control", "public, max-age=86400");
+    if (body?.pipe) return body.pipe(res);
+    return res.send(body);
+  } catch (err) {
+    console.error("GET /public/website/media:", err?.message || err);
+    return res.status(404).json({ error: "Media not available." });
   }
 });
 

@@ -37,6 +37,26 @@
   /** Program + showcase images load only when user scrolls near that section. */
   var progImagesQueued = [];
 
+  function apiBase() {
+    return String((window.NSI_CONFIG || {}).apiBase || "").replace(/\/+$/, "");
+  }
+
+  function resolveMediaUrl(url) {
+    var u = String(url || "").trim();
+    if (!u) return u;
+    if (/^https?:\/\//i.test(u)) return u;
+    var base = apiBase();
+    if (u.charAt(0) === "/" && base) return base + u;
+    return u;
+  }
+
+  function displayMediaTitle(title) {
+    return String(title || "")
+      .replace(/\.(jpe?g|png|gif|webp|avif|mp4|webm|mov|m4v|pdf)$/i, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   function registerLazySection(id, onVisible) {
     var sec = document.getElementById(id);
     if (!sec) return;
@@ -58,7 +78,7 @@
 
   function queueProgramImage(img, url) {
     if (!img || !url) return;
-    img.dataset.src = String(url).trim();
+    img.dataset.src = resolveMediaUrl(String(url).trim());
     progImagesQueued.push(img);
   }
 
@@ -142,7 +162,7 @@
             "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0";
           heroSection.insertBefore(vid, heroSection.firstChild);
         }
-        vid.src = hero.heroVideo;
+        vid.src = resolveMediaUrl(hero.heroVideo);
         var imgBg = $(".hero-img");
         if (imgBg) imgBg.style.opacity = "0.35";
       } else if (hero.heroImage) {
@@ -150,7 +170,7 @@
         if (imgEl) {
           var imgUrl = String(hero.heroImage).trim();
           if (imgUrl) {
-            applyHeroBackground(imgEl, imgUrl);
+            applyHeroBackground(imgEl, resolveMediaUrl(imgUrl));
           }
         }
         var oldVid = $(".hero-video");
@@ -358,34 +378,35 @@
     if (items.length >= 3) grid.classList.add("cols-3");
     else grid.classList.remove("cols-3");
     items.forEach(function (item) {
-      var url = String(item.url || "").trim();
+      var url = resolveMediaUrl(String(item.url || "").trim());
       if (!url) return;
       var card = document.createElement("article");
       card.className = "video-card";
       var media = document.createElement("div");
       media.className = "video-card-media";
-      var isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(url) || String(item.mime || "").indexOf("video/") === 0;
+      var isVideo = /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url) || String(item.mime || "").indexOf("video/") === 0;
       if (isVideo) {
         var vid = document.createElement("video");
         vid.setAttribute("data-lazy-src", url);
         vid.controls = true;
         vid.playsInline = true;
-        vid.preload = "none";
-        vid.setAttribute("aria-label", item.title || "Student video");
+        vid.preload = "metadata";
+        vid.setAttribute("aria-label", displayMediaTitle(item.title) || "Student video");
         media.appendChild(vid);
       } else {
         var img = document.createElement("img");
         img.setAttribute("data-lazy-src", url);
-        img.alt = item.title || "";
+        img.alt = displayMediaTitle(item.title) || "";
         img.loading = "lazy";
         img.decoding = "async";
         media.appendChild(img);
       }
       card.appendChild(media);
-      if (item.title) {
+      var capText = displayMediaTitle(item.title);
+      if (capText) {
         var cap = document.createElement("div");
         cap.className = "video-card-cap";
-        cap.textContent = item.title;
+        cap.textContent = capText;
         card.appendChild(cap);
       }
       grid.appendChild(card);
