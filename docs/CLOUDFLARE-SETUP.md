@@ -210,6 +210,37 @@ Render **does not** serve your homepage or large media files anymore.
 
 ---
 
+## Part 5 — Fast website (images from R2, text from Render)
+
+**How it works now:**
+
+| What | Where it loads from |
+|------|---------------------|
+| HTML, CSS, JS | Cloudflare Pages (instant, no sleep) |
+| Text, hero URL, program URLs | Render API → `/public/website/content` (small JSON only) |
+| Photos & videos | **Cloudflare R2** URLs saved in CRM (not 33 files in GitHub) |
+
+**Do this for speed:**
+
+1. **Delete old bulk images** from your repo / Cloudflare deploy if still present:
+   - `website/images/MBBS/` (12 files)
+   - `website/images/BBA/` (11 files)
+   - `website/images/IT/` (10 files)
+   - Optional: `website/images/hero.webp` if hero is set in CRM from R2
+
+2. **Upload only what you need in CRM → Media library:**
+   - 1 **hero** image (compress to **under 200 KB**)
+   - 3 **program** card images (MBBS, BBA, IT — **under 120 KB** each)
+   - Showcase photos/videos as needed
+
+3. **Assign in CRM:** “Where to show?” → hero / program / showcase → **Save website**
+
+4. **Program images lazy-load** — they download only when the visitor scrolls to Programs (not on first page load).
+
+5. **Compress before upload:** [squoosh.app](https://squoosh.app) → WebP, width 1200px max.
+
+---
+
 ## Local development
 
 Copy `.env.example` to `.env` and add R2 vars for local CRM upload testing.

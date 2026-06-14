@@ -229,7 +229,6 @@
   }
   </script>
 
-  <link rel="preload" as="image" href="images/hero.webp" fetchpriority="high">
   <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- Non-blocking font load — prevents render delay -->
@@ -336,7 +335,7 @@
 
     /* ─── Hero ─── */
     .hero{position:relative;min-height:min(90vh,720px);display:flex;align-items:center;color:#fff;overflow:hidden}
-    .hero-img{position:absolute;inset:0;background:url("images/hero.webp") center/cover no-repeat}
+    .hero-img{position:absolute;inset:0;background:linear-gradient(135deg,#0a1f44 0%,#1a3a6e 55%,#0d2847 100%) center/cover no-repeat}
     .hero-overlay{position:absolute;inset:0;background:linear-gradient(100deg,rgba(8,17,40,.96) 0%,rgba(8,17,40,.82) 45%,rgba(8,17,40,.45) 100%)}
     .hero-in{position:relative;z-index:2;max-width:var(--max);margin:0 auto;width:100%;padding:60px 24px 72px;display:grid;grid-template-columns:1fr;gap:40px}
     .hero-pill{display:inline-flex;align-items:center;gap:8px;background:rgba(212,168,67,.15);border:1px solid rgba(212,168,67,.4);color:#ffd369;font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:7px 16px;border-radius:999px;margin-bottom:22px}
@@ -388,12 +387,11 @@
     .prog::before{content:"";position:absolute;inset:0;border-radius:16px;box-shadow:0 20px 56px rgba(10,31,68,.18);opacity:0;transition:opacity .28s;z-index:-1;pointer-events:none}
     .prog:hover{transform:translateY(-5px);border-color:rgba(10,31,68,.18)}
     .prog:hover::before{opacity:1}
-    /* Image container — 2 slots for smooth crossfade */
+    /* Program card image — one image from CMS/R2, loaded only when section scrolls into view */
     .prog-img{width:100%;height:200px;flex-shrink:0;position:relative;background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);overflow:hidden}
-    .prog-slide{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;will-change:opacity;transition:opacity 1.4s ease}
-    .prog-slide.show{opacity:.88;z-index:1}
-    .prog-slide.hide{opacity:0;z-index:0}
-    .prog:hover .prog-slide.show{transform:scale(1.04);transition:opacity 1.4s ease,transform 6s ease}
+    .prog-cover{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .45s ease;z-index:1}
+    .prog-cover.is-loaded{opacity:.88}
+    .prog:hover .prog-cover.is-loaded{transform:scale(1.04);transition:opacity .45s ease,transform 6s ease}
     /* Gradient overlay */
     .prog-img::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,17,40,.05) 30%,rgba(10,17,40,.72) 100%);z-index:2;pointer-events:none}
     /* Badge on image */
@@ -862,8 +860,7 @@
         <button class="prog" id="mbbs-btn" type="button" aria-label="MBBS details">
           <div class="prog-img">
             <span class="prog-badge prog-badge-red">🏥 Most Popular</span>
-            <img class="prog-slide show" src="images/MBBS/1.webp" alt="MBBS / Medicine abroad" id="mbbs-a" decoding="async" fetchpriority="low">
-            <img class="prog-slide hide" alt="" id="mbbs-b" aria-hidden="true" decoding="async" loading="lazy">
+            <img class="prog-cover" alt="MBBS / Medicine abroad" id="mbbs-img" decoding="async" loading="lazy">
           </div>
           <div class="prog-data">
             <div class="prog-name">MBBS / MD — Medicine</div>
@@ -890,8 +887,7 @@
         <button class="prog" id="bba-btn" type="button" aria-label="BBA/MBA details">
           <div class="prog-img">
             <span class="prog-badge prog-badge-blue">💼 Business</span>
-            <img class="prog-slide show" src="images/BBA/1.webp" alt="BBA MBA Business abroad" id="bba-a" decoding="async" fetchpriority="low">
-            <img class="prog-slide hide" alt="" id="bba-b" aria-hidden="true" decoding="async" loading="lazy">
+            <img class="prog-cover" alt="BBA MBA Business abroad" id="bba-img" decoding="async" loading="lazy">
           </div>
           <div class="prog-data">
             <div class="prog-name">BBA &amp; MBA — Business</div>
@@ -918,8 +914,7 @@
         <button class="prog" id="it-btn" type="button" aria-label="IT/CS details">
           <div class="prog-img">
             <span class="prog-badge prog-badge-green">💻 Technology</span>
-            <img class="prog-slide show" src="images/IT/1.webp" alt="Computer Science IT abroad" id="it-a" decoding="async" fetchpriority="low">
-            <img class="prog-slide hide" alt="" id="it-b" aria-hidden="true" decoding="async" loading="lazy">
+            <img class="prog-cover" alt="Computer Science IT abroad" id="it-img" decoding="async" loading="lazy">
           </div>
           <div class="prog-data">
             <div class="prog-name">Computer Science &amp; IT</div>
@@ -1514,63 +1509,6 @@
       openModal("Computer Science & IT in Georgia", buildBody(
         ["Caucasus University","Georgian Technical University","Alte University","Int'l Black Sea University"],
         "BS IT, Computer Science", "$1,500 – $2,250", "4 years English medium"), FT);
-    });
-
-    // ── Image crossfade for programme cards (only when section visible) ──
-    function rnd(max, prev){ var r; do{ r=Math.floor(Math.random()*max)+1; }while(r===prev && max>1); return r; }
-
-    var cards = [
-      { a: document.getElementById("mbbs-a"), b: document.getElementById("mbbs-b"), folder:"MBBS", max:12, last:1, slot:0 },
-      { a: document.getElementById("bba-a"),  b: document.getElementById("bba-b"),  folder:"BBA",  max:11, last:1, slot:0 },
-      { a: document.getElementById("it-a"),   b: document.getElementById("it-b"),   folder:"IT",   max:10, last:1, slot:0 },
-    ];
-
-    function rotateCard(c){
-      if (!c || !c.a || !c.b) return;
-      var n = rnd(c.max, c.last); c.last = n;
-      var src = "images/"+c.folder+"/"+n+".webp";
-      var curr = c.slot===0 ? c.a : c.b;
-      var next = c.slot===0 ? c.b : c.a;
-      var preload = new Image();
-      preload.onload = function(){
-        next.src = src;
-        next.className = "prog-slide show";
-        curr.className = "prog-slide hide";
-        c.slot = 1 - c.slot;
-      };
-      preload.src = src;
-    }
-
-    var slideTimer;
-    var SLIDE_MS = 8000;
-    function tick(){ if(document.visibilityState==="hidden") return; cards.forEach(rotateCard); }
-
-    function startSlideshow(){
-      clearInterval(slideTimer);
-      slideTimer = setInterval(tick, SLIDE_MS);
-    }
-
-    function stopSlideshow(){
-      clearInterval(slideTimer);
-    }
-
-    var programsSec = document.getElementById("programs");
-    if (programsSec && "IntersectionObserver" in window) {
-      var slideOb = new IntersectionObserver(function(entries){
-        if (entries[0] && entries[0].isIntersecting) {
-          startSlideshow();
-        } else {
-          stopSlideshow();
-        }
-      }, { threshold: 0.12, rootMargin: "80px 0px" });
-      slideOb.observe(programsSec);
-    } else {
-      startSlideshow();
-    }
-
-    document.addEventListener("visibilitychange", function(){
-      if(document.visibilityState==="hidden"){ stopSlideshow(); }
-      else if (programsSec && programsSec.getBoundingClientRect().top < window.innerHeight) { startSlideshow(); }
     });
 
     // ── Scroll reveal for sections ──

@@ -34,6 +34,68 @@
     return u;
   }
 
+  /** Program + showcase images load only when user scrolls near that section. */
+  var progImagesQueued = [];
+
+  function registerLazySection(id, onVisible) {
+    var sec = document.getElementById(id);
+    if (!sec) return;
+    if (!("IntersectionObserver" in window)) {
+      onVisible();
+      return;
+    }
+    var ob = new IntersectionObserver(
+      function (entries) {
+        if (entries[0] && entries[0].isIntersecting) {
+          onVisible();
+          ob.disconnect();
+        }
+      },
+      { rootMargin: "120px 0px", threshold: 0.05 }
+    );
+    ob.observe(sec);
+  }
+
+  function queueProgramImage(img, url) {
+    if (!img || !url) return;
+    img.dataset.src = String(url).trim();
+    progImagesQueued.push(img);
+  }
+
+  function loadProgramImages() {
+    progImagesQueued.forEach(function (img) {
+      var url = img.dataset.src;
+      if (!url || img.getAttribute("src")) return;
+      img.onload = function () {
+        img.classList.add("is-loaded");
+      };
+      img.src = url;
+    });
+    progImagesQueued = [];
+  }
+
+  function sectionNearViewport(id) {
+    var sec = document.getElementById(id);
+    if (!sec) return false;
+    var r = sec.getBoundingClientRect();
+    return r.top < window.innerHeight + 160;
+  }
+
+  function loadVideoGalleryMedia() {
+    var grid = document.getElementById("video-gallery-grid");
+    if (!grid) return;
+    grid.querySelectorAll("[data-lazy-src]").forEach(function (el) {
+      var url = el.getAttribute("data-lazy-src");
+      if (!url) return;
+      el.src = url;
+      el.removeAttribute("data-lazy-src");
+      if (el.tagName === "VIDEO") el.load();
+    });
+  }
+
+  registerLazySection("programs", loadProgramImages);
+  registerLazySection("video-gallery", loadVideoGalleryMedia);
+
   function applyHero(content) {
     var hero = content.hero || {};
     var contact = content.contact || {};
@@ -63,10 +125,18 @@
         var imgEl = $(".hero-img");
         if (imgEl) {
           var imgUrl = String(hero.heroImage).trim();
-          if (/^https?:\/\//i.test(imgUrl)) {
-            imgEl.style.backgroundImage = "url('" + imgUrl.replace(/'/g, "%27") + "')";
-          } else {
-            imgEl.style.backgroundImage = "url('" + imgUrl + "')";
+          if (imgUrl) {
+            var preload = document.querySelector("link[data-cms-hero-preload]");
+            if (!preload) {
+              preload = document.createElement("link");
+              preload.rel = "preload";
+              preload.as = "image";
+              preload.setAttribute("data-cms-hero-preload", "1");
+              document.head.appendChild(preload);
+            }
+            preload.href = imgUrl;
+            var safe = imgUrl.replace(/'/g, "%27");
+            imgEl.style.backgroundImage = "url('" + safe + "')";
           }
         }
         var oldVid = $(".hero-video");
@@ -219,13 +289,14 @@
       setText(btn.querySelector(".prog-badge"), item.badge);
       setText(btn.querySelector(".prog-fee-val"), item.fee);
       setText(btn.querySelector(".prog-fee-sub"), item.feeSub);
-      var img = btn.querySelector(".prog-slide.show");
-      if (img && item.image) img.src = item.image;
+      var img = btn.querySelector(".prog-cover");
+      if (img && item.image) queueProgramImage(img, item.image);
       var pills = btn.querySelectorAll(".prog-pill");
       (item.pills || []).forEach(function (p, i) {
         if (pills[i]) pills[i].textContent = p;
       });
     });
+    if (sectionNearViewport("programs")) loadProgramImages();
   }
 
   function applyFaq(content) {
@@ -282,15 +353,15 @@
       var isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(url) || String(item.mime || "").indexOf("video/") === 0;
       if (isVideo) {
         var vid = document.createElement("video");
-        vid.src = url;
+        vid.setAttribute("data-lazy-src", url);
         vid.controls = true;
         vid.playsInline = true;
-        vid.preload = "metadata";
+        vid.preload = "none";
         vid.setAttribute("aria-label", item.title || "Student video");
         media.appendChild(vid);
       } else {
         var img = document.createElement("img");
-        img.src = url;
+        img.setAttribute("data-lazy-src", url);
         img.alt = item.title || "";
         img.loading = "lazy";
         img.decoding = "async";
@@ -305,6 +376,7 @@
       }
       grid.appendChild(card);
     });
+    if (sectionNearViewport("video-gallery")) loadVideoGalleryMedia();
   }
 
   function applyAll(content) {
