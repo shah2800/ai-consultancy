@@ -30,6 +30,31 @@ const { mergeWebsiteCmsContent, deepMerge } = require("./lib/website-cms-default
 
 const app = express();
 
+/* Instant health — no DB; used by keep-alive cron and cold-start warmup */
+app.get("/ping", (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.status(200).type("text/plain").send("ok");
+});
+
+/* Production: one canonical host for Google (sitemap uses www) */
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV !== "production") return next();
+  const canonical =
+    String(process.env.CANONICAL_WEB_HOST || "www.nextstepinternationals.com")
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, "")
+      .replace(/\/+$/, "");
+  const host = String(req.headers.host || "")
+    .split(":")[0]
+    .toLowerCase();
+  const bare = canonical.replace(/^www\./, "");
+  if (host === bare && bare !== canonical) {
+    return res.redirect(301, `https://${canonical}${req.originalUrl || "/"}`);
+  }
+  next();
+});
+
 /* ============================================================
    CONFIG
 ============================================================ */
@@ -117,9 +142,18 @@ const websiteDir = fs.existsSync(path.join(__dirname, "website"))
   ? path.join(__dirname, "website")
   : path.join(__dirname, "..", "website");
 if (fs.existsSync(websiteDir)) {
-  app.use("/site", express.static(websiteDir));
+  app.use("/site", express.static(websiteDir, {
+    maxAge: process.env.NODE_ENV === "production" ? "1d" : 0,
+    etag: true,
+    lastModified: true,
+  }));
   /* Also serve website at root so custom domain works without /site prefix */
-  app.use("/", express.static(websiteDir, { index: false }));
+  app.use("/", express.static(websiteDir, {
+    index: false,
+    maxAge: process.env.NODE_ENV === "production" ? "1d" : 0,
+    etag: true,
+    lastModified: true,
+  }));
 }
 
 if (!process.env.MONGO_URI) {

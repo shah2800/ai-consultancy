@@ -17,3 +17,16 @@ services:
         value: NSI-WEB-FORM-SECURE-KEY-7k3m9p2qx
       - key: CORS_ORIGINS
         sync: false
+      - key: CANONICAL_WEB_HOST
+        value: www.nextstepinternationals.com
+
+  # Pings the site every 14 min so Render free tier stays awake (reduces 30–60s cold starts)
+  - type: cron
+    name: website-keepalive
+    runtime: node
+    schedule: "*/14 * * * *"
+    buildCommand: "true"
+    startCommand: node scripts/render-keepalive.js
+    envVars:
+      - key: KEEP_ALIVE_URL
+        value: https://www.nextstepinternationals.com/ping

@@ -632,7 +632,7 @@
 
     var cfg = window.NSI_CONFIG || {}, apiBase = String(cfg.apiBase||"").replace(/\/+$/,"");
     if (apiBase) {
-      fetch(apiBase + "/public/website/health", { method: "GET" }).catch(function(){});
+      fetch(apiBase + "/ping", { method: "GET", cache: "no-store" }).catch(function(){});
     }
 
     var LABELS = { fullName:"Full Name", fatherName:"Father's Name", dob:"Date of Birth",
