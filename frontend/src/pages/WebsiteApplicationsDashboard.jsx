@@ -221,7 +221,11 @@ export default function WebsiteApplicationsDashboard() {
   const [alertEmail, setAlertEmail] = useState("");
   const [alertWhatsApp, setAlertWhatsApp] = useState("");
   const [smtpConfigured, setSmtpConfigured] = useState(false);
+  const [alertIssues, setAlertIssues] = useState([]);
+  const [groqOk, setGroqOk] = useState(null);
+  const [groqError, setGroqError] = useState("");
   const [alertSaving, setAlertSaving] = useState(false);
+  const [alertTesting, setAlertTesting] = useState(false);
   const [alertMsg, setAlertMsg] = useState("");
   const [alertErr, setAlertErr] = useState("");
 
@@ -231,10 +235,38 @@ export default function WebsiteApplicationsDashboard() {
       setAlertEmail(res.data?.email || "");
       setAlertWhatsApp(res.data?.whatsapp || "");
       setSmtpConfigured(!!res.data?.smtpConfigured);
+      setAlertIssues(Array.isArray(res.data?.issues) ? res.data.issues : []);
+      setGroqOk(res.data?.groq?.ok ?? null);
+      setGroqError(res.data?.groq?.error || "");
     } catch {
       /* optional panel */
     }
   }, []);
+
+  const testAlerts = async () => {
+    setAlertTesting(true);
+    setAlertMsg("");
+    setAlertErr("");
+    try {
+      const res = await api.post("/admin/website-apply-alerts/test");
+      const r = res.data?.results || {};
+      const parts = [];
+      if (r.email?.ok) parts.push("Test email sent.");
+      else if (r.email?.error) parts.push(`Email: ${r.email.error}`);
+      if (r.whatsapp?.ok) parts.push("Test WhatsApp sent.");
+      else if (r.whatsapp?.error) parts.push(`WhatsApp: ${r.whatsapp.error}`);
+      if (r.groq?.ok) parts.push("Groq AI key OK.");
+      else if (r.groq?.error) parts.push(`Groq: ${r.groq.error}`);
+      setAlertMsg(parts.join(" "));
+      if (res.data?.diagnostics?.issues?.length) {
+        setAlertIssues(res.data.diagnostics.issues);
+      }
+    } catch (e) {
+      setAlertErr(e?.response?.data?.error || "Test failed.");
+    } finally {
+      setAlertTesting(false);
+    }
+  };
 
   const saveAlerts = async () => {
     setAlertSaving(true);
@@ -400,29 +432,60 @@ export default function WebsiteApplicationsDashboard() {
             SMTP is not configured on the server — add SMTP_HOST, SMTP_USER, SMTP_PASS in Render env for email alerts.
           </p>
         )}
+        {groqOk === false && (
+          <p style={{ fontSize: 12, color: "#b45309", marginBottom: 10 }}>
+            Groq AI issue: {groqError || "Check GROQ_API_KEY in Render (may be expired or invalid)."}
+          </p>
+        )}
+        {alertIssues.length > 0 && (
+          <ul style={{ fontSize: 12, color: "#b45309", marginBottom: 10, paddingLeft: 18, lineHeight: 1.5 }}>
+            {alertIssues.map((issue) => (
+              <li key={issue}>{issue}</li>
+            ))}
+          </ul>
+        )}
         {alertMsg && (
           <p style={{ fontSize: 13, color: "#047857", marginBottom: 8 }}>{alertMsg}</p>
         )}
         {alertErr && (
           <p style={{ fontSize: 13, color: "#b91c1c", marginBottom: 8 }}>{alertErr}</p>
         )}
-        <button
-          type="button"
-          onClick={saveAlerts}
-          disabled={alertSaving}
-          style={{
-            padding: "9px 16px",
-            borderRadius: 9,
-            border: "none",
-            background: "var(--accent)",
-            color: "#fff",
-            fontWeight: 700,
-            fontSize: 13,
-            cursor: alertSaving ? "wait" : "pointer",
-          }}
-        >
-          {alertSaving ? "Saving…" : "Save alert settings"}
-        </button>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <button
+            type="button"
+            onClick={saveAlerts}
+            disabled={alertSaving}
+            style={{
+              padding: "9px 16px",
+              borderRadius: 9,
+              border: "none",
+              background: "var(--accent)",
+              color: "#fff",
+              fontWeight: 700,
+              fontSize: 13,
+              cursor: alertSaving ? "wait" : "pointer",
+            }}
+          >
+            {alertSaving ? "Saving…" : "Save alert settings"}
+          </button>
+          <button
+            type="button"
+            onClick={testAlerts}
+            disabled={alertTesting}
+            style={{
+              padding: "9px 16px",
+              borderRadius: 9,
+              border: "1px solid var(--border)",
+              background: "var(--surface)",
+              color: "var(--text)",
+              fontWeight: 700,
+              fontSize: 13,
+              cursor: alertTesting ? "wait" : "pointer",
+            }}
+          >
+            {alertTesting ? "Testing…" : "Send test alert"}
+          </button>
+        </div>
       </section>
 
       {fetchError ? (

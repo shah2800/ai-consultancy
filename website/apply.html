@@ -705,24 +705,37 @@
       };
 
       var cfg = window.NSI_CONFIG || {}, base = String(cfg.apiBase||"").replace(/\/+$/,"");
+      var formToken = String(cfg.formToken || "NSI-WEB-FORM-SECURE-KEY-7k3m9p2qx");
+      var hasFiles = false;
+      form.querySelectorAll('input[type="file"]').forEach(function (inp) {
+        if (inp.files && inp.files.length) hasFiles = true;
+      });
+      if (hasFiles) btnLabel.textContent = "Uploading documents…";
+
       var submitted = false;
       var lastErr = "";
 
       // Try up to 3 times — free Render may need ~60s to wake from sleep
       for (var attempt = 1; attempt <= 3; attempt++) {
+        var timer = null;
         try {
           if (attempt > 1) btnLabel.textContent = "Waking server… (" + attempt + "/3)";
 
           var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-          var timer = null;
-          if (ctrl) timer = setTimeout(function(){ ctrl.abort(); }, 90000);
+          if (ctrl) timer = setTimeout(function(){ ctrl.abort(); }, hasFiles ? 120000 : 90000);
 
-          var res = await fetch(base + "/public/website/apply-json", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-            signal: ctrl ? ctrl.signal : undefined
-          });
+          var url = hasFiles ? base + "/public/website/apply" : base + "/public/website/apply-json";
+          var fetchOpts = { method: "POST", signal: ctrl ? ctrl.signal : undefined };
+
+          if (hasFiles) {
+            fd.set("_formToken", formToken);
+            fetchOpts.body = fd;
+          } else {
+            fetchOpts.headers = { "Content-Type": "application/json" };
+            fetchOpts.body = JSON.stringify(payload);
+          }
+
+          var res = await fetch(url, fetchOpts);
 
           if (timer) clearTimeout(timer);
 

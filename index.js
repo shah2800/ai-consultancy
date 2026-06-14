@@ -2904,11 +2904,18 @@ async function sendWebsiteApplyAlertEmail(to, subject, bodyText) {
 
 /** Email and/or WhatsApp alert when someone submits the public apply form. */
 async function notifyWebsiteApplySubmission(tenantUserId, lead, options = {}) {
+  const failures = [];
   try {
-    const settings = await Settings.findOne({ userId: tenantUserId }).lean();
+    const { settings } = await loadWebsiteApplyAlertSettings(tenantUserId);
     const alertEmail = String(settings?.websiteApplyAlertEmail || "").trim();
     const alertWa = String(settings?.websiteApplyAlertWhatsApp || "").trim();
-    if (!alertEmail && !alertWa) return;
+    if (!alertEmail && !alertWa) {
+      console.warn(
+        "[website-apply-alert] No alert email/WhatsApp configured for website tenant",
+        tenantUserId
+      );
+      return;
+    }
 
     const isExisting = !!options.isExisting;
     const { text, docCount } = buildWebsiteApplyAlertBody(lead, options);
@@ -2918,24 +2925,56 @@ async function notifyWebsiteApplySubmission(tenantUserId, lead, options = {}) {
     }`;
 
     if (alertEmail) {
-      const sent = await sendWebsiteApplyAlertEmail(alertEmail, subject, text);
-      if (sent) console.log(`[website-apply-alert] Email sent to ${alertEmail}`);
+      try {
+        const sent = await sendWebsiteApplyAlertEmail(alertEmail, subject, text);
+        if (sent) {
+          console.log(`[website-apply-alert] Email sent to ${alertEmail}`);
+        } else {
+          failures.push("Email not sent — SMTP not configured on server");
+        }
+      } catch (err) {
+        failures.push(`Email failed: ${err?.message || err}`);
+      }
     }
 
     if (alertWa) {
       const waTo = normalizePhoneKey(alertWa);
       if (waTo.length >= 10) {
-        const short = `${subject}\n\n${text}`.slice(0, 4090);
-        await sendWhatsAppCloudText({
-          phoneNumberId: resolveWhatsAppPhoneNumberId(settings),
-          to: waTo,
-          text: short,
-        });
-        console.log(`[website-apply-alert] WhatsApp sent to ${waTo}`);
+        try {
+          const short = `${subject}\n\n${text}`.slice(0, 4090);
+          await sendWhatsAppCloudText({
+            phoneNumberId: resolveWhatsAppPhoneNumberId(settings),
+            to: waTo,
+            text: short,
+          });
+          console.log(`[website-apply-alert] WhatsApp sent to ${waTo}`);
+        } catch (err) {
+          failures.push(`WhatsApp failed: ${whatsAppSendErrorMessage(err)}`);
+        }
+      } else {
+        failures.push("WhatsApp alert number too short");
       }
+    }
+
+    if (failures.length) {
+      console.warn("[website-apply-alert]", failures.join(" | "));
+      await createNotification(
+        tenantUserId,
+        "website_apply_alert_failed",
+        `Apply alert failed for ${studentName}: ${failures.join(" · ")}`,
+        lead?._id || null
+      );
     }
   } catch (err) {
     console.warn("[website-apply-alert]", err?.message || err);
+    try {
+      await createNotification(
+        tenantUserId,
+        "website_apply_alert_failed",
+        `Apply alert error: ${err?.message || err}`,
+        lead?._id || null
+      );
+    } catch (_) {}
   }
 }
 
@@ -4868,12 +4907,8 @@ app.get("/admin/website-applications", auth, async (req, res) => {
 
 app.get("/admin/website-apply-alerts", auth, requireRoles("admin", "manager"), async (req, res) => {
   try {
-    const settings = await Settings.findOne({ userId: tenantUserId(req) }).lean();
-    res.json({
-      email: String(settings?.websiteApplyAlertEmail || "").trim(),
-      whatsapp: String(settings?.websiteApplyAlertWhatsApp || "").trim(),
-      smtpConfigured: !!getMailTransporter(),
-    });
+    const diagnostics = await buildWebsiteApplyAlertDiagnostics(tenantUserId(req));
+    res.json(diagnostics);
   } catch (err) {
     console.error("GET /admin/website-apply-alerts:", err?.message || err);
     res.status(500).json({ error: "Failed to load alert settings." });
@@ -4887,17 +4922,70 @@ app.patch("/admin/website-apply-alerts", auth, requireRoles("admin", "manager"),
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: "Enter a valid email address." });
     }
+    const storeUnder =
+      resolveWebsiteTenantUserId() || tenantUserId(req);
     await Settings.findOneAndUpdate(
-      { userId: tenantUserId(req) },
+      { userId: storeUnder },
       { $set: { websiteApplyAlertEmail: email, websiteApplyAlertWhatsApp: whatsapp } },
       { upsert: true }
     );
-    res.json({ ok: true, email, whatsapp });
+    res.json({ ok: true, email, whatsapp, storedUnderUserId: storeUnder });
   } catch (err) {
     console.error("PATCH /admin/website-apply-alerts:", err?.message || err);
     res.status(500).json({ error: "Failed to save alert settings." });
   }
 });
+
+app.post(
+  "/admin/website-apply-alerts/test",
+  auth,
+  requireRoles("admin", "manager"),
+  async (req, res) => {
+    try {
+      const crmTenant = tenantUserId(req);
+      const diagnostics = await buildWebsiteApplyAlertDiagnostics(crmTenant);
+      const { settings } = await loadWebsiteApplyAlertSettings(crmTenant);
+      const alertEmail = String(settings?.websiteApplyAlertEmail || "").trim();
+      const alertWa = String(settings?.websiteApplyAlertWhatsApp || "").trim();
+      const results = { email: null, whatsapp: null, groq: diagnostics.groq };
+
+      if (alertEmail) {
+        try {
+          const sent = await sendWebsiteApplyAlertEmail(
+            alertEmail,
+            "NextStep — test website apply alert",
+            "This is a test alert from your CRM.\n\nIf you received this, Gmail/SMTP is working.\n\nNew real applications will include full student details."
+          );
+          results.email = sent ? { ok: true } : { ok: false, error: "SMTP not configured on server" };
+        } catch (err) {
+          results.email = { ok: false, error: err?.message || "Email send failed" };
+        }
+      } else {
+        results.email = { ok: false, error: "No alert email saved" };
+      }
+
+      if (alertWa) {
+        try {
+          await sendWhatsAppCloudText({
+            phoneNumberId: resolveWhatsAppPhoneNumberId(settings),
+            to: normalizePhoneKey(alertWa),
+            text: "NextStep test alert: website apply notifications are configured. (Meta may block if this number has not messaged your business WhatsApp first.)",
+          });
+          results.whatsapp = { ok: true };
+        } catch (err) {
+          results.whatsapp = { ok: false, error: whatsAppSendErrorMessage(err) };
+        }
+      } else {
+        results.whatsapp = { ok: false, error: "No alert WhatsApp saved" };
+      }
+
+      res.json({ ok: true, results, diagnostics });
+    } catch (err) {
+      console.error("POST /admin/website-apply-alerts/test:", err?.message || err);
+      res.status(500).json({ error: err?.message || "Test failed." });
+    }
+  }
+);
 
 app.get("/admin/website-reviews", auth, async (req, res) => {
   try {
@@ -5013,6 +5101,106 @@ async function saveWebsiteCmsForTenant(tenantRaw, patch, updatedBy) {
     { upsert: true, new: true, setDefaultsOnInsert: true }
   ).lean();
   return mergeWebsiteCmsContent(saved?.content || {});
+}
+
+/** Mongo user id that owns website form leads (WEBSITE_TENANT_USER_ID env). */
+function resolveWebsiteTenantUserId() {
+  const raw = String(process.env.WEBSITE_TENANT_USER_ID || "").trim();
+  if (raw && mongoose.Types.ObjectId.isValid(raw)) return raw;
+  return null;
+}
+
+async function loadWebsiteApplyAlertSettings(crmTenantId) {
+  const websiteTenant = resolveWebsiteTenantUserId();
+  const ids = [...new Set([websiteTenant, crmTenantId].filter(Boolean))];
+  for (const id of ids) {
+    const row = await Settings.findOne({ userId: id }).lean();
+    if (
+      row &&
+      (String(row.websiteApplyAlertEmail || "").trim() ||
+        String(row.websiteApplyAlertWhatsApp || "").trim())
+    ) {
+      return { settings: row, settingsUserId: String(id) };
+    }
+  }
+  const fallbackId = websiteTenant || crmTenantId;
+  const settings = fallbackId
+    ? await Settings.findOne({ userId: fallbackId }).lean()
+    : null;
+  return { settings: settings || {}, settingsUserId: String(fallbackId || "") };
+}
+
+async function testGroqConnection() {
+  if (!process.env.GROQ_API_KEY) {
+    return { ok: false, error: "GROQ_API_KEY is not set on the server (Render → Environment)." };
+  }
+  try {
+    await axios.post(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        model: "llama-3.1-8b-instant",
+        messages: [{ role: "user", content: "Reply with OK only." }],
+        max_tokens: 5,
+      },
+      {
+        headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+        timeout: 15_000,
+      }
+    );
+    return { ok: true };
+  } catch (err) {
+    const status = err?.response?.status;
+    const msg =
+      err?.response?.data?.error?.message ||
+      err?.response?.data?.error?.type ||
+      err?.message ||
+      "Groq request failed";
+    return { ok: false, error: msg, status: status || null };
+  }
+}
+
+async function buildWebsiteApplyAlertDiagnostics(crmTenantId) {
+  const websiteTenant = resolveWebsiteTenantUserId();
+  const { settings, settingsUserId } = await loadWebsiteApplyAlertSettings(crmTenantId);
+  const alertEmail = String(settings?.websiteApplyAlertEmail || "").trim();
+  const alertWhatsApp = String(settings?.websiteApplyAlertWhatsApp || "").trim();
+  const smtpConfigured = !!getMailTransporter();
+  const whatsappTokenSet = !!String(process.env.WHATSAPP_TOKEN || "").trim();
+  const whatsappPhoneId = resolveWhatsAppPhoneNumberId(settings || {});
+  const groq = await testGroqConnection();
+
+  const issues = [];
+  if (!websiteTenant) issues.push("WEBSITE_TENANT_USER_ID is not set on the server.");
+  if (!alertEmail && !alertWhatsApp) {
+    issues.push("No alert email or WhatsApp saved in Website apply settings.");
+  }
+  if (alertEmail && !smtpConfigured) {
+    issues.push("Alert email is set but SMTP is missing (add SMTP_HOST, SMTP_USER, SMTP_PASS in Render).");
+  }
+  if (alertWhatsApp && !whatsappTokenSet) {
+    issues.push("Alert WhatsApp is set but WHATSAPP_TOKEN is missing on the server.");
+  }
+  if (alertWhatsApp && !whatsappPhoneId) {
+    issues.push("WhatsApp Phone Number ID missing (CRM Settings or WHATSAPP_PHONE_NUMBER_ID env).");
+  }
+  if (!groq.ok) {
+    issues.push(`Groq AI: ${groq.error}`);
+  }
+
+  return {
+    email: alertEmail,
+    whatsapp: alertWhatsApp,
+    smtpConfigured,
+    whatsappTokenSet,
+    whatsappPhoneIdSet: !!whatsappPhoneId,
+    websiteTenantUserId: websiteTenant || "",
+    settingsStoredUnderUserId: settingsUserId,
+    crmTenantUserId: String(crmTenantId || ""),
+    tenantIdsMatch:
+      !websiteTenant || !crmTenantId || String(websiteTenant) === String(crmTenantId),
+    groq,
+    issues,
+  };
 }
 
 app.get("/admin/website-cms", auth, requireRoles("admin", "manager"), async (req, res) => {
