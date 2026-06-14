@@ -27,6 +27,7 @@ try {
 
 const { calculatePriority, enrichLead } = require("./utils/calculatePriority");
 const { mergeWebsiteCmsContent, deepMerge } = require("./lib/website-cms-defaults");
+const { registerWebsiteCleanUrlRoutes } = require("./lib/website-clean-urls");
 
 const app = express();
 
@@ -142,6 +143,7 @@ const websiteDir = fs.existsSync(path.join(__dirname, "website"))
   ? path.join(__dirname, "website")
   : path.join(__dirname, "..", "website");
 if (fs.existsSync(websiteDir)) {
+  registerWebsiteCleanUrlRoutes(app, websiteDir);
   app.use("/site", express.static(websiteDir, {
     maxAge: process.env.NODE_ENV === "production" ? "1d" : 0,
     etag: true,

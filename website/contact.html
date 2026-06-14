@@ -2,24 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Contact Us — Free Study Abroad Consultation | NextStep International Pakistan</title>
-  <meta name="description" content="Contact NextStep International for free study abroad consultation. WhatsApp +92 314 2638901, email, Facebook. MBBS & university admission help for Pakistani students.">
+  <meta name="description" content="Contact NextStep International for free study abroad consultation. WhatsApp +92 314 2638901, email, Facebook. MBBS and university admission help for Pakistani students.">
   <meta name="robots" content="index, follow">
-  <link rel="canonical" href="https://www.nextstepinternationals.com/contact.html">
+  <link rel="canonical" href="https://www.nextstepinternationals.com/contact">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://www.nextstepinternationals.com/contact.html">
+  <meta property="og:url" content="https://www.nextstepinternationals.com/contact">
   <meta property="og:title" content="Contact NextStep International">
   <meta property="og:description" content="Free study abroad consultation via WhatsApp, email or apply online. Response within 24 hours.">
   <meta property="og:site_name" content="NextStep International">
   <link rel="icon" href="images/logo.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;600;700&display=swap">
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800&display=swap">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "ContactPage",
     "name": "Contact NextStep International",
-    "url": "https://www.nextstepinternationals.com/contact.html",
+    "url": "https://www.nextstepinternationals.com/contact",
     "isPartOf": { "@id": "https://www.nextstepinternationals.com/#website" },
     "mainEntity": {
       "@type": "Organization",
@@ -33,52 +35,249 @@
       "@type": "BreadcrumbList",
       "itemListElement": [
         { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.nextstepinternationals.com/" },
-        { "@type": "ListItem", "position": 2, "name": "Contact", "item": "https://www.nextstepinternationals.com/contact.html" }
+        { "@type": "ListItem", "position": 2, "name": "Contact", "item": "https://www.nextstepinternationals.com/contact" }
       ]
     }
   }
   </script>
   <style>
-    :root{--navy:#0a1f44;--ink:#0d1b2a;--soft:#3d4f63;--border:#e5e7eb;--bg:#f7f9fc;--wa:#25d366;--max:900px;--serif:"DM Serif Display",Georgia,serif;--sans:"Inter",system-ui,sans-serif}
-    *{box-sizing:border-box;margin:0;padding:0} body{font-family:var(--sans);color:var(--soft);background:var(--bg);line-height:1.65}
-    a{color:var(--navy);font-weight:600;text-decoration:none} .hdr{max-width:var(--max);margin:0 auto;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
-    .logo{font-family:var(--serif);font-size:1.1rem;color:var(--ink)} .nav{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:.875rem}
-    .hero{background:linear-gradient(135deg,#0a1f44,#1a3a6e);color:#fff;padding:48px 24px;text-align:center}
-    .hero h1{font-family:var(--serif);font-size:clamp(1.8rem,4vw,2.5rem);font-weight:400}
-    main{max-width:var(--max);margin:0 auto;padding:32px 24px 64px}
-    .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:22px;margin-bottom:14px}
-    .card h2{font-size:1rem;color:var(--ink);margin-bottom:8px}
-    .btn-wa{display:inline-flex;margin-top:8px;padding:12px 20px;border-radius:8px;background:var(--wa);color:#fff;font-weight:700}
-    footer{max-width:var(--max);margin:0 auto;padding:24px;border-top:1px solid var(--border);font-size:.8125rem;color:#6b7280}
-    footer nav{display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:12px}
+    :root{
+      --navy:#0a1f44;--navy2:#1a3a6e;--navylight:#eef3fb;
+      --gold:#b8960c;--goldbright:#d4a843;
+      --ink:#0d1b2a;--soft:#3d4f63;--muted:#6b7280;
+      --bg:#f7f9fc;--surface:#fff;--border:#e5e7eb;
+      --wa:#25d366;--max:1140px;--r:12px;--rsm:8px;
+      --serif:"DM Serif Display",Georgia,serif;--sans:"Inter",system-ui,sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+    body{font-family:var(--sans);font-size:1rem;line-height:1.65;color:var(--soft);background:#fff;-webkit-font-smoothing:antialiased}
+    a{color:inherit;text-decoration:none}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 22px;font-family:var(--sans);font-size:.875rem;font-weight:700;border-radius:var(--rsm);border:none;cursor:pointer;transition:.2s;white-space:nowrap}
+    .btn-navy{background:var(--navy);color:#fff;box-shadow:0 4px 14px rgba(10,31,68,.22)}
+    .btn-navy:hover{background:var(--navy2);transform:translateY(-1px)}
+    .btn-gold{background:linear-gradient(135deg,#d4a843,#b8960c);color:#fff}
+    .btn-wa{background:var(--wa);color:#fff}
+    .btn-sm{padding:10px 18px;font-size:.8125rem}
+    .notice{background:var(--navy);color:rgba(255,255,255,.9);font-size:.8rem;text-align:center;padding:9px 16px;font-weight:500}
+    .notice strong{color:#ffd369}
+    .notice a{color:#ffd369;font-weight:700;margin-left:8px;text-decoration:underline}
+    .site-header{position:sticky;top:0;z-index:400;background:#fff;border-bottom:1px solid var(--border);box-shadow:0 2px 16px rgba(10,31,68,.06)}
+    .hdr{max-width:var(--max);margin:0 auto;padding:0 24px;height:72px;display:flex;align-items:center;gap:12px}
+    .logo-wrap{display:flex;align-items:center;gap:12px;flex-shrink:0}
+    .logo-mark{width:44px;height:44px;background:linear-gradient(145deg,var(--navy2),var(--navy));border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(10,31,68,.22)}
+    .logo-mark svg{width:24px;height:24px}
+    .logo-name{font-family:var(--serif);font-size:1.05rem;color:var(--ink);line-height:1.1;white-space:nowrap}
+    .logo-sub{font-size:.68rem;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+    .hdr-nav{display:none;align-items:center;gap:2px;margin-left:auto;padding-right:12px}
+    .hdr-nav a{font-size:.875rem;font-weight:600;color:var(--soft);padding:8px 12px;border-radius:7px;transition:.15s}
+    .hdr-nav a:hover,.hdr-nav a.active{color:var(--navy);background:var(--navylight)}
+    .hdr-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
+    .hdr-back{font-size:.8125rem;font-weight:600;color:var(--navy);padding:8px 14px;border-radius:var(--rsm);border:1.5px solid var(--border)}
+    .hdr-back:hover{background:var(--navylight)}
+    .page-hero{background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);padding:56px 24px 48px;text-align:center;color:#fff;position:relative;overflow:hidden}
+    .page-hero::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 20% 50%,rgba(232,160,32,.12),transparent 55%)}
+    .page-hero h1{font-family:var(--serif);font-size:clamp(2rem,4.5vw,2.75rem);font-weight:400;margin-bottom:12px;position:relative}
+    .page-hero p{font-size:1rem;opacity:.88;max-width:520px;margin:0 auto;line-height:1.6;position:relative}
+    .gold-line{width:56px;height:3px;background:linear-gradient(90deg,var(--goldbright),var(--gold));border-radius:2px;margin:16px auto 0}
+    .sec{padding:56px 24px 72px;max-width:var(--max);margin:0 auto}
+    .eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:14px}
+    .eyebrow::before{content:"";width:24px;height:2px;background:var(--gold);border-radius:2px}
+    .h2{font-family:var(--serif);font-size:clamp(1.6rem,3.5vw,2.2rem);color:var(--ink);line-height:1.2;margin-bottom:14px}
+    .lead{font-size:.9375rem;color:var(--muted);line-height:1.75;max-width:52ch;margin-bottom:32px}
+    .contact-wrap{display:grid;grid-template-columns:1fr;gap:0;border-radius:var(--r);overflow:hidden;box-shadow:0 8px 40px rgba(10,31,68,.12);border:1px solid var(--border)}
+    .contact-left{background:var(--navy);padding:32px 28px;display:flex;flex-direction:column;gap:20px;justify-content:center}
+    .contact-left-tag{font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--goldbright)}
+    .contact-left h3{font-family:var(--serif);font-size:clamp(1.35rem,3vw,1.75rem);color:#fff;line-height:1.25}
+    .contact-left p{font-size:.875rem;color:rgba(255,255,255,.72);line-height:1.65}
+    .contact-left-hours{display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(255,255,255,.07);border-radius:8px;border:1px solid rgba(255,255,255,.1)}
+    .contact-left-hours svg{width:16px;height:16px;color:var(--goldbright);flex-shrink:0}
+    .contact-left-hours span{font-size:.8125rem;color:rgba(255,255,255,.8);font-weight:500}
+    .contact-right{background:#fff}
+    .contact-method{display:flex;align-items:center;gap:14px;padding:18px 22px;border-bottom:1px solid var(--border);transition:background .15s}
+    .contact-method:last-child{border-bottom:none}
+    .contact-method:hover{background:var(--bg)}
+    .cm-ico{width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .cm-text{flex:1;min-width:0}
+    .cm-text strong{display:block;font-size:.9375rem;font-weight:700;color:var(--ink);margin-bottom:2px}
+    .cm-text span{font-size:.8125rem;color:var(--muted);display:block}
+    .cm-arrow{color:#c8d4e0;flex-shrink:0}
+    .cta-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:36px;justify-content:center}
+    .footer{background:#0d1b2a;color:rgba(255,255,255,.6);padding:48px 24px 28px}
+    .footer-in{max-width:var(--max);margin:0 auto}
+    .footer-top{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-bottom:28px}
+    .f-brand{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+    .f-logo{width:34px;height:34px;background:var(--navy2);border-radius:8px;display:flex;align-items:center;justify-content:center}
+    .f-logo svg{width:18px;height:18px}
+    .f-name{font-family:var(--serif);font-size:1rem;color:#fff}
+    .f-gold-line{width:40px;height:3px;background:var(--goldbright);border-radius:2px;margin-bottom:14px}
+    .f-about{font-size:.8125rem;line-height:1.65;max-width:32ch}
+    .f-col h5{font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:12px}
+    .f-col a{display:block;font-size:.8125rem;color:rgba(255,255,255,.55);margin-bottom:8px}
+    .f-col a:hover{color:#fff}
+    .f-copy{font-size:.75rem;color:rgba(255,255,255,.28);padding-top:20px;border-top:1px solid rgba(255,255,255,.07)}
+    .wa-float{position:fixed;bottom:24px;right:24px;z-index:500}
+    .wa-float-btn{width:56px;height:56px;background:var(--wa);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(37,211,102,.45)}
+    .wa-float-btn svg{width:28px;height:28px}
+    @media(min-width:768px){
+      .hdr-nav{display:flex}
+      .hdr-actions{margin-left:0}
+      .hdr-back{display:none}
+      .contact-wrap{grid-template-columns:1fr 1fr}
+      .footer-top{grid-template-columns:1.4fr 1fr 1fr}
+      .contact-left p{display:block}
+    }
   </style>
 </head>
 <body>
-  <header class="hdr">
-    <a class="logo" href="/">NextStep International</a>
-    <nav class="nav" aria-label="Main">
-      <a href="/">Home</a><a href="about.html">About</a><a href="programs.html">Programs</a>
-      <a href="apply.html">Apply</a><a href="contact.html" aria-current="page">Contact</a><a href="blog.html">Blog</a>
-    </nav>
-  </header>
-  <div class="hero"><h1>Contact Us</h1><p>Free consultation — we reply within 24 hours.</p></div>
-  <main>
-    <div class="card">
-      <h2>WhatsApp (fastest)</h2>
-      <p>Chat with our counsellors for MBBS, Business, Engineering and visa questions.</p>
-      <a class="btn-wa" href="https://wa.me/923142638901?text=Assalam%20o%20Alaikum%2C%20I%20want%20study%20abroad%20consultation" target="_blank" rel="noopener">WhatsApp +92 314 2638901</a>
+  <div class="notice"><strong>Free consultation</strong> — WhatsApp is fastest. We reply within 24 hours. <a href="/apply">Apply online →</a></div>
+
+  <header class="site-header">
+    <div class="hdr">
+      <a class="logo-wrap" href="/" aria-label="NextStep International — Home">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 18L9 14L13 16L19 8" stroke="#e8a020" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 8H19V12" stroke="#e8a020" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <div class="logo-name">NextStep International</div>
+          <div class="logo-sub">Study Abroad Experts</div>
+        </div>
+      </a>
+      <nav class="hdr-nav" aria-label="Primary">
+        <a href="/about">About</a>
+        <a href="/programs">Programs</a>
+        <a href="/contact" class="active" aria-current="page">Contact</a>
+        <a href="/scholarships">Scholarships</a>
+        <a href="/blog">Blog</a>
+      </nav>
+      <div class="hdr-actions">
+        <a class="hdr-back" href="/">← Home</a>
+        <a class="btn btn-navy btn-sm" href="/apply">Apply Now</a>
+      </div>
     </div>
-    <div class="card"><h2>Email</h2><p><a href="mailto:nextstepinternational25@gmail.com">nextstepinternational25@gmail.com</a></p></div>
-    <div class="card"><h2>Apply online</h2><p>Submit documents and details through our secure form.</p><p><a href="apply.html">Go to Apply page →</a></p></div>
-    <div class="card"><h2>Facebook</h2><p><a href="https://www.facebook.com/profile.php?id=61589102386856" target="_blank" rel="noopener">NextStep International on Facebook</a></p></div>
+  </header>
+
+  <div class="page-hero">
+    <h1>Contact Us</h1>
+    <p>Free study abroad consultation for Pakistani students — MBBS, Business, Engineering &amp; IT abroad.</p>
+    <div class="gold-line"></div>
+  </div>
+
+  <main>
+    <section class="sec">
+      <div class="eyebrow">Get in touch</div>
+      <h2 class="h2">Let's talk about your future</h2>
+      <p class="lead">WhatsApp is the fastest way to reach us. Email works well for documents. No pressure — just honest guidance.</p>
+
+      <div class="contact-wrap">
+        <div class="contact-left">
+          <div>
+            <div class="contact-left-tag">Reach Out</div>
+            <h3>We're here to guide you — every step of the way.</h3>
+            <p style="margin-top:12px">Whether you have a quick question or want to start your application, our counsellors are ready.</p>
+          </div>
+          <div class="contact-left-hours">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg>
+            <span>Mon–Sat · 9am–9pm PKT · Usually respond within hours</span>
+          </div>
+          <a class="btn btn-gold" href="/apply" style="align-self:flex-start;width:fit-content">
+            Apply Now — Free
+          </a>
+        </div>
+        <div class="contact-right">
+          <a class="contact-method" href="https://wa.me/923142638901?text=Assalam%20o%20Alaikum%2C%20I%20want%20study%20abroad%20consultation" target="_blank" rel="noopener noreferrer">
+            <div class="cm-ico" style="background:#f0fdf4">
+              <svg viewBox="0 0 24 24" fill="#16a34a" width="24" height="24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.134.558 4.133 1.532 5.866L.057 23.857a.5.5 0 00.606.606l6.056-1.467A11.944 11.944 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.013-1.375l-.36-.213-3.733.904.921-3.648-.233-.376A9.818 9.818 0 1112 21.818z"/></svg>
+            </div>
+            <div class="cm-text">
+              <strong>WhatsApp</strong>
+              <span>+92 314 2638901 · Fastest response</span>
+            </div>
+            <div class="cm-arrow"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg></div>
+          </a>
+          <a class="contact-method" href="mailto:nextstepinternational25@gmail.com">
+            <div class="cm-ico" style="background:#eff6ff">
+              <svg fill="none" viewBox="0 0 24 24" stroke="#1d4ed8" stroke-width="2" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            </div>
+            <div class="cm-text">
+              <strong>Email</strong>
+              <span>nextstepinternational25@gmail.com</span>
+            </div>
+            <div class="cm-arrow"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg></div>
+          </a>
+          <a class="contact-method" href="/apply">
+            <div class="cm-ico" style="background:var(--navylight)">
+              <svg fill="none" viewBox="0 0 24 24" stroke="#0a1f44" stroke-width="2" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+            </div>
+            <div class="cm-text">
+              <strong>Apply Online</strong>
+              <span>Submit your application &amp; documents securely</span>
+            </div>
+            <div class="cm-arrow"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg></div>
+          </a>
+          <a class="contact-method" href="https://www.facebook.com/profile.php?id=61589102386856" target="_blank" rel="noopener noreferrer">
+            <div class="cm-ico" style="background:#eff6ff">
+              <svg fill="none" viewBox="0 0 24 24" stroke="#1877f2" stroke-width="2" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
+            </div>
+            <div class="cm-text">
+              <strong>Facebook</strong>
+              <span>Follow for updates &amp; student stories</span>
+            </div>
+            <div class="cm-arrow"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg></div>
+          </a>
+          <a class="contact-method" href="/track">
+            <div class="cm-ico" style="background:#fdf6e3">
+              <svg fill="none" viewBox="0 0 24 24" stroke="#b8960c" stroke-width="2" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            </div>
+            <div class="cm-text">
+              <strong>Track Application</strong>
+              <span>Check status with your Register ID</span>
+            </div>
+            <div class="cm-arrow"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" width="18" height="18"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg></div>
+          </a>
+        </div>
+      </div>
+
+      <div class="cta-row">
+        <a class="btn btn-wa" href="https://wa.me/923142638901?text=Assalam%20o%20Alaikum%2C%20I%20want%20study%20abroad%20consultation" target="_blank" rel="noopener">WhatsApp Us</a>
+        <a class="btn btn-navy" href="/programs">View Programs</a>
+      </div>
+    </section>
   </main>
-  <footer>
-    <nav aria-label="Footer">
-      <a href="/">Home</a><a href="about.html">About</a><a href="programs.html">Programs</a>
-      <a href="apply.html">Apply</a><a href="track.html">Track</a><a href="scholarships.html">Scholarships</a>
-      <a href="blog.html">Blog</a><a href="contact.html">Contact</a>
-    </nav>
-    <p>© NextStep International</p>
+
+  <footer class="footer">
+    <div class="footer-in">
+      <div class="footer-top">
+        <div>
+          <div class="f-brand">
+            <div class="f-logo"><svg viewBox="0 0 24 24" fill="none"><path d="M5 18L9 14L13 16L19 8" stroke="#e8a020" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 8H19V12" stroke="#e8a020" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <span class="f-name">NextStep International</span>
+          </div>
+          <div class="f-gold-line"></div>
+          <p class="f-about">Pakistan's trusted study abroad consultancy for Georgia, Azerbaijan, Russia, Turkey, China &amp; more.</p>
+        </div>
+        <div class="f-col">
+          <h5>Quick Links</h5>
+          <a href="/about">About</a>
+          <a href="/programs">Programs</a>
+          <a href="/apply">Apply</a>
+          <a href="/track">Track</a>
+          <a href="/blog">Blog</a>
+        </div>
+        <div class="f-col">
+          <h5>Contact</h5>
+          <a href="https://wa.me/923142638901" target="_blank" rel="noopener">WhatsApp +92 314 2638901</a>
+          <a href="mailto:nextstepinternational25@gmail.com">Email us</a>
+        </div>
+      </div>
+      <div class="f-copy">© NextStep International · Study Abroad Consultancy Pakistan</div>
+    </div>
   </footer>
+
+  <a class="wa-float" href="https://wa.me/923142638901?text=Assalam%20o%20Alaikum%2C%20I%20want%20study%20abroad%20consultation" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">
+    <div class="wa-float-btn">
+      <svg viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.134.558 4.133 1.532 5.866L.057 23.857a.5.5 0 00.606.606l6.056-1.467A11.944 11.944 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.013-1.375l-.36-.213-3.733.904.921-3.648-.233-.376A9.818 9.818 0 1112 21.818z"/></svg>
+    </div>
+  </a>
 </body>
 </html>
