@@ -1789,6 +1789,9 @@ function getMailTransporter() {
     host,
     port: Number(process.env.SMTP_PORT || 587),
     secure: process.env.SMTP_SECURE === "true",
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 15_000,
     auth:
       process.env.SMTP_USER
         ? {
@@ -2884,13 +2887,18 @@ async function sendWebsiteApplyAlertEmail(to, subject, bodyText) {
       return `<p>${line.replace(/</g, "&lt;").replace(/>/g, "&gt;") || "&nbsp;"}</p>`;
     })
     .join("");
-  await transporter.sendMail({
-    from,
-    to,
-    subject,
-    text: bodyText,
-    html: `<div style="font-family:system-ui,sans-serif;font-size:14px;line-height:1.5;color:#111">${html}</div>`,
-  });
+  await Promise.race([
+    transporter.sendMail({
+      from,
+      to,
+      subject,
+      text: bodyText,
+      html: `<div style="font-family:system-ui,sans-serif;font-size:14px;line-height:1.5;color:#111">${html}</div>`,
+    }),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("SMTP send timed out")), 12_000)
+    ),
+  ]);
   return true;
 }
 
@@ -8873,10 +8881,11 @@ app.post(
         savedLead?.toObject?.() ||
         (await Lead.findById(targetId).lean()) ||
         savedLead;
-      await notifyWebsiteApplySubmission(tenantRaw, leadForAlert, {
+
+      void notifyWebsiteApplySubmission(tenantRaw, leadForAlert, {
         isExisting,
         uploadsMeta,
-      });
+      }).catch((err) => console.warn("[website-apply-alert]", err?.message || err));
 
       return res.status(201).json({
         ok: true,
@@ -8999,10 +9008,10 @@ app.post("/public/website/apply-json", websiteApplyLimiter, async (req, res) => 
       savedLead._id
     );
 
-    await notifyWebsiteApplySubmission(tenantRaw, savedLead?.toObject?.() || savedLead, {
+    void notifyWebsiteApplySubmission(tenantRaw, savedLead?.toObject?.() || savedLead, {
       isExisting,
       uploadsMeta: [],
-    });
+    }).catch((err) => console.warn("[website-apply-alert]", err?.message || err));
 
     console.log(`[website-apply-json] ${isExisting ? "MERGED" : "CREATED"} lead for ${fullName} (${phone})`);
     return res.status(201).json({ ok: true, id: String(targetId), merged: isExisting, status: isExisting ? "Updated" : "Pending Review" });

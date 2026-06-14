@@ -628,6 +628,11 @@
         banner = document.getElementById("val-banner"), bannerText = document.getElementById("val-text"),
         steps = [1,2,3,4].map(function(n){ return document.getElementById("ps"+n); });
 
+    var cfg = window.NSI_CONFIG || {}, apiBase = String(cfg.apiBase||"").replace(/\/+$/,"");
+    if (apiBase) {
+      fetch(apiBase + "/public/website/health", { method: "GET" }).catch(function(){});
+    }
+
     var LABELS = { fullName:"Full Name", fatherName:"Father's Name", dob:"Date of Birth",
       gender:"Gender", phone:"WhatsApp Number", email:"Email Address",
       passportNumber:"Passport Number", passportExpiry:"Passport Expiry",
@@ -703,13 +708,14 @@
       var submitted = false;
       var lastErr = "";
 
-      // Try up to 4 times — server may need 30s to wake from sleep
-      for (var attempt = 1; attempt <= 4; attempt++) {
+      // Try up to 3 times — free Render may need ~60s to wake from sleep
+      for (var attempt = 1; attempt <= 3; attempt++) {
         try {
-          if (attempt > 1) btnLabel.textContent = "Please wait… (" + attempt + "/4)";
+          if (attempt > 1) btnLabel.textContent = "Waking server… (" + attempt + "/3)";
 
           var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-          var timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, 35000) : null;
+          var timer = null;
+          if (ctrl) timer = setTimeout(function(){ ctrl.abort(); }, 90000);
 
           var res = await fetch(base + "/public/website/apply-json", {
             method: "POST",
@@ -726,14 +732,14 @@
           try { errData = await res.json(); } catch(_) {}
           lastErr = errData.error || ("Server error " + res.status);
 
-          if (attempt < 4) {
-            await new Promise(function(r){ setTimeout(r, attempt * 3000); });
+          if (attempt < 3) {
+            await new Promise(function(r){ setTimeout(r, attempt * 4000); });
           }
         } catch(err) {
           if (timer) clearTimeout(timer);
-          lastErr = (err.name === "AbortError") ? "Server timeout" : (err.message || "Network error");
-          if (attempt < 4) {
-            await new Promise(function(r){ setTimeout(r, attempt * 3000); });
+          lastErr = (err.name === "AbortError") ? "Server timeout (try again in a moment)" : (err.message || "Network error");
+          if (attempt < 3) {
+            await new Promise(function(r){ setTimeout(r, attempt * 4000); });
           }
         }
       }
