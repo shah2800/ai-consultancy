@@ -61,6 +61,36 @@
     <priority>0.80</priority>
   </url>
   <url>
+    <loc>https://www.nextstepinternationals.com/blog-study-azerbaijan.html</loc>
+    <lastmod>2026-06-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
+    <loc>https://www.nextstepinternationals.com/blog-study-russia.html</loc>
+    <lastmod>2026-06-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
+    <loc>https://www.nextstepinternationals.com/blog-study-turkey.html</loc>
+    <lastmod>2026-06-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
+    <loc>https://www.nextstepinternationals.com/blog-study-china.html</loc>
+    <lastmod>2026-06-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
+    <loc>https://www.nextstepinternationals.com/blog-study-kazakhstan.html</loc>
+    <lastmod>2026-06-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
     <loc>https://www.nextstepinternationals.com/scholarships.html</loc>
     <lastmod>2026-05-29</lastmod>
     <changefreq>monthly</changefreq>

@@ -472,6 +472,41 @@
     .testi-author strong{font-size:.9rem;color:var(--ink)}
     .testi-author span{font-size:.78rem;color:var(--soft)}
 
+    /* ─── Bottom comments ─── */
+    .comments-sec{background:var(--bg);border-top:1px solid var(--border);padding:56px 24px 64px}
+    .comments-in{max-width:var(--max);margin:0 auto}
+    .comments-list{display:flex;flex-direction:column;gap:16px;margin-bottom:28px}
+    .comment-item{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:18px 20px}
+    .comment-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+    .comment-avatar{width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0}
+    .comment-name{font-size:.9rem;font-weight:700;color:var(--ink)}
+    .comment-meta{font-size:.75rem;color:var(--muted)}
+    .comment-stars{color:var(--goldbright);font-size:.85rem;margin-top:2px}
+    .comment-body{font-size:.9rem;color:var(--soft);line-height:1.65}
+    .comment-verified{display:inline-flex;align-items:center;gap:4px;font-size:.68rem;font-weight:700;color:#047857;background:rgba(5,150,105,.1);border:1px solid rgba(5,150,105,.22);padding:2px 8px;border-radius:999px;margin-left:6px;vertical-align:middle}
+    .comment-form{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:22px 20px;box-shadow:0 2px 16px rgba(10,31,68,.05)}
+    .comment-form h3{font-family:var(--serif);font-size:1.25rem;color:var(--ink);margin-bottom:8px;font-weight:400}
+    .comment-form-note{font-size:.875rem;color:var(--muted);margin-bottom:16px;line-height:1.55}
+    .cf-row{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px}
+    @media(min-width:520px){.cf-row.col2{grid-template-columns:1fr 1fr}}
+    .cf-field{display:flex;flex-direction:column;gap:6px}
+    .cf-field label{font-size:.8rem;font-weight:600;color:var(--ink)}
+    .cf-field input,.cf-field textarea{width:100%;padding:11px 13px;border-radius:var(--rsm);border:1.5px solid var(--border);font:inherit;font-size:.9rem;color:var(--ink);background:#fff}
+    .cf-field input:focus,.cf-field textarea:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px rgba(10,31,68,.08)}
+    .cf-field textarea{min-height:90px;resize:vertical}
+    .cf-stars{display:flex;gap:4px}
+    .cf-star{background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;color:#d1d5db;padding:0 2px}
+    .cf-star.on{color:var(--goldbright)}
+    .cf-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:4px}
+    .cf-submit{padding:11px 22px;border:none;border-radius:var(--rsm);background:var(--navy);color:#fff;font:inherit;font-size:.875rem;font-weight:700;cursor:pointer}
+    .cf-submit:hover{background:var(--navy2)}
+    .cf-submit:disabled{opacity:.6;cursor:not-allowed}
+    .cf-note{font-size:.75rem;color:var(--muted)}
+    .cf-msg{font-size:.875rem;margin-top:12px;padding:10px 14px;border-radius:var(--rsm);display:none}
+    .cf-msg.ok{display:block;background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);color:#047857}
+    .cf-msg.err{display:block;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.2);color:#b91c1c}
+    .comments-empty{font-size:.875rem;color:var(--muted);text-align:center;padding:24px;border:1px dashed var(--border);border-radius:var(--r);margin-bottom:24px}
+
     /* ─── Comparison Table ─── */
     .compare-wrap{overflow-x:auto}
     .compare-table-wrap{overflow-x:auto;border-radius:var(--r);box-shadow:0 4px 24px rgba(10,31,68,.10);border:1px solid var(--border)}
@@ -871,8 +906,20 @@
         <a href="blog-scholarships.html" style="display:inline-flex;align-items:center;gap:6px;font-size:.83rem;font-weight:600;color:var(--navy);background:var(--navylight);border:1.5px solid rgba(10,31,68,.12);border-radius:8px;padding:8px 16px;text-decoration:none">
           🎓 Scholarship Opportunities
         </a>
-        <a href="blog-georgia-life.html" style="display:inline-flex;align-items:center;gap:6px;font-size:.83rem;font-weight:600;color:var(--navy);background:var(--navylight);border:1.5px solid rgba(10,31,68,.12);border-radius:8px;padding:8px 16px;text-decoration:none">
-          🏠 Life in Georgia for Students
+        <a href="blog-study-azerbaijan.html" style="display:inline-flex;align-items:center;gap:6px;font-size:.83rem;font-weight:600;color:var(--navy);background:var(--navylight);border:1.5px solid rgba(10,31,68,.12);border-radius:8px;padding:8px 16px;text-decoration:none">
+          🇦🇿 Study in Azerbaijan
+        </a>
+        <a href="blog-study-russia.html" style="display:inline-flex;align-items:center;gap:6px;font-size:.83rem;font-weight:600;color:var(--navy);background:var(--navylight);border:1.5px solid rgba(10,31,68,.12);border-radius:8px;padding:8px 16px;text-decoration:none">
+          🇷🇺 Study in Russia
+        </a>
+        <a href="blog-study-turkey.html" style="display:inline-flex;align-items:center;gap:6px;font-size:.83rem;font-weight:600;color:var(--navy);background:var(--navylight);border:1.5px solid rgba(10,31,68,.12);border-radius:8px;padding:8px 16px;text-decoration:none">
+          🇹🇷 Study in Turkey
+        </a>
+        <a href="blog-study-china.html" style="display:inline-flex;align-items:center;gap:6px;font-size:.83rem;font-weight:600;color:var(--navy);background:var(--navylight);border:1.5px solid rgba(10,31,68,.12);border-radius:8px;padding:8px 16px;text-decoration:none">
+          🇨🇳 Study in China
+        </a>
+        <a href="blog-study-kazakhstan.html" style="display:inline-flex;align-items:center;gap:6px;font-size:.83rem;font-weight:600;color:var(--navy);background:var(--navylight);border:1.5px solid rgba(10,31,68,.12);border-radius:8px;padding:8px 16px;text-decoration:none">
+          🇰🇿 Study in Kazakhstan
         </a>
       </div>
     </section>
@@ -890,31 +937,31 @@
             <div class="dest-tag">MBBS · IT · Business</div>
             <div class="dest-fee">From $4,000/yr</div>
           </div>
-          <div class="dest-card">
+          <div class="dest-card" onclick="window.open('blog-study-azerbaijan.html','_self')">
             <div class="dest-flag">🇦🇿</div>
             <div class="dest-name">Azerbaijan</div>
             <div class="dest-tag">MBBS · Engineering</div>
             <div class="dest-fee">From $3,500/yr</div>
           </div>
-          <div class="dest-card">
+          <div class="dest-card" onclick="window.open('blog-study-russia.html','_self')">
             <div class="dest-flag">🇷🇺</div>
             <div class="dest-name">Russia</div>
             <div class="dest-tag">MBBS · Engineering</div>
             <div class="dest-fee">From $3,000/yr</div>
           </div>
-          <div class="dest-card">
+          <div class="dest-card" onclick="window.open('blog-study-turkey.html','_self')">
             <div class="dest-flag">🇹🇷</div>
             <div class="dest-name">Turkey</div>
             <div class="dest-tag">Business · Law · IT</div>
             <div class="dest-fee">From $4,500/yr</div>
           </div>
-          <div class="dest-card">
+          <div class="dest-card" onclick="window.open('blog-study-china.html','_self')">
             <div class="dest-flag">🇨🇳</div>
             <div class="dest-name">China</div>
             <div class="dest-tag">MBBS · Engineering</div>
             <div class="dest-fee">From $3,000/yr</div>
           </div>
-          <div class="dest-card">
+          <div class="dest-card" onclick="window.open('blog-study-kazakhstan.html','_self')">
             <div class="dest-flag">🇰🇿</div>
             <div class="dest-name">Kazakhstan</div>
             <div class="dest-tag">MBBS · Business</div>
@@ -929,39 +976,6 @@
         </div>
       </section>
     </div>
-
-    <!-- ══ TESTIMONIALS ══ -->
-    <section id="testimonials" class="sec reveal">
-      <div class="eyebrow">Student Reviews</div>
-      <h2 class="h2">What our students say</h2>
-      <p class="lead">Real students, real results. Hear from those who trusted us with their future.</p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px">
-        <div class="tcard">
-          <div class="tcard-stars">★★★★★</div>
-          <p class="tcard-text">"NextStep International handled everything for me — from university selection to visa. I'm now studying MBBS in Georgia and couldn't be happier. Truly professional team."</p>
-          <div class="tcard-author">
-            <div class="tcard-avatar">AK</div>
-            <div><div class="tcard-name">Ahmad Khan</div><div class="tcard-role">MBBS Student · Georgia</div></div>
-          </div>
-        </div>
-        <div class="tcard">
-          <div class="tcard-stars">★★★★★</div>
-          <p class="tcard-text">"Very honest consultancy. They told me exactly what to expect — no fake promises. Got my offer letter in 2 weeks. The visa process was smooth because they prepared everything perfectly."</p>
-          <div class="tcard-author">
-            <div class="tcard-avatar">SF</div>
-            <div><div class="tcard-name">Sara Fatima</div><div class="tcard-role">Business Student · Azerbaijan</div></div>
-          </div>
-        </div>
-        <div class="tcard">
-          <div class="tcard-stars">★★★★★</div>
-          <p class="tcard-text">"I was confused about which country to choose. NSI advisors spent 2 hours with me explaining all options. Zero pressure, just facts. Best decision I made was trusting them."</p>
-          <div class="tcard-author">
-            <div class="tcard-avatar">MR</div>
-            <div><div class="tcard-name">Muhammad Raza</div><div class="tcard-role">Engineering Student · Russia</div></div>
-          </div>
-        </div>
-      </div>
-    </section>
 
     <!-- ══ PROCESS ══ -->
     <section id="process" class="sec reveal">
@@ -1241,6 +1255,48 @@
       </div>
     </section>
 
+    <!-- ══ COMMENTS (bottom of page) ══ -->
+    <section id="comments" class="comments-sec reveal">
+      <div class="comments-in">
+        <div class="eyebrow">Community</div>
+        <h2 class="h2">Comments</h2>
+        <p class="lead" style="margin-bottom:28px">Share your experience — anyone can leave a comment. Comments appear instantly.</p>
+
+        <div class="comments-list" id="comments-list">
+          <div class="comments-empty" id="comments-empty">No comments yet — be the first to share your experience.</div>
+        </div>
+
+        <div class="comment-form" id="comment-form-wrap">
+          <h3>Leave a comment</h3>
+          <form id="comment-form" novalidate>
+            <div class="cf-field" style="margin-bottom:14px">
+              <label for="c-name">Your name (optional)</label>
+              <input type="text" id="c-name" name="name" placeholder="e.g. Ahmad Khan">
+            </div>
+            <div class="cf-field" style="margin-bottom:14px">
+              <label>Rating (optional)</label>
+              <div class="cf-stars" id="c-stars" role="group" aria-label="Rating">
+                <button type="button" class="cf-star on" data-v="1" aria-label="1 star">★</button>
+                <button type="button" class="cf-star on" data-v="2" aria-label="2 stars">★</button>
+                <button type="button" class="cf-star on" data-v="3" aria-label="3 stars">★</button>
+                <button type="button" class="cf-star on" data-v="4" aria-label="4 stars">★</button>
+                <button type="button" class="cf-star on" data-v="5" aria-label="5 stars">★</button>
+              </div>
+              <input type="hidden" name="rating" id="c-rating" value="5">
+            </div>
+            <div class="cf-field" style="margin-bottom:14px">
+              <label for="c-text">Your comment</label>
+              <textarea id="c-text" name="text" placeholder="Share your experience with NextStep International…" required></textarea>
+            </div>
+            <div class="cf-actions">
+              <button type="submit" class="cf-submit" id="c-btn">Post comment</button>
+            </div>
+            <div class="cf-msg" id="c-msg"></div>
+          </form>
+        </div>
+      </div>
+    </section>
+
   </main>
 
 
@@ -1266,6 +1322,7 @@
           
           <a href="apply.html">Apply Online</a>
           <a href="track.html">Track Application</a>
+          <a href="#comments">Comments</a>
         </div>
         <div class="f-col">
           <h5>Contact</h5>
@@ -1311,6 +1368,8 @@
     </div>
   </div>
 
+  <script src="js/ns-config.js"></script>
+  <script src="js/cms-hydrate.js"></script>
   <script>
   (function(){
     "use strict";
@@ -1447,6 +1506,166 @@
     } else {
       document.querySelectorAll(".reveal").forEach(function(el){ el.classList.add("in"); });
     }
+
+    // ── Bottom comments (open — no sign-in) ──
+    (function initComments(){
+      var list = document.getElementById("comments-list");
+      var empty = document.getElementById("comments-empty");
+      var form = document.getElementById("comment-form");
+      var msg = document.getElementById("c-msg");
+      var btn = document.getElementById("c-btn");
+      var ratingInput = document.getElementById("c-rating");
+      var starBtns = document.querySelectorAll("#c-stars .cf-star");
+      if (!list || !form) return;
+
+      var cfg = window.NSI_CONFIG || {};
+      var base = String(cfg.apiBase || "").replace(/\/+$/, "");
+      var formToken = String(cfg.formToken || "").trim();
+
+      function setRating(n) {
+        var val = n >= 1 && n <= 5 ? n : 5;
+        if (ratingInput) ratingInput.value = String(val);
+        starBtns.forEach(function (b) {
+          b.classList.toggle("on", Number(b.getAttribute("data-v")) <= val);
+        });
+      }
+      starBtns.forEach(function (b) {
+        b.addEventListener("click", function () {
+          var v = Number(b.getAttribute("data-v"));
+          setRating(ratingInput && ratingInput.value === String(v) && v > 1 ? v - 1 : v);
+        });
+      });
+      setRating(5);
+
+      function fmtDate(d) {
+        if (!d) return "";
+        try {
+          var dt = new Date(d);
+          return isNaN(dt.getTime()) ? "" : dt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+        } catch (_) { return ""; }
+      }
+
+      function renderComment(r) {
+        var item = document.createElement("article");
+        item.className = "comment-item";
+        item.dataset.commentId = r.id || "";
+        var head = document.createElement("div");
+        head.className = "comment-head";
+        var av = document.createElement("div");
+        av.className = "comment-avatar";
+        av.textContent = r.initials || "?";
+        var info = document.createElement("div");
+        var name = document.createElement("div");
+        name.className = "comment-name";
+        name.textContent = r.name || "Student";
+        if (r.verified) {
+          var badge = document.createElement("span");
+          badge.className = "comment-verified";
+          badge.textContent = "✓ Verified student";
+          badge.title = "Matched to a real application in our system";
+          name.appendChild(badge);
+        }
+        var meta = document.createElement("div");
+        meta.className = "comment-meta";
+        meta.textContent = [r.role, fmtDate(r.createdAt)].filter(Boolean).join(" · ");
+        info.appendChild(name);
+        if (r.role || r.createdAt) info.appendChild(meta);
+        if (r.stars) {
+          var stars = document.createElement("div");
+          stars.className = "comment-stars";
+          stars.textContent = r.stars;
+          info.appendChild(stars);
+        }
+        head.appendChild(av);
+        head.appendChild(info);
+        var body = document.createElement("p");
+        body.className = "comment-body";
+        body.textContent = r.text || "";
+        item.appendChild(head);
+        item.appendChild(body);
+        return item;
+      }
+
+      function prependComment(r) {
+        if (!r) return;
+        if (empty) empty.style.display = "none";
+        if (r.id && list.querySelector('[data-comment-id="' + r.id + '"]')) return;
+        list.insertBefore(renderComment(r), list.firstChild);
+      }
+
+      function loadComments() {
+        if (!base) return;
+        fetch(base + "/public/website/reviews?limit=30")
+          .then(function(res){ return res.ok ? res.json() : null; })
+          .then(function(data){
+            var rows = (data && data.reviews) || [];
+            if (!rows.length) return;
+            if (empty) empty.style.display = "none";
+            rows.forEach(function(r){ prependComment(r); });
+          })
+          .catch(function(){});
+      }
+      loadComments();
+
+      form.addEventListener("submit", async function(e){
+        e.preventDefault();
+        if (msg) { msg.className = "cf-msg"; msg.textContent = ""; }
+
+        var name = String(document.getElementById("c-name").value || "").trim();
+        var text = String(document.getElementById("c-text").value || "").trim();
+        var rating = Number(ratingInput && ratingInput.value);
+
+        if (text.length < 10) {
+          if (msg) { msg.className = "cf-msg err"; msg.textContent = "Please write at least 10 characters."; }
+          return;
+        }
+        if (!base) {
+          if (msg) { msg.className = "cf-msg err"; msg.textContent = "Could not connect. Please try again later."; }
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Posting…";
+
+        try {
+          var payload = {
+            name: name,
+            text: text,
+            rating: rating >= 1 && rating <= 5 ? rating : 5,
+            _formToken: formToken
+          };
+          var headers = { "Content-Type": "application/json" };
+          if (formToken) headers["x-website-form-token"] = formToken;
+
+          var res = await fetch(base + "/public/website/review-json", {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify(payload)
+          });
+          var data = {};
+          try { data = await res.json(); } catch (_) {}
+
+          if (!res.ok) {
+            if (msg) { msg.className = "cf-msg err"; msg.textContent = data.error || "Could not post comment."; }
+            btn.disabled = false;
+            btn.textContent = "Post comment";
+            return;
+          }
+
+          form.reset();
+          setRating(5);
+          if (data.review) prependComment(data.review);
+          if (msg) {
+            msg.className = "cf-msg ok";
+            msg.textContent = data.message || "Your comment has been posted.";
+          }
+        } catch (_) {
+          if (msg) { msg.className = "cf-msg err"; msg.textContent = "Network error. Please try again."; }
+        }
+        btn.disabled = false;
+        btn.textContent = "Post comment";
+      });
+    })();
 
   })();
   </script>

@@ -26,6 +26,7 @@ try {
 }
 
 const { calculatePriority, enrichLead } = require("./utils/calculatePriority");
+const { mergeWebsiteCmsContent, deepMerge } = require("./lib/website-cms-defaults");
 
 const app = express();
 
@@ -94,6 +95,18 @@ app.use(
   "/uploads/website-leads",
   express.static(path.join(__dirname, "uploads", "website-leads"), {
     maxAge: "7d",
+    immutable: false,
+    etag: true,
+    lastModified: true,
+  })
+);
+
+const websiteCmsUploadDir = path.join(__dirname, "uploads", "website-cms");
+fs.mkdirSync(websiteCmsUploadDir, { recursive: true });
+app.use(
+  "/uploads/website-cms",
+  express.static(websiteCmsUploadDir, {
+    maxAge: "30d",
     immutable: false,
     etag: true,
     lastModified: true,
@@ -1488,6 +1501,178 @@ const counterSchema = new mongoose.Schema(
 );
 const Counter = mongoose.model("Counter", counterSchema);
 
+const websiteReviewSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AuthUser",
+      required: true,
+      index: true,
+    },
+    name: { type: String, required: true, trim: true, maxlength: 80 },
+    program: { type: String, trim: true, maxlength: 80, default: "" },
+    country: { type: String, trim: true, maxlength: 80, default: "" },
+    rating: { type: Number, required: true, min: 1, max: 5 },
+    text: { type: String, required: true, trim: true, maxlength: 2000 },
+    email: { type: String, trim: true, maxlength: 120, default: "" },
+    phone: { type: String, trim: true, maxlength: 30, default: "" },
+    registrationId: { type: String, trim: true, maxlength: 40, default: "" },
+    commentUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "WebsiteCommentUser",
+      default: null,
+    },
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+      index: true,
+    },
+    approvedAt: Date,
+    rejectedAt: Date,
+    moderatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "AuthUser" },
+    verified: { type: Boolean, default: false, index: true },
+    verifiedLeadId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Lead",
+      default: null,
+    },
+  },
+  { timestamps: true }
+);
+websiteReviewSchema.index({ userId: 1, status: 1, createdAt: -1 });
+
+const WebsiteReview = mongoose.model("WebsiteReview", websiteReviewSchema);
+
+const websiteCommentUserSchema = new mongoose.Schema(
+  {
+    tenantUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AuthUser",
+      required: true,
+      index: true,
+    },
+    name: { type: String, required: true, trim: true, maxlength: 80 },
+    email: { type: String, required: true, trim: true, lowercase: true, maxlength: 120 },
+    passwordHash: { type: String, required: true },
+  },
+  { timestamps: true }
+);
+websiteCommentUserSchema.index({ tenantUserId: 1, email: 1 }, { unique: true });
+
+const WebsiteCommentUser = mongoose.model("WebsiteCommentUser", websiteCommentUserSchema);
+
+const websiteContentSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AuthUser",
+      required: true,
+      unique: true,
+      index: true,
+    },
+    content: { type: mongoose.Schema.Types.Mixed, default: {} },
+    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "AuthUser", default: null },
+  },
+  { timestamps: true }
+);
+
+const WebsiteContent = mongoose.model("WebsiteContent", websiteContentSchema);
+
+function signWebsiteCommentToken(commentUser, tenantUserId) {
+  return jwt.sign(
+    {
+      type: "website_comment",
+      id: String(commentUser._id),
+      email: String(commentUser.email || ""),
+      name: String(commentUser.name || ""),
+      tenantUserId: String(tenantUserId),
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: "30d" }
+  );
+}
+
+function readWebsiteCommentToken(req) {
+  const header = String(req.headers.authorization || "").trim();
+  if (header.toLowerCase().startsWith("bearer ")) {
+    return header.slice(7).trim();
+  }
+  return String(req.body?.commentToken || "").trim();
+}
+
+function verifyWebsiteCommentJwt(tokenRaw) {
+  const token = String(tokenRaw || "").trim();
+  if (!token) return null;
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    if (String(payload?.type || "") !== "website_comment") return null;
+    if (!payload?.id || !payload?.tenantUserId) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+async function resolveWebsiteCommentAuth(req) {
+  const payload = verifyWebsiteCommentJwt(readWebsiteCommentToken(req));
+  if (!payload) return null;
+
+  const tenantRaw = String(process.env.WEBSITE_TENANT_USER_ID || "").trim();
+  if (!tenantRaw || String(payload.tenantUserId) !== tenantRaw) return null;
+
+  const user = await WebsiteCommentUser.findOne({
+    _id: payload.id,
+    tenantUserId: tenantRaw,
+  }).lean();
+  if (!user) return null;
+
+  return { user, tenantUserId: tenantRaw, payload };
+}
+
+function serializeCommentUser(user = {}) {
+  return {
+    id: String(user._id || ""),
+    name: String(user.name || "").trim(),
+    email: String(user.email || "").trim(),
+  };
+}
+
+function reviewInitials(nameRaw) {
+  const parts = String(nameRaw || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!parts.length) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function reviewStars(ratingRaw) {
+  const n = Math.max(1, Math.min(5, Number(ratingRaw) || 5));
+  return "★".repeat(n) + "☆".repeat(5 - n);
+}
+
+function serializePublicReview(row = {}) {
+  const program = String(row.program || "").trim();
+  const country = String(row.country || "").trim();
+  const roleParts = [program, country].filter(Boolean);
+  return {
+    id: String(row._id || ""),
+    name: String(row.name || "").trim(),
+    program,
+    country,
+    role: roleParts.length ? roleParts.join(" · ") : "Student",
+    rating: Number(row.rating) || 5,
+    stars: reviewStars(row.rating),
+    text: String(row.text || "").trim(),
+    initials: reviewInitials(row.name),
+    createdAt: row.createdAt || null,
+    verified: !!row.verified,
+    verifiedLabel: row.verified ? "Verified student" : "",
+  };
+}
+
 /* ============================================================
    PASSWORD + JWT USER ID (legacy plain-text in MongoDB supported)
 ============================================================ */
@@ -2228,9 +2413,9 @@ function handleGuidedConversation(lead, inboundText, cName) {
   const isRussia     = /russia/i.test(text);
   const isTurkey     = /turkey/i.test(text);
 
-  // First ever message only → welcome menu
-  const isGreeting = /^(hi|hello|salam|assalam|hey|helo|hii|salaam|aoa|wslm|start|menu|help|info)\b/i.test(inboundText.trim());
-  if (!state && lead.messages.length === 0) {
+  // First ever message → welcome menu (user message already saved before this runs)
+  const userMsgCount = (lead.messages || []).filter((m) => m.role === "user").length;
+  if (!state && userMsgCount <= 1) {
     return { reply: guidedWelcome(cName), newState: "menu_sent" };
   }
   // If no state but returning student says hi → let normal AI handle warmly
@@ -2533,19 +2718,38 @@ ${universitiesSection}
   return sanitizeReplyNameUsage(reply, confirmedStudentName, history);
 }
 
+function resolveWhatsAppPhoneNumberId(accountSettings) {
+  return (
+    String(accountSettings?.whatsappPhoneNumberId || "").trim() ||
+    String(process.env.WHATSAPP_PHONE_NUMBER_ID || "").trim()
+  );
+}
+
+function whatsAppSendErrorMessage(err) {
+  const meta = err?.response?.data?.error;
+  if (meta?.code === 190) {
+    return "WhatsApp access token expired or invalid (Meta error 190). Refresh WHATSAPP_TOKEN in server env.";
+  }
+  if (meta?.message) return String(meta.message);
+  return String(err?.message || "WhatsApp send failed");
+}
+
 async function sendWhatsAppCloudText({ phoneNumberId, to, text }) {
   const token = String(process.env.WHATSAPP_TOKEN || "").trim();
   if (!token) {
     throw new Error("WHATSAPP_TOKEN missing; cannot send WhatsApp message");
   }
-  if (!phoneNumberId) {
-    throw new Error("WhatsApp phone number id missing; cannot send WhatsApp message");
+  const pid = String(phoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID || "").trim();
+  if (!pid) {
+    throw new Error(
+      "WhatsApp phone number id missing — set whatsappPhoneNumberId in CRM Settings or WHATSAPP_PHONE_NUMBER_ID in server env"
+    );
   }
   if (!to || !text) {
     throw new Error("Recipient or message text missing; cannot send WhatsApp message");
   }
 
-  const url = `https://graph.facebook.com/v25.0/${phoneNumberId}/messages`;
+  const url = `https://graph.facebook.com/v25.0/${pid}/messages`;
   try {
     await axios.post(
       url,
@@ -3850,6 +4054,13 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
         }
 
         if (!accountSettings) {
+          console.log(
+            "WhatsApp webhook: no Settings row for phone_number_id=",
+            phoneNumberId,
+            "display=",
+            displayNumber,
+            "— configure whatsappPhoneNumberId in CRM Settings"
+          );
           continue;
         }
 
@@ -4043,7 +4254,8 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
             let nextResetAt = cooldownActive ? resetAtRaw : "";
 
             if (cooldownActive) {
-              aiReply = "";
+              aiReply =
+                `Today's AI chat is finished for now. Please share your details and our consultant will reply shortly.${contactLine}`;
             } else if (dailyCount >= configuredLimit - 1) {
               aiReply =
                 `Today's AI chat is finished for now. Please share your details and our consultant will reply faster shortly.${contactLine}`;
@@ -4098,11 +4310,16 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
                 nextDailyCount = dailyCount + 1;
               } else {
                 // Normal AI conversation (after guided flow completes)
-              const history = lead.messages.map((m) => ({
-                role: m.role === "admin" || m.role === "assistant" ? "assistant" : "user",
-                content: String(m.content || ""),
-              }));
-              aiReply = await askAI(history, accountSettings.userId);
+                try {
+                  const history = lead.messages.map((m) => ({
+                    role: m.role === "admin" || m.role === "assistant" ? "assistant" : "user",
+                    content: String(m.content || ""),
+                  }));
+                  aiReply = await askAI(history, accountSettings.userId);
+                } catch (aiErr) {
+                  console.error("WhatsApp askAI failed:", aiErr?.message || aiErr);
+                  aiReply = "Thanks for your message. Our consultant will reply shortly.";
+                }
               }
               if (!String(aiReply || "").trim()) {
                 aiReply = "Thanks for your message. Our consultant will reply shortly.";
@@ -4121,36 +4338,58 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
             };
           }
 
+          if (autoReplyEnabled && !String(aiReply || "").trim()) {
+            aiReply =
+              summary.kind === "text"
+                ? "Thanks for your message. Our consultant will reply shortly."
+                : "Thanks — we received your message. Our team will reply shortly.";
+          }
+
           let aiReplyDelivered = false;
+          let aiSendError = "";
+          const outboundPhoneNumberId = resolveWhatsAppPhoneNumberId(accountSettings);
           if (aiReply) {
             try {
               await sendWhatsAppCloudText({
-                phoneNumberId:
-                  accountSettings.whatsappPhoneNumberId ||
-                  process.env.WHATSAPP_PHONE_NUMBER_ID,
+                phoneNumberId: outboundPhoneNumberId,
                 to: fromPhone,
                 text: aiReply,
               });
               aiReplyDelivered = true;
             } catch (sendErr) {
-              console.log(
+              aiSendError = whatsAppSendErrorMessage(sendErr);
+              console.error(
                 "WhatsApp auto-reply send failed:",
                 `lead=${String(lead?._id || "")}`,
                 `to=${String(fromPhone || "")}`,
+                `phoneNumberId=${outboundPhoneNumberId || "(missing)"}`,
                 sendErr?.response?.data || sendErr?.message || sendErr
               );
             }
+          } else if (autoReplyEnabled) {
+            aiSendError = "AI reply was empty (auto-reply enabled but no message generated).";
+            console.error("WhatsApp auto-reply skipped:", aiSendError, `lead=${String(lead?._id || "")}`);
           }
 
-          if (aiReply && aiReplyDelivered) {
+          if (aiReply) {
             lead.messages.push({
               role: "assistant",
               content: aiReply,
               whatsappDeliveryChannel: "whatsapp",
-              whatsappDeliveryStatus: "sent",
-              whatsappDeliveredAt: new Date(),
+              whatsappDeliveryStatus: aiReplyDelivered ? "sent" : "failed",
+              whatsappDeliveryError: aiReplyDelivered ? "" : aiSendError,
+              whatsappDeliveredAt: aiReplyDelivered ? new Date() : undefined,
               at: new Date(),
             });
+          }
+
+          if (aiSendError) {
+            await createNotification(
+              accountSettings.userId,
+              "whatsapp_send_failed",
+              `WhatsApp AI reply failed for ${lead.name || fromPhone}: ${aiSendError}`,
+              lead._id
+            );
           }
 
           lead.lastActivity = new Date();
@@ -4462,6 +4701,215 @@ app.get("/admin/website-applications", auth, async (req, res) => {
     res.status(500).json({
       error: "Failed to fetch website applications",
     });
+  }
+});
+
+app.get("/admin/website-reviews", auth, async (req, res) => {
+  try {
+    const tenant = tenantUserId(req);
+    const status = String(req.query.status || "pending").trim().toLowerCase();
+    const query = { userId: tenant };
+    if (status && status !== "all") {
+      query.status = status;
+    }
+
+    const rows = await WebsiteReview.find(query)
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
+
+    res.json(
+      rows.map((row) => ({
+        ...serializePublicReview(row),
+        status: row.status,
+        email: row.email || "",
+        phone: row.phone || "",
+        registrationId: row.registrationId || "",
+        updatedAt: row.updatedAt || null,
+      }))
+    );
+  } catch (err) {
+    console.error("GET /admin/website-reviews:", err?.message || err);
+    res.status(500).json({ error: "Failed to fetch website reviews" });
+  }
+});
+
+app.patch("/admin/website-reviews/:id", auth, async (req, res) => {
+  try {
+    const tenant = tenantUserId(req);
+    const id = String(req.params.id || "").trim();
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid review id" });
+    }
+
+    const nextStatus = String(req.body?.status || "").trim().toLowerCase();
+    if (!["approved", "rejected", "pending"].includes(nextStatus)) {
+      return res.status(400).json({ error: "status must be approved, rejected, or pending" });
+    }
+
+    const setFields = {
+      status: nextStatus,
+      moderatedBy: reqAuthUserId(req) || undefined,
+    };
+    if (nextStatus === "approved") {
+      setFields.approvedAt = new Date();
+      setFields.rejectedAt = null;
+    } else if (nextStatus === "rejected") {
+      setFields.rejectedAt = new Date();
+      setFields.approvedAt = null;
+    } else {
+      setFields.approvedAt = null;
+      setFields.rejectedAt = null;
+    }
+
+    const updated = await WebsiteReview.findOneAndUpdate(
+      { _id: id, userId: tenant },
+      { $set: setFields },
+      { new: true }
+    ).lean();
+
+    if (!updated) {
+      return res.status(404).json({ error: "Review not found" });
+    }
+
+    res.json({
+      ok: true,
+      review: {
+        ...serializePublicReview(updated),
+        status: updated.status,
+      },
+    });
+  } catch (err) {
+    console.error("PATCH /admin/website-reviews/:id:", err?.message || err);
+    res.status(500).json({ error: "Failed to update review" });
+  }
+});
+
+const websiteCmsUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => {
+      fs.mkdirSync(websiteCmsUploadDir, { recursive: true });
+      cb(null, websiteCmsUploadDir);
+    },
+    filename: (_req, file, cb) => {
+      const ext = path.extname(String(file.originalname || "")).toLowerCase().slice(0, 12);
+      const safeExt = ext.match(/^\.(jpe?g|png|gif|webp|mp4|webm|mov|pdf)$/i) ? ext : "";
+      cb(null, `${Date.now()}-${crypto.randomBytes(5).toString("hex")}${safeExt}`);
+    },
+  }),
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ok = /^(image\/|video\/|application\/pdf)/i.test(String(file.mimetype || ""));
+    cb(ok ? null : new Error("Only images, videos, or PDF files are allowed."), ok);
+  },
+});
+
+async function loadWebsiteCmsForTenant(tenantRaw) {
+  const row = await WebsiteContent.findOne({ userId: tenantRaw }).lean();
+  return mergeWebsiteCmsContent(row?.content || {});
+}
+
+async function saveWebsiteCmsForTenant(tenantRaw, patch, updatedBy) {
+  const existing = await WebsiteContent.findOne({ userId: tenantRaw }).lean();
+  const mergedContent = deepMerge(existing?.content || {}, patch || {});
+  const saved = await WebsiteContent.findOneAndUpdate(
+    { userId: tenantRaw },
+    { $set: { content: mergedContent, updatedBy: updatedBy || null } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  ).lean();
+  return mergeWebsiteCmsContent(saved?.content || {});
+}
+
+app.get("/admin/website-cms", auth, requireRoles("admin", "manager"), async (req, res) => {
+  try {
+    const tenant = tenantUserId(req);
+    const row = await WebsiteContent.findOne({ userId: tenant }).lean();
+    const content = mergeWebsiteCmsContent(row?.content || {});
+    res.json({ ok: true, content, updatedAt: row?.updatedAt || null });
+  } catch (err) {
+    console.error("GET /admin/website-cms:", err?.message || err);
+    res.status(500).json({ error: "Failed to load website content." });
+  }
+});
+
+app.put("/admin/website-cms", auth, requireRoles("admin", "manager"), async (req, res) => {
+  try {
+    const tenant = tenantUserId(req);
+    const patch = req.body?.content;
+    if (!patch || typeof patch !== "object") {
+      return res.status(400).json({ error: "content object is required." });
+    }
+    const content = await saveWebsiteCmsForTenant(tenant, patch, reqAuthUserId(req));
+    res.json({ ok: true, content, message: "Website updated." });
+  } catch (err) {
+    console.error("PUT /admin/website-cms:", err?.message || err);
+    res.status(500).json({ error: "Failed to save website content." });
+  }
+});
+
+app.post(
+  "/admin/website-cms/media",
+  auth,
+  requireRoles("admin", "manager"),
+  websiteCmsUpload.single("file"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded." });
+      }
+      const tenant = tenantUserId(req);
+      const url = `/uploads/website-cms/${req.file.filename}`;
+      const item = {
+        id: req.file.filename,
+        url,
+        name: String(req.file.originalname || req.file.filename),
+        mime: String(req.file.mimetype || ""),
+        size: req.file.size || 0,
+        uploadedAt: new Date().toISOString(),
+      };
+      const existing = await WebsiteContent.findOne({ userId: tenant }).lean();
+      const prevMedia = Array.isArray(existing?.content?.media) ? existing.content.media : [];
+      await saveWebsiteCmsForTenant(tenant, { media: [item, ...prevMedia] }, reqAuthUserId(req));
+      res.status(201).json({ ok: true, media: item });
+    } catch (err) {
+      console.error("POST /admin/website-cms/media:", err?.message || err);
+      res.status(500).json({ error: err?.message || "Upload failed." });
+    }
+  }
+);
+
+app.delete(
+  "/admin/website-cms/media/:filename",
+  auth,
+  requireRoles("admin", "manager"),
+  async (req, res) => {
+    try {
+      const filename = path.basename(String(req.params.filename || ""));
+      if (!filename || filename.includes("..")) {
+        return res.status(400).json({ error: "Invalid filename." });
+      }
+      const full = path.join(websiteCmsUploadDir, filename);
+      if (fs.existsSync(full)) fs.unlinkSync(full);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("DELETE /admin/website-cms/media:", err?.message || err);
+      res.status(500).json({ error: "Could not delete file." });
+    }
+  }
+);
+
+app.get("/public/website/content", websiteTrackLimiter, async (req, res) => {
+  try {
+    const tenantRaw = String(process.env.WEBSITE_TENANT_USER_ID || "").trim();
+    if (!tenantRaw || !mongoose.Types.ObjectId.isValid(tenantRaw)) {
+      return res.status(503).json({ error: "Website content is not configured." });
+    }
+    const content = await loadWebsiteCmsForTenant(tenantRaw);
+    res.set("Cache-Control", "public, max-age=60");
+    res.json({ ok: true, content });
+  } catch (err) {
+    console.error("GET /public/website/content:", err?.message || err);
+    res.status(500).json({ error: "Could not load website content." });
   }
 });
 
@@ -7462,6 +7910,13 @@ const websiteApplyLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const websiteReviewLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 const websiteFormUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 25 * 1024 * 1024 },
@@ -8402,6 +8857,85 @@ async function findWebsiteLeadForTrackQuery(ridRaw) {
   return lead || null;
 }
 
+function phoneMatchesLead(leadPhoneRaw, inputPhoneRaw) {
+  const a = normalizePhoneKey(leadPhoneRaw);
+  const b = normalizePhoneKey(inputPhoneRaw);
+  if (a.length < 6 || b.length < 6) return false;
+  return a.slice(-8) === b.slice(-8);
+}
+
+/** Match comment author to an existing CRM lead (Register ID + WhatsApp). */
+async function verifyStudentForComment(tenantUserId, registrationIdRaw, phoneRaw) {
+  const registrationId = String(registrationIdRaw || "").trim();
+  const phone = String(phoneRaw || "").trim();
+  const phoneDigits = normalizePhoneKey(phone);
+
+  if (!registrationId && phoneDigits.length < 6) {
+    return {
+      verified: false,
+      lead: null,
+      error:
+        "Enter your Register ID (e.g. NSI-2026-001) and the WhatsApp number you used when applying.",
+    };
+  }
+
+  const select =
+    "name phone email admissionProfile countryInterest courseInterest userId _id";
+  let lead = null;
+
+  if (registrationId) {
+    lead = await Lead.findOne({
+      userId: tenantUserId,
+      isMerged: { $ne: true },
+      $expr: {
+        $eq: [
+          { $toLower: { $ifNull: ["$admissionProfile.registrationId", ""] } },
+          registrationId.toLowerCase(),
+        ],
+      },
+    })
+      .select(select)
+      .lean();
+  }
+
+  if (!lead && phoneDigits.length >= 6) {
+    lead = await Lead.findOne({
+      userId: tenantUserId,
+      isMerged: { $ne: true },
+      phone: { $regex: phoneDigits.slice(-8) },
+    })
+      .select(select)
+      .lean();
+  }
+
+  if (!lead) {
+    return {
+      verified: false,
+      lead: null,
+      error:
+        "We could not find your application. Use the same Register ID and WhatsApp from when you applied with us.",
+    };
+  }
+
+  if (registrationId && phoneDigits.length >= 6 && !phoneMatchesLead(lead.phone, phone)) {
+    return {
+      verified: false,
+      lead: null,
+      error: "WhatsApp number does not match our records for that Register ID.",
+    };
+  }
+
+  if (registrationId && phoneDigits.length < 6) {
+    return {
+      verified: false,
+      lead: null,
+      error: "Please enter your WhatsApp number to confirm you are the real student.",
+    };
+  }
+
+  return { verified: true, lead };
+}
+
 function stageNumberFromKey(stageKey) {
   return admissionStageIndex(stageKey) + 1;
 }
@@ -9084,6 +9618,196 @@ app.post("/public/website/upload", websiteRequestedUpload.single("file"), async 
   }
 });
 
+app.post("/public/website/comment-auth/register", websiteReviewLimiter, async (req, res) => {
+  try {
+    const tenantRaw = String(process.env.WEBSITE_TENANT_USER_ID || "").trim();
+    if (!tenantRaw || !mongoose.Types.ObjectId.isValid(tenantRaw)) {
+      return res.status(503).json({ error: "Comments are not configured on this server." });
+    }
+
+    const name = String(req.body.name || "").trim();
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+
+    if (!name || name.length < 2) {
+      return res.status(400).json({ error: "Please enter your name." });
+    }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: "Please enter a valid email." });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters." });
+    }
+
+    const existing = await WebsiteCommentUser.findOne({ tenantUserId: tenantRaw, email }).lean();
+    if (existing) {
+      return res.status(409).json({ error: "An account with this email already exists. Please sign in." });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const created = await WebsiteCommentUser.create({
+      tenantUserId: tenantRaw,
+      name,
+      email,
+      passwordHash,
+    });
+
+    const token = signWebsiteCommentToken(created, tenantRaw);
+    return res.status(201).json({
+      ok: true,
+      token,
+      user: serializeCommentUser(created),
+    });
+  } catch (err) {
+    console.error("POST /public/website/comment-auth/register:", err?.message || err);
+    return res.status(500).json({ error: "Could not create account." });
+  }
+});
+
+app.post("/public/website/comment-auth/login", websiteReviewLimiter, async (req, res) => {
+  try {
+    const tenantRaw = String(process.env.WEBSITE_TENANT_USER_ID || "").trim();
+    if (!tenantRaw || !mongoose.Types.ObjectId.isValid(tenantRaw)) {
+      return res.status(503).json({ error: "Comments are not configured on this server." });
+    }
+
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required." });
+    }
+
+    const user = await WebsiteCommentUser.findOne({ tenantUserId: tenantRaw, email });
+    if (!user || !(await verifyStoredPassword(password, user.passwordHash))) {
+      return res.status(401).json({ error: "Invalid email or password." });
+    }
+
+    const token = signWebsiteCommentToken(user, tenantRaw);
+    return res.json({
+      ok: true,
+      token,
+      user: serializeCommentUser(user),
+    });
+  } catch (err) {
+    console.error("POST /public/website/comment-auth/login:", err?.message || err);
+    return res.status(500).json({ error: "Could not sign in." });
+  }
+});
+
+app.get("/public/website/comment-auth/me", websiteTrackLimiter, async (req, res) => {
+  try {
+    const auth = await resolveWebsiteCommentAuth(req);
+    if (!auth) {
+      return res.status(401).json({ error: "Not signed in." });
+    }
+    return res.json({ ok: true, user: serializeCommentUser(auth.user) });
+  } catch (err) {
+    console.error("GET /public/website/comment-auth/me:", err?.message || err);
+    return res.status(500).json({ error: "Could not verify session." });
+  }
+});
+
+app.post("/public/website/review-json", websiteReviewLimiter, async (req, res) => {
+  try {
+    const tenantRaw = String(process.env.WEBSITE_TENANT_USER_ID || "").trim();
+    if (!tenantRaw || !mongoose.Types.ObjectId.isValid(tenantRaw)) {
+      return res.status(503).json({ error: "Comments are not configured on this server." });
+    }
+
+    const secret = process.env.WEBSITE_FORM_SECRET;
+    if (secret) {
+      const bodyToken = String(req.body._formToken || "").trim();
+      const headerToken = String(req.headers["x-website-form-token"] || "").trim();
+      if (bodyToken !== secret && headerToken !== secret) {
+        return res.status(401).json({ error: "Invalid form token." });
+      }
+    }
+
+    const nameInput = String(req.body.name || "").trim();
+    const text = String(req.body.text || req.body.review || "").trim();
+    const ratingRaw = Number(req.body.rating);
+    const program = String(req.body.program || "").trim();
+    const country = String(req.body.country || "").trim();
+
+    if (!text || text.length < 10) {
+      return res.status(400).json({ error: "Comment must be at least 10 characters." });
+    }
+
+    const displayName = nameInput || "Guest";
+    const rating =
+      Number.isFinite(ratingRaw) && ratingRaw >= 1 && ratingRaw <= 5
+        ? Math.round(ratingRaw)
+        : 5;
+
+    const now = new Date();
+    const saved = await WebsiteReview.create({
+      userId: tenantRaw,
+      verified: false,
+      name: displayName,
+      program,
+      country,
+      rating,
+      text,
+      status: "approved",
+      approvedAt: now,
+    });
+
+    console.log(`[website-review-json] comment from ${displayName} (${rating}★)`);
+    return res.status(201).json({
+      ok: true,
+      id: String(saved._id),
+      status: "approved",
+      verified: false,
+      review: serializePublicReview(saved.toObject ? saved.toObject() : saved),
+      message: "Your comment has been posted.",
+    });
+  } catch (err) {
+    console.error("[website-review-json] ERROR:", err?.message, err?.stack);
+    return res.status(500).json({ error: err?.message || "Could not save comment." });
+  }
+});
+
+app.get("/public/website/reviews", websiteTrackLimiter, async (req, res) => {
+  try {
+    const tenantRaw = String(process.env.WEBSITE_TENANT_USER_ID || "").trim();
+    if (!tenantRaw || !mongoose.Types.ObjectId.isValid(tenantRaw)) {
+      return res.json({ reviews: [], aggregate: { count: 0, ratingValue: 0 } });
+    }
+
+    const limit = Math.max(1, Math.min(50, Number(req.query.limit) || 12));
+    const rows = await WebsiteReview.find({
+      userId: tenantRaw,
+      status: "approved",
+    })
+      .sort({ approvedAt: -1, createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    const agg = await WebsiteReview.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(tenantRaw), status: "approved" } },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          ratingValue: { $avg: "$rating" },
+        },
+      },
+    ]);
+
+    const stats = agg[0] || { count: 0, ratingValue: 0 };
+    return res.json({
+      reviews: rows.map(serializePublicReview),
+      aggregate: {
+        count: stats.count || 0,
+        ratingValue: stats.ratingValue ? Number(stats.ratingValue.toFixed(1)) : 0,
+      },
+    });
+  } catch (err) {
+    console.error("GET /public/website/reviews:", err?.message || err);
+    return res.status(500).json({ error: "Could not load reviews." });
+  }
+});
+
 app.get("/public/website/health", (_req, res) => {
   res.json({
     ok: true,
@@ -9091,6 +9815,9 @@ app.get("/public/website/health", (_req, res) => {
     apply: "POST /public/website/apply (multipart)",
     upload: "GET|POST /public/website/upload?token=…",
     track: "GET /public/website/track?registrationId=…",
+    review: "POST /public/website/review-json",
+    reviews: "GET /public/website/reviews",
+    commentAuth: "POST /public/website/comment-auth/login | register",
   });
 });
 
@@ -9142,6 +9869,17 @@ app.get("/", (req, res) => {
   res.json({ success: true, message: "CRM API Running 🚀" });
 });
 
+/* CRM admin dashboard — same domain at /admin (nextstepinternationals.com/admin) */
+const adminDistDir = path.join(__dirname, "frontend", "dist");
+if (fs.existsSync(adminDistDir)) {
+  app.use("/admin", express.static(adminDistDir, { index: false }));
+  app.get(/^\/admin(\/.*)?$/, (req, res, next) => {
+    if (req.method !== "GET") return next();
+    res.sendFile(path.join(adminDistDir, "index.html"));
+  });
+  console.log("📊 Admin dashboard served at /admin");
+}
+
 /* Final error handler keeps malformed JSON responses consistent and stacktrace-free. */
 app.use((err, _req, res, next) => {
   if (err?.type === "entity.parse.failed" || err instanceof SyntaxError) {
@@ -9172,6 +9910,8 @@ app.listen(PORT, () => {
   );
   console.log(
     `   Website form: POST /public/website/apply   Track: GET /public/website/track?registrationId=`
+    `\n   Website review: POST /public/website/review-json   Reviews: GET /public/website/reviews`
+    `\n   Website CMS: GET/PUT /admin/website-cms   Public: GET /public/website/content`
   );
   if (fs.existsSync(path.join(__dirname, "website")) || fs.existsSync(path.join(__dirname, "..", "website"))) {
     console.log(

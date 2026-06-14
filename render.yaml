@@ -2,7 +2,7 @@ services:
   - type: web
     name: ai-consultancy-api
     runtime: node
-    buildCommand: npm install
+    buildCommand: npm install && cd frontend && npm install && VITE_BASE_PATH=/admin VITE_API_URL= npm run build && cd ..
     startCommand: npm start
     envVars:
       - key: NODE_ENV

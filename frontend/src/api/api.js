@@ -6,7 +6,12 @@ const SESSION_CACHE_PREFIX = "api:get:session:";
 const STORAGE_CACHE_PREFIX = "api:get:storage:";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000",
+  baseURL:
+    import.meta.env.VITE_API_URL !== undefined && import.meta.env.VITE_API_URL !== ""
+      ? import.meta.env.VITE_API_URL
+      : typeof window !== "undefined"
+        ? window.location.origin
+        : "http://localhost:5000",
   headers: { "Content-Type": "application/json" },
   timeout: 30000,
 });
@@ -89,9 +94,11 @@ api.interceptors.response.use(
     }
     if (error.response?.status === 401) {
       localStorage.removeItem("token");
+      const basePath = import.meta.env.VITE_BASE_PATH || "";
       const path = window.location?.pathname || "";
-      if (path !== "/" && path !== "/forgot-password" && path !== "/reset-password") {
-        window.location.href = "/";
+      const loginPath = basePath ? `${basePath}/` : "/";
+      if (path !== loginPath && !path.endsWith("/forgot-password") && !path.endsWith("/reset-password")) {
+        window.location.href = loginPath;
       }
     }
     return Promise.reject(error);

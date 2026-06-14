@@ -29,6 +29,8 @@ const Notifications = lazy(() => import("./pages/Notifications"));
 const Team = lazy(() => import("./pages/Team"));
 const Help = lazy(() => import("./pages/Help"));
 const WebsiteApplicationsDashboard = lazy(() => import("./pages/WebsiteApplicationsDashboard"));
+const WebsiteReviewsDashboard = lazy(() => import("./pages/WebsiteReviewsDashboard"));
+const WebsiteCmsDashboard = lazy(() => import("./pages/WebsiteCmsDashboard"));
 const WebsiteIntakePage = lazy(() => import("./pages/WebsiteIntakePage"));
 const StudentRegistrationPage = lazy(() => import("./pages/StudentRegistrationPage"));
 const StudentTrackerPage = lazy(() => import("./pages/StudentTrackerPage"));
@@ -221,7 +223,7 @@ export default function App() {
   }, []);
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.VITE_BASE_PATH || ""}>
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
           <Route element={<AuthPageTransition />}>
@@ -234,6 +236,8 @@ export default function App() {
           <Route path="/track" element={<StudentTrackerPage />} />
           <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
           <Route path="/website-applications" element={<Layout><WebsiteApplicationsDashboard /></Layout>} />
+          <Route path="/website-reviews" element={<Layout><WebsiteReviewsDashboard /></Layout>} />
+          <Route path="/website-cms" element={<Layout><WebsiteCmsDashboard /></Layout>} />
           <Route path="/leads" element={<Layout><Leads /></Layout>} />
           <Route path="/website-intake/:id" element={<Layout><WebsiteIntakePage /></Layout>} />
           <Route path="/leads/:id" element={<Layout><LeadProfile /></Layout>} />
