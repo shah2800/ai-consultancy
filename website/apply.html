@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -726,6 +726,26 @@
         return;
       }
 
+      var emailVal = normalizeEmail(fd.get("email"));
+      var passportVal = normalizePassport(fd.get("passportNumber"));
+      if (emailInput) emailInput.value = emailVal;
+      if (passportInput) passportInput.value = passportVal;
+      fd.set("email", emailVal);
+      fd.set("passportNumber", passportVal);
+
+      if (!isValidEmail(emailVal)) {
+        if (emailInput) emailInput.classList.add("error-field");
+        showBanner("Enter a valid email address (e.g. you@gmail.com).");
+        if (emailInput) setTimeout(function(){ emailInput.focus(); emailInput.scrollIntoView({behavior:"smooth",block:"center"}); }, 200);
+        return;
+      }
+      if (!isValidPassport(passportVal)) {
+        if (passportInput) passportInput.classList.add("error-field");
+        showBanner("Passport number must be CAPITAL letters and numbers only (e.g. AB1234567).");
+        if (passportInput) setTimeout(function(){ passportInput.focus(); passportInput.scrollIntoView({behavior:"smooth",block:"center"}); }, 200);
+        return;
+      }
+
       btn.disabled = true;
       document.getElementById("btn-icon").outerHTML = '<span class="spinner" id="btn-icon"></span>';
       btnLabel.textContent = "Submitting…";
@@ -738,9 +758,9 @@
         dob:               String(fd.get("dob")||"").trim(),
         gender:            String(fd.get("gender")||"").trim(),
         phone:             String(fd.get("phone")||"").trim(),
-        email:             String(fd.get("email")||"").trim(),
+        email:             normalizeEmail(fd.get("email")),
         cityAddress:       String(fd.get("cityAddress")||"").trim(),
-        passportNumber:    String(fd.get("passportNumber")||"").trim(),
+        passportNumber:    normalizePassport(fd.get("passportNumber")),
         passportIssueDate: String(fd.get("passportIssueDate")||"").trim(),
         passportExpiry:    String(fd.get("passportExpiry")||"").trim(),
         matricGrade:       String(fd.get("matricGrade")||"").trim(),
