@@ -37,25 +37,6 @@ app.get("/ping", (_req, res) => {
   res.status(200).type("text/plain").send("ok");
 });
 
-/* Production: one canonical host for Google (sitemap uses www) */
-app.use((req, res, next) => {
-  if (process.env.NODE_ENV !== "production") return next();
-  const canonical =
-    String(process.env.CANONICAL_WEB_HOST || "www.nextstepinternationals.com")
-      .trim()
-      .toLowerCase()
-      .replace(/^https?:\/\//, "")
-      .replace(/\/+$/, "");
-  const host = String(req.headers.host || "")
-    .split(":")[0]
-    .toLowerCase();
-  const bare = canonical.replace(/^www\./, "");
-  if (host === bare && bare !== canonical) {
-    return res.redirect(301, `https://${canonical}${req.originalUrl || "/"}`);
-  }
-  next();
-});
-
 /* ============================================================
    CONFIG
 ============================================================ */
