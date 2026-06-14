@@ -27,7 +27,17 @@ try {
 
 const { calculatePriority, enrichLead } = require("./utils/calculatePriority");
 const { mergeWebsiteCmsContent, deepMerge } = require("./lib/website-cms-defaults");
-const { registerWebsiteCleanUrlRoutes } = require("./lib/website-clean-urls");
+const {
+  isR2Configured,
+  buildCmsObjectKey,
+  cmsKeyPrefixForTenant,
+  publicUrlForKey,
+  uploadBufferToR2,
+  createPresignedPutUrl,
+  deleteR2Object,
+  testR2Connection,
+  getR2StorageStatus,
+} = require("./lib/r2-storage");
 
 const app = express();
 
@@ -66,6 +76,7 @@ const corsAllowlist = new Set(
     /* Always allow the public website — form submissions come from here */
     "https://nextstepinternationals.com",
     "https://www.nextstepinternationals.com",
+    "https://api.nextstepinternationals.com",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:4173",
@@ -5181,6 +5192,73 @@ app.post(
   }
 );
 
+app.get("/admin/whatsapp-ai/diagnostics", auth, requireRoles("admin", "manager"), async (req, res) => {
+  try {
+    const tid = tenantUserId(req);
+    const settings = (await Settings.findOne({ userId: tid }).lean()) || {};
+    const diagnostics = await buildWhatsAppAiDiagnostics(settings);
+    res.json({ ok: true, ...diagnostics });
+  } catch (err) {
+    console.error("GET /admin/whatsapp-ai/diagnostics:", err?.message || err);
+    res.status(500).json({ error: err?.message || "Diagnostics failed." });
+  }
+});
+
+app.post("/admin/whatsapp-ai/test", auth, requireRoles("admin", "manager"), async (req, res) => {
+  try {
+    const tid = tenantUserId(req);
+    const settings = (await Settings.findOne({ userId: tid }).lean()) || {};
+    const diagnostics = await buildWhatsAppAiDiagnostics(settings);
+    const toRaw = String(req.body?.phone || settings.whatsappNumber || "").trim();
+    const to = normalizePhoneKey(toRaw);
+
+    if (!to || to.length < 10) {
+      return res.status(400).json({
+        error: "Enter your WhatsApp number in Settings (digits with country code) or pass { phone } in the request body.",
+        diagnostics,
+      });
+    }
+
+    const groqSample = diagnostics.groq?.ok
+      ? await groqChat({
+          model: "llama-3.1-8b-instant",
+          messages: [{ role: "user", content: "Say hi in one short WhatsApp-style sentence for a study abroad student." }],
+          max_tokens: 60,
+        })
+      : "";
+
+    const testText =
+      String(groqSample || "").trim() ||
+      "NextStep test: WhatsApp AI outbound is working. Reply hi to start the menu.";
+
+    try {
+      await sendWhatsAppCloudText({
+        phoneNumberId: resolveWhatsAppPhoneNumberId(settings),
+        to,
+        text: testText,
+      });
+      res.json({
+        ok: true,
+        sent: true,
+        to,
+        sampleReply: testText,
+        diagnostics,
+      });
+    } catch (err) {
+      res.status(502).json({
+        ok: false,
+        sent: false,
+        to,
+        error: whatsAppSendErrorMessage(err),
+        diagnostics,
+      });
+    }
+  } catch (err) {
+    console.error("POST /admin/whatsapp-ai/test:", err?.message || err);
+    res.status(500).json({ error: err?.message || "Test failed." });
+  }
+});
+
 app.get("/admin/website-reviews", auth, async (req, res) => {
   try {
     const tenant = tenantUserId(req);
@@ -5263,18 +5341,20 @@ app.patch("/admin/website-reviews/:id", auth, async (req, res) => {
 });
 
 const websiteCmsUpload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => {
-      fs.mkdirSync(websiteCmsUploadDir, { recursive: true });
-      cb(null, websiteCmsUploadDir);
-    },
-    filename: (_req, file, cb) => {
-      const ext = path.extname(String(file.originalname || "")).toLowerCase().slice(0, 12);
-      const safeExt = ext.match(/^\.(jpe?g|png|gif|webp|mp4|webm|mov|pdf)$/i) ? ext : "";
-      cb(null, `${Date.now()}-${crypto.randomBytes(5).toString("hex")}${safeExt}`);
-    },
-  }),
-  limits: { fileSize: 50 * 1024 * 1024 },
+  storage: isR2Configured()
+    ? multer.memoryStorage()
+    : multer.diskStorage({
+        destination: (_req, _file, cb) => {
+          fs.mkdirSync(websiteCmsUploadDir, { recursive: true });
+          cb(null, websiteCmsUploadDir);
+        },
+        filename: (_req, file, cb) => {
+          const ext = path.extname(String(file.originalname || "")).toLowerCase().slice(0, 12);
+          const safeExt = ext.match(/^\.(jpe?g|png|gif|webp|mp4|webm|mov|pdf)$/i) ? ext : "";
+          cb(null, `${Date.now()}-${crypto.randomBytes(5).toString("hex")}${safeExt}`);
+        },
+      }),
+  limits: { fileSize: isR2Configured() ? 250 * 1024 * 1024 : 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ok = /^(image\/|video\/|application\/pdf)/i.test(String(file.mimetype || ""));
     cb(ok ? null : new Error("Only images, videos, or PDF files are allowed."), ok);
@@ -5351,6 +5431,81 @@ async function testGroqConnection() {
       "Groq request failed";
     return { ok: false, error: msg, status: status || null };
   }
+}
+
+async function testWhatsAppToken(phoneNumberId) {
+  const token = String(process.env.WHATSAPP_TOKEN || "").trim();
+  if (!token) {
+    return { ok: false, error: "WHATSAPP_TOKEN is not set on the server (Render → Environment)." };
+  }
+  const pid = String(phoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID || "").trim();
+  if (!pid) {
+    return {
+      ok: false,
+      error:
+        "WhatsApp Phone Number ID missing — set it in CRM Settings or WHATSAPP_PHONE_NUMBER_ID in Render.",
+    };
+  }
+  try {
+    const res = await axios.get(`https://graph.facebook.com/v25.0/${pid}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 15_000,
+    });
+    return {
+      ok: true,
+      phoneNumberId: pid,
+      displayNumber: String(res.data?.display_phone_number || "").trim(),
+      verifiedName: String(res.data?.verified_name || "").trim(),
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: whatsAppSendErrorMessage(err),
+      status: err?.response?.status || null,
+      phoneNumberId: pid,
+    };
+  }
+}
+
+async function buildWhatsAppAiDiagnostics(settings) {
+  const groq = await testGroqConnection();
+  const phoneNumberId = resolveWhatsAppPhoneNumberId(settings || {});
+  const whatsapp = await testWhatsAppToken(phoneNumberId);
+  const tokenSet = !!String(process.env.WHATSAPP_TOKEN || "").trim();
+  const appSecretSet = !!String(process.env.WHATSAPP_APP_SECRET || "").trim();
+  const autoReplyEnabled = settings?.aiAutoReplyEnabled !== false;
+  const issues = [];
+
+  if (!autoReplyEnabled) {
+    issues.push("Auto AI replies are OFF in CRM Settings — turn on to send WhatsApp AI replies.");
+  }
+  if (!tokenSet) {
+    issues.push("WHATSAPP_TOKEN missing on server — Meta cannot send outbound messages.");
+  }
+  if (!phoneNumberId) {
+    issues.push("WhatsApp Phone Number ID missing in CRM Settings or Render env.");
+  }
+  if (!whatsapp.ok) {
+    issues.push(`WhatsApp token/API: ${whatsapp.error}`);
+  }
+  if (!groq.ok) {
+    issues.push(`Groq AI: ${groq.error}`);
+  }
+  if (autoReplyEnabled && !whatsapp.ok) {
+    issues.push(
+      "Inbound WhatsApp works (messages in CRM) but outbound send fails — refresh WHATSAPP_TOKEN in Meta Developer Console → WhatsApp → API Setup, update Render, redeploy."
+    );
+  }
+
+  return {
+    autoReplyEnabled,
+    whatsappTokenSet: tokenSet,
+    whatsappAppSecretSet: appSecretSet,
+    whatsappPhoneNumberId: phoneNumberId || "",
+    groq,
+    whatsapp,
+    issues,
+  };
 }
 
 async function buildWebsiteApplyAlertDiagnostics(crmTenantId) {
@@ -5436,6 +5591,105 @@ app.put("/admin/website-cms", auth, requireRoles("admin", "manager"), async (req
   }
 });
 
+app.get("/admin/website-cms/storage", auth, requireRoles("admin", "manager"), async (_req, res) => {
+  try {
+    const status = getR2StorageStatus();
+    const r2 = await testR2Connection();
+    res.json({
+      ok: true,
+      storage: status.configured && r2.ok ? "r2" : "local",
+      r2: { ...status, ...r2 },
+      localPath: "/uploads/website-cms/",
+      hint: status.configured
+        ? "Uploads go to Cloudflare R2 and appear on the website via CDN."
+        : "Set R2_* env vars on Render to use Cloudflare R2 (see docs/CLOUDFLARE-SETUP.md).",
+    });
+  } catch (err) {
+    res.status(500).json({ error: err?.message || "Storage check failed." });
+  }
+});
+
+app.post(
+  "/admin/website-cms/media/presign",
+  auth,
+  requireRoles("admin", "manager"),
+  async (req, res) => {
+    try {
+      if (!isR2Configured()) {
+        return res.status(503).json({
+          error: "R2 not configured. Use direct upload or set R2 env vars on Render.",
+        });
+      }
+      const tenant = tenantUserId(req);
+      const name = String(req.body?.name || req.body?.filename || "").trim();
+      const mime = String(req.body?.mime || req.body?.contentType || "application/octet-stream").trim();
+      const size = Number(req.body?.size || 0);
+      if (!name) return res.status(400).json({ error: "name is required." });
+      if (size > 250 * 1024 * 1024) {
+        return res.status(400).json({ error: "File too large (max 250 MB)." });
+      }
+      if (!/^(image\/|video\/|application\/pdf)/i.test(mime)) {
+        return res.status(400).json({ error: "Only images, videos, or PDF allowed." });
+      }
+
+      const key = buildCmsObjectKey(tenant, name, mime);
+      const uploadUrl = await createPresignedPutUrl({ key, contentType: mime, expiresIn: 3600 });
+      res.json({
+        ok: true,
+        storage: "r2",
+        key,
+        uploadUrl,
+        publicUrl: publicUrlForKey(key),
+        headers: { "Content-Type": mime },
+      });
+    } catch (err) {
+      console.error("POST /admin/website-cms/media/presign:", err?.message || err);
+      res.status(500).json({ error: err?.message || "Could not prepare upload." });
+    }
+  }
+);
+
+app.post(
+  "/admin/website-cms/media/complete",
+  auth,
+  requireRoles("admin", "manager"),
+  async (req, res) => {
+    try {
+      const tenant = tenantUserId(req);
+      const key = String(req.body?.key || "").trim();
+      const name = String(req.body?.name || "").trim();
+      const mime = String(req.body?.mime || "").trim();
+      const size = Number(req.body?.size || 0);
+      if (!key || !key.startsWith("cms/")) {
+        return res.status(400).json({ error: "Invalid R2 key." });
+      }
+      const expectedPrefix = cmsKeyPrefixForTenant(tenant);
+      if (!key.startsWith(expectedPrefix)) {
+        return res.status(403).json({ error: "Key does not belong to this workspace." });
+      }
+
+      const url = publicUrlForKey(key);
+      const item = {
+        id: key,
+        key,
+        url,
+        storage: "r2",
+        name: name || key.split("/").pop(),
+        mime,
+        size: Number.isFinite(size) ? size : 0,
+        uploadedAt: new Date().toISOString(),
+      };
+      const existing = await WebsiteContent.findOne({ userId: tenant }).lean();
+      const prevMedia = Array.isArray(existing?.content?.media) ? existing.content.media : [];
+      await saveWebsiteCmsForTenant(tenant, { media: [item, ...prevMedia] }, reqAuthUserId(req));
+      res.status(201).json({ ok: true, media: item });
+    } catch (err) {
+      console.error("POST /admin/website-cms/media/complete:", err?.message || err);
+      res.status(500).json({ error: err?.message || "Could not register upload." });
+    }
+  }
+);
+
 app.post(
   "/admin/website-cms/media",
   auth,
@@ -5447,15 +5701,39 @@ app.post(
         return res.status(400).json({ error: "No file uploaded." });
       }
       const tenant = tenantUserId(req);
-      const url = `/uploads/website-cms/${req.file.filename}`;
-      const item = {
-        id: req.file.filename,
-        url,
-        name: String(req.file.originalname || req.file.filename),
-        mime: String(req.file.mimetype || ""),
-        size: req.file.size || 0,
-        uploadedAt: new Date().toISOString(),
-      };
+      let item;
+
+      if (isR2Configured() && req.file.buffer) {
+        const key = buildCmsObjectKey(tenant, req.file.originalname, req.file.mimetype);
+        await uploadBufferToR2({
+          key,
+          buffer: req.file.buffer,
+          contentType: req.file.mimetype,
+        });
+        const url = publicUrlForKey(key);
+        item = {
+          id: key,
+          key,
+          url,
+          storage: "r2",
+          name: String(req.file.originalname || key.split("/").pop()),
+          mime: String(req.file.mimetype || ""),
+          size: req.file.size || 0,
+          uploadedAt: new Date().toISOString(),
+        };
+      } else {
+        const url = `/uploads/website-cms/${req.file.filename}`;
+        item = {
+          id: req.file.filename,
+          url,
+          storage: "local",
+          name: String(req.file.originalname || req.file.filename),
+          mime: String(req.file.mimetype || ""),
+          size: req.file.size || 0,
+          uploadedAt: new Date().toISOString(),
+        };
+      }
+
       const existing = await WebsiteContent.findOne({ userId: tenant }).lean();
       const prevMedia = Array.isArray(existing?.content?.media) ? existing.content.media : [];
       await saveWebsiteCmsForTenant(tenant, { media: [item, ...prevMedia] }, reqAuthUserId(req));
@@ -5468,17 +5746,28 @@ app.post(
 );
 
 app.delete(
-  "/admin/website-cms/media/:filename",
+  "/admin/website-cms/media/:fileId",
   auth,
   requireRoles("admin", "manager"),
   async (req, res) => {
     try {
-      const filename = path.basename(String(req.params.filename || ""));
-      if (!filename || filename.includes("..")) {
-        return res.status(400).json({ error: "Invalid filename." });
+      const raw = String(req.params.fileId || "").trim();
+      if (!raw || raw.includes("..")) {
+        return res.status(400).json({ error: "Invalid file id." });
       }
-      const full = path.join(websiteCmsUploadDir, filename);
-      if (fs.existsSync(full)) fs.unlinkSync(full);
+
+      const storage = String(req.query.storage || "").trim().toLowerCase();
+      if (storage === "r2" || raw.startsWith("cms/")) {
+        const key = decodeURIComponent(raw);
+        if (!key.startsWith("cms/")) {
+          return res.status(400).json({ error: "Invalid R2 key." });
+        }
+        await deleteR2Object(key);
+      } else {
+        const filename = path.basename(raw);
+        const full = path.join(websiteCmsUploadDir, filename);
+        if (fs.existsSync(full)) fs.unlinkSync(full);
+      }
       res.json({ ok: true });
     } catch (err) {
       console.error("DELETE /admin/website-cms/media:", err?.message || err);

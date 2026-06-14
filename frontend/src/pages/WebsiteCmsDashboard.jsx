@@ -40,6 +40,7 @@ export default function WebsiteCmsDashboard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [storageInfo, setStorageInfo] = useState(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [updatedAt, setUpdatedAt] = useState(null);
@@ -67,6 +68,10 @@ export default function WebsiteCmsDashboard() {
 
   useEffect(() => {
     load();
+    api
+      .get("/admin/website-cms/storage")
+      .then((res) => setStorageInfo(res.data || null))
+      .catch(() => setStorageInfo(null));
   }, [load]);
 
   function patch(path, value) {
@@ -103,19 +108,59 @@ export default function WebsiteCmsDashboard() {
     setUploading(true);
     setError("");
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await api.post("/admin/website-cms/media", fd);
-      const item = res.data?.media;
+      const useR2 = storageInfo?.storage === "r2";
+      let item;
+
+      if (useR2) {
+        const presign = await api.post("/admin/website-cms/media/presign", {
+          name: file.name,
+          mime: file.type || "application/octet-stream",
+          size: file.size,
+        });
+        const { uploadUrl, key, publicUrl, headers } = presign.data || {};
+        if (!uploadUrl || !key) throw new Error("Could not start Cloudflare upload.");
+
+        const putRes = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": headers?.["Content-Type"] || file.type || "application/octet-stream",
+          },
+          body: file,
+        });
+        if (!putRes.ok) {
+          throw new Error(`Cloudflare upload failed (${putRes.status}). Check R2 public access / CORS.`);
+        }
+
+        const done = await api.post("/admin/website-cms/media/complete", {
+          key,
+          name: file.name,
+          mime: file.type || "",
+          size: file.size,
+        });
+        item = done.data?.media;
+        if (!item && publicUrl) {
+          item = { url: publicUrl, name: file.name, key, storage: "r2" };
+        }
+      } else {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await api.post("/admin/website-cms/media", fd, { timeout: 300000 });
+        item = res.data?.media;
+      }
+
       if (item) {
         setContent((prev) => ({
           ...prev,
           media: [item, ...(prev?.media || [])],
         }));
-        setMessage(`Uploaded ${item.name}`);
+        setMessage(
+          useR2
+            ? `Uploaded to Cloudflare R2: ${item.name}`
+            : `Uploaded ${item.name} (local — set R2 env on Render for CDN)`
+        );
       }
     } catch (err) {
-      setError(err?.response?.data?.error || "Upload failed.");
+      setError(err?.response?.data?.error || err?.message || "Upload failed.");
     } finally {
       setUploading(false);
     }
@@ -581,9 +626,26 @@ export default function WebsiteCmsDashboard() {
           {tab === "media" && (
             <>
               <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Media library</h2>
-              <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 16 }}>
-                Upload images or videos. Copy the URL into Hero or Program fields.
+              <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 8 }}>
+                Upload images or videos. With Cloudflare R2 configured, files upload to CDN (not Render disk).
               </p>
+              {storageInfo ? (
+                <p
+                  style={{
+                    fontSize: 12,
+                    marginBottom: 16,
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    background: storageInfo.storage === "r2" ? "var(--ready-bg)" : "var(--surface-2)",
+                    color: storageInfo.storage === "r2" ? "var(--ready)" : "var(--text-3)",
+                  }}
+                >
+                  Storage:{" "}
+                  <strong>{storageInfo.storage === "r2" ? "Cloudflare R2" : "Render disk (temporary)"}</strong>
+                  {storageInfo.r2?.publicBaseUrl ? ` · ${storageInfo.r2.publicBaseUrl}` : ""}
+                  {storageInfo.storage !== "r2" ? " — add R2_* env vars on Render (see docs/CLOUDFLARE-SETUP.md)." : ""}
+                </p>
+              ) : null}
               <label
                 style={{
                   display: "inline-flex",

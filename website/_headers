@@ -1,0 +1,5 @@
+# Cloudflare Pages — cache static assets (optional)
+/images/*
+  Cache-Control: public, max-age=604800
+/js/*
+  Cache-Control: public, max-age=86400

@@ -17,6 +17,16 @@ services:
         value: NSI-WEB-FORM-SECURE-KEY-7k3m9p2qx
       - key: CORS_ORIGINS
         sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        sync: false
+      - key: R2_PUBLIC_BASE_URL
+        sync: false
 
   # Pings the site every 14 min so Render free tier stays awake (reduces 30–60s cold starts)
   - type: cron

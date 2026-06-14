@@ -10,6 +10,9 @@
  */
 window.NSI_CONFIG = {
   apiBase: (function () {
+    /* When website is on Cloudflare Pages and API on Render, set this explicitly: */
+    // return "https://api.nextstepinternationals.com";
+
     var loc = window.location;
     var protocol = String(loc.protocol || "").toLowerCase();
 
