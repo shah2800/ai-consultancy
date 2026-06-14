@@ -349,7 +349,7 @@ export default function WebsiteCmsDashboard() {
   const c = content;
 
   return (
-    <div className="page-shell" style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 20px 48px" }}>
+    <div className="page-shell website-cms-page" style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 20px 48px" }}>
       <CmsMediaPlacementModal
         open={Boolean(placementMedia)}
         media={placementMedia}
@@ -358,16 +358,7 @@ export default function WebsiteCmsDashboard() {
         onPlace={handleMediaPlacement}
       />
       <CmsPlacementGuideModal open={showPlacementGuide} content={c} onClose={() => setShowPlacementGuide(false)} />
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 16,
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          marginBottom: 24,
-        }}
-      >
+      <div className="cms-header">
         <div>
           <h1 style={{ fontSize: 26, fontWeight: 800, marginBottom: 6 }}>Website CMS</h1>
           <p style={{ color: "var(--text-3)", fontSize: 14, maxWidth: 520 }}>
@@ -383,7 +374,7 @@ export default function WebsiteCmsDashboard() {
             </p>
           )}
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div className="cms-header-actions">
           <a
             href={sitePreviewUrl}
             target="_blank"
@@ -453,35 +444,16 @@ export default function WebsiteCmsDashboard() {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 20, alignItems: "start" }}>
-        <nav
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 4,
-            position: "sticky",
-            top: 16,
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: 14,
-            padding: 8,
-          }}
-        >
+      <div className="cms-layout">
+        <nav className="cms-tabs">
           {TABS.map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
               style={{
-                textAlign: "left",
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "none",
                 background: tab === t.id ? "var(--accent)" : "transparent",
                 color: tab === t.id ? "#fff" : "var(--text)",
-                fontWeight: 600,
-                fontSize: 13,
-                cursor: "pointer",
               }}
             >
               {t.label}
@@ -489,7 +461,7 @@ export default function WebsiteCmsDashboard() {
           ))}
         </nav>
 
-        <div className="panel" style={{ padding: 22, minHeight: 420 }}>
+        <div className="panel cms-panel">
           {tab === "general" && (
             <>
               <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>General & SEO</h2>
@@ -520,7 +492,7 @@ export default function WebsiteCmsDashboard() {
                 </label>
                 <input style={inputStyle} value={c.notice?.text || ""} onChange={(e) => patch("notice.text", e.target.value)} />
               </Field>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="cms-two-col">
                 <Field label="Notice link text">
                   <input style={inputStyle} value={c.notice?.linkText || ""} onChange={(e) => patch("notice.linkText", e.target.value)} />
                 </Field>
@@ -557,7 +529,7 @@ export default function WebsiteCmsDashboard() {
               <Field label="Hero background video URL (optional)" hint="MP4/WebM — overrides image when set. Upload in Media tab first.">
                 <input style={inputStyle} value={c.hero?.heroVideo || ""} onChange={(e) => patch("hero.heroVideo", e.target.value)} />
               </Field>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="cms-two-col">
                 <Field label="Primary button text">
                   <input style={inputStyle} value={c.hero?.ctaPrimary?.text || ""} onChange={(e) => patch("hero.ctaPrimary.text", e.target.value)} />
                 </Field>
@@ -573,7 +545,7 @@ export default function WebsiteCmsDashboard() {
               </div>
               <h3 style={{ fontSize: 15, fontWeight: 700, margin: "20px 0 12px" }}>Hero stats</h3>
               {(c.hero?.stats || []).map((s, i) => (
-                <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 10, marginBottom: 10 }}>
+                <div key={i} className="cms-stat-row">
                   <input
                     style={inputStyle}
                     placeholder="500+"
@@ -700,7 +672,7 @@ export default function WebsiteCmsDashboard() {
                       }}
                     />
                   </Field>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div className="cms-two-col" style={{ gap: 10 }}>
                     <Field label="Fee">
                       <input
                         style={inputStyle}
@@ -848,19 +820,8 @@ export default function WebsiteCmsDashboard() {
                 <p style={{ fontSize: 13, color: "var(--text-3)" }}>Nothing selected yet — upload in Media library and click &quot;Show on homepage showcase&quot;.</p>
               ) : (
                 (c.videoGallery?.items || []).map((v, i) => (
-                  <div
-                    key={v.url || i}
-                    style={{
-                      display: "flex",
-                      gap: 12,
-                      alignItems: "center",
-                      padding: 10,
-                      border: "1px solid var(--border)",
-                      borderRadius: 10,
-                      marginBottom: 8,
-                    }}
-                  >
-                    <div style={{ width: 120, flexShrink: 0, borderRadius: 6, overflow: "hidden" }}>
+                  <div key={v.url || i} className="cms-showcase-row">
+                    <div className="cms-showcase-thumb">
                       <CmsMediaThumb
                         media={{
                           url: v.url,
@@ -992,7 +953,7 @@ export default function WebsiteCmsDashboard() {
                   </div>
                 </div>
               )}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16 }}>
+              <div className="cms-media-grid">
                 {(c.media || []).map((m) => {
                   const placements = getMediaPlacements(c, m.url);
                   const onSite = placements.length > 0;

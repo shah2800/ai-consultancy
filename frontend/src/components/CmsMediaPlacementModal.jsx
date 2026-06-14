@@ -247,6 +247,7 @@ export default function CmsMediaPlacementModal({ open, media, content, onClose, 
 
   return (
     <div
+      className="cms-placement-backdrop"
       style={{
         position: "fixed",
         inset: 0,
@@ -264,6 +265,7 @@ export default function CmsMediaPlacementModal({ open, media, content, onClose, 
         role="dialog"
         aria-modal="true"
         aria-labelledby="cms-placement-title"
+        className="cms-placement-dialog"
         style={{
           background: "var(--surface)",
           borderRadius: 16,

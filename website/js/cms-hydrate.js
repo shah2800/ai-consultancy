@@ -335,9 +335,17 @@
       .catch(function () {});
   }
 
+  function scheduleCmsLoad() {
+    if (typeof requestIdleCallback === "function") {
+      requestIdleCallback(loadCms, { timeout: 2500 });
+    } else {
+      setTimeout(loadCms, 400);
+    }
+  }
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", loadCms);
+    document.addEventListener("DOMContentLoaded", scheduleCmsLoad);
   } else {
-    loadCms();
+    scheduleCmsLoad();
   }
 })();
