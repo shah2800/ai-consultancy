@@ -218,6 +218,40 @@ export default function WebsiteApplicationsDashboard() {
   const [search, setSearch] = useState("");
   const [fetchError, setFetchError] = useState("");
   const [loadMeta, setLoadMeta] = useState({ status: 0, count: 0 });
+  const [alertEmail, setAlertEmail] = useState("");
+  const [alertWhatsApp, setAlertWhatsApp] = useState("");
+  const [smtpConfigured, setSmtpConfigured] = useState(false);
+  const [alertSaving, setAlertSaving] = useState(false);
+  const [alertMsg, setAlertMsg] = useState("");
+  const [alertErr, setAlertErr] = useState("");
+
+  const loadAlerts = useCallback(async () => {
+    try {
+      const res = await api.get("/admin/website-apply-alerts");
+      setAlertEmail(res.data?.email || "");
+      setAlertWhatsApp(res.data?.whatsapp || "");
+      setSmtpConfigured(!!res.data?.smtpConfigured);
+    } catch {
+      /* optional panel */
+    }
+  }, []);
+
+  const saveAlerts = async () => {
+    setAlertSaving(true);
+    setAlertMsg("");
+    setAlertErr("");
+    try {
+      await api.patch("/admin/website-apply-alerts", {
+        email: alertEmail.trim(),
+        whatsapp: alertWhatsApp.trim(),
+      });
+      setAlertMsg("Alert settings saved.");
+    } catch (e) {
+      setAlertErr(e?.response?.data?.error || "Could not save alert settings.");
+    } finally {
+      setAlertSaving(false);
+    }
+  };
 
   const load = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -247,13 +281,14 @@ export default function WebsiteApplicationsDashboard() {
 
   useEffect(() => {
     load();
+    loadAlerts();
     const poll = setupManagedPolling(() => load({ silent: true }), {
       baseMs: 8000,
       minGapMs: 2000,
       runImmediately: false,
     });
     return () => poll.dispose();
-  }, [load]);
+  }, [load, loadAlerts]);
 
   const websiteLeads = useMemo(
     () =>
@@ -308,6 +343,87 @@ export default function WebsiteApplicationsDashboard() {
           <strong>Review</strong> to see uploads and <strong>Chat Profile</strong> for the full lead view.
         </p>
       </header>
+
+      <section
+        className="panel"
+        style={{ marginBottom: 20, padding: "18px 20px" }}
+        aria-label="Application alert settings"
+      >
+        <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Email & WhatsApp alerts</h2>
+        <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 14, maxWidth: 640, lineHeight: 1.55 }}>
+          When someone submits the website apply form (with documents), send all their details to your inbox or WhatsApp.
+          You only need <strong>one</strong> — email or WhatsApp — or leave both blank to use CRM notifications only.
+        </p>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 12,
+            marginBottom: 12,
+          }}
+        >
+          <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
+            <span style={{ fontWeight: 600 }}>Alert email (Gmail)</span>
+            <input
+              type="email"
+              value={alertEmail}
+              onChange={(e) => setAlertEmail(e.target.value)}
+              placeholder="you@gmail.com"
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid var(--border)",
+                font: "inherit",
+                background: "var(--surface)",
+              }}
+            />
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
+            <span style={{ fontWeight: 600 }}>Alert WhatsApp (optional)</span>
+            <input
+              type="tel"
+              value={alertWhatsApp}
+              onChange={(e) => setAlertWhatsApp(e.target.value)}
+              placeholder="923142638901"
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid var(--border)",
+                font: "inherit",
+                background: "var(--surface)",
+              }}
+            />
+          </label>
+        </div>
+        {!smtpConfigured && alertEmail.trim() && (
+          <p style={{ fontSize: 12, color: "#b45309", marginBottom: 10 }}>
+            SMTP is not configured on the server — add SMTP_HOST, SMTP_USER, SMTP_PASS in Render env for email alerts.
+          </p>
+        )}
+        {alertMsg && (
+          <p style={{ fontSize: 13, color: "#047857", marginBottom: 8 }}>{alertMsg}</p>
+        )}
+        {alertErr && (
+          <p style={{ fontSize: 13, color: "#b91c1c", marginBottom: 8 }}>{alertErr}</p>
+        )}
+        <button
+          type="button"
+          onClick={saveAlerts}
+          disabled={alertSaving}
+          style={{
+            padding: "9px 16px",
+            borderRadius: 9,
+            border: "none",
+            background: "var(--accent)",
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: 13,
+            cursor: alertSaving ? "wait" : "pointer",
+          }}
+        >
+          {alertSaving ? "Saving…" : "Save alert settings"}
+        </button>
+      </section>
 
       {fetchError ? (
         <div

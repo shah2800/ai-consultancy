@@ -1419,6 +1419,18 @@ const settingsSchema = new mongoose.Schema(
         default: "",
       },
     },
+
+    /** Gmail / inbox for new website apply alerts (optional if WhatsApp set). */
+    websiteApplyAlertEmail: {
+      type: String,
+      default: "",
+    },
+
+    /** WhatsApp number to ping on new website apply (optional if email set). */
+    websiteApplyAlertWhatsApp: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );
@@ -2774,6 +2786,148 @@ async function sendWhatsAppCloudText({ phoneNumberId, to, text }) {
       );
     }
     throw err;
+  }
+}
+
+function publicAppBaseUrl() {
+  return String(
+    process.env.PUBLIC_APP_URL ||
+      process.env.WEBSITE_PUBLIC_URL ||
+      "https://nextstepinternationals.com"
+  ).replace(/\/+$/, "");
+}
+
+function fmtDateForAlert(d) {
+  if (!d) return "—";
+  try {
+    const x = new Date(d);
+    return Number.isNaN(x.getTime()) ? "—" : x.toLocaleDateString("en-GB");
+  } catch {
+    return "—";
+  }
+}
+
+function buildWebsiteApplyAlertBody(lead, { isExisting = false, uploadsMeta = [] } = {}) {
+  const ap = lead?.admissionProfile || {};
+  const uploads = uploadsMeta.length
+    ? uploadsMeta
+    : Array.isArray(ap.uploadsMeta)
+      ? ap.uploadsMeta
+      : [];
+  const base = publicAppBaseUrl();
+  const leadId = String(lead?._id || "");
+  const crmUrl = leadId ? `${base}/admin/leads/${leadId}` : `${base}/admin/website-applications`;
+  const intakeUrl = leadId ? `${base}/admin/website-intake/${leadId}` : crmUrl;
+
+  const docLines = uploads.length
+    ? uploads.map(
+        (u) =>
+          `  • ${u.docLabel || u.docType || "Document"}: ${u.originalName || "file"}${
+            u.storedPath ? ` (${base}${u.storedPath})` : ""
+          }`
+      )
+    : ["  • (no documents in this submission)"];
+
+  const lines = [
+    isExisting ? "Website apply form — update / merge" : "New website apply form submission",
+    "",
+    `Name: ${lead?.name || ap.fullName || "—"}`,
+    `Father name: ${ap.fatherName || "—"}`,
+    `Date of birth: ${fmtDateForAlert(ap.dob)}`,
+    `Gender: ${ap.gender || "—"}`,
+    `Phone / WhatsApp: ${lead?.phone || ap.whatsappNumber || "—"}`,
+    `Email: ${lead?.email || ap.emailAddress || "—"}`,
+    `City / address: ${ap.cityAddress || "—"}`,
+    "",
+    `Passport: ${ap.passportNumber || "—"}`,
+    `Passport issue: ${fmtDateForAlert(ap.passportIssueDate)}`,
+    `Passport expiry: ${fmtDateForAlert(ap.passportExpiry)}`,
+    "",
+    `Matric: ${ap.matricGrade || "—"}`,
+    `FSc: ${ap.fscGrade || "—"}`,
+    `Other degree: ${ap.otherDegree || "—"}`,
+    `IELTS: ${ap.ieltsScore || "—"}`,
+    "",
+    `Country interest: ${lead?.countryInterest || ap.countryInterest || "—"}`,
+    `University: ${ap.universityInterest || "—"}`,
+    `Program: ${lead?.courseInterest || ap.programInterest || "—"}`,
+    `Register ID: ${ap.registrationId || "—"}`,
+    "",
+    "Documents:",
+    ...docLines,
+    "",
+    `Review uploads: ${intakeUrl}`,
+    `Open lead in CRM: ${crmUrl}`,
+  ];
+
+  return { text: lines.join("\n"), crmUrl, intakeUrl, docCount: uploads.length };
+}
+
+async function sendWebsiteApplyAlertEmail(to, subject, bodyText) {
+  const from =
+    process.env.MAIL_FROM ||
+    process.env.SMTP_USER ||
+    '"NextStep CRM" <noreply@localhost>';
+  const transporter = getMailTransporter();
+  if (!transporter) {
+    console.warn(
+      `[website-apply-alert] SMTP not configured — would email ${to}:\n${bodyText.slice(0, 500)}…`
+    );
+    return false;
+  }
+  const html = bodyText
+    .split("\n")
+    .map((line) => {
+      if (/^https?:\/\//.test(line.trim())) {
+        return `<p><a href="${line.trim()}">${line.trim()}</a></p>`;
+      }
+      return `<p>${line.replace(/</g, "&lt;").replace(/>/g, "&gt;") || "&nbsp;"}</p>`;
+    })
+    .join("");
+  await transporter.sendMail({
+    from,
+    to,
+    subject,
+    text: bodyText,
+    html: `<div style="font-family:system-ui,sans-serif;font-size:14px;line-height:1.5;color:#111">${html}</div>`,
+  });
+  return true;
+}
+
+/** Email and/or WhatsApp alert when someone submits the public apply form. */
+async function notifyWebsiteApplySubmission(tenantUserId, lead, options = {}) {
+  try {
+    const settings = await Settings.findOne({ userId: tenantUserId }).lean();
+    const alertEmail = String(settings?.websiteApplyAlertEmail || "").trim();
+    const alertWa = String(settings?.websiteApplyAlertWhatsApp || "").trim();
+    if (!alertEmail && !alertWa) return;
+
+    const isExisting = !!options.isExisting;
+    const { text, docCount } = buildWebsiteApplyAlertBody(lead, options);
+    const studentName = String(lead?.name || lead?.admissionProfile?.fullName || "Student").trim();
+    const subject = `${isExisting ? "Website apply update" : "New website application"} — ${studentName}${
+      docCount ? ` (${docCount} doc${docCount === 1 ? "" : "s"})` : ""
+    }`;
+
+    if (alertEmail) {
+      const sent = await sendWebsiteApplyAlertEmail(alertEmail, subject, text);
+      if (sent) console.log(`[website-apply-alert] Email sent to ${alertEmail}`);
+    }
+
+    if (alertWa) {
+      const waTo = normalizePhoneKey(alertWa);
+      if (waTo.length >= 10) {
+        const short = `${subject}\n\n${text}`.slice(0, 4090);
+        await sendWhatsAppCloudText({
+          phoneNumberId: resolveWhatsAppPhoneNumberId(settings),
+          to: waTo,
+          text: short,
+        });
+        console.log(`[website-apply-alert] WhatsApp sent to ${waTo}`);
+      }
+    }
+  } catch (err) {
+    console.warn("[website-apply-alert]", err?.message || err);
   }
 }
 
@@ -4701,6 +4855,39 @@ app.get("/admin/website-applications", auth, async (req, res) => {
     res.status(500).json({
       error: "Failed to fetch website applications",
     });
+  }
+});
+
+app.get("/admin/website-apply-alerts", auth, requireRoles("admin", "manager"), async (req, res) => {
+  try {
+    const settings = await Settings.findOne({ userId: tenantUserId(req) }).lean();
+    res.json({
+      email: String(settings?.websiteApplyAlertEmail || "").trim(),
+      whatsapp: String(settings?.websiteApplyAlertWhatsApp || "").trim(),
+      smtpConfigured: !!getMailTransporter(),
+    });
+  } catch (err) {
+    console.error("GET /admin/website-apply-alerts:", err?.message || err);
+    res.status(500).json({ error: "Failed to load alert settings." });
+  }
+});
+
+app.patch("/admin/website-apply-alerts", auth, requireRoles("admin", "manager"), async (req, res) => {
+  try {
+    const email = String(req.body?.email || "").trim();
+    const whatsapp = String(req.body?.whatsapp || "").trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: "Enter a valid email address." });
+    }
+    await Settings.findOneAndUpdate(
+      { userId: tenantUserId(req) },
+      { $set: { websiteApplyAlertEmail: email, websiteApplyAlertWhatsApp: whatsapp } },
+      { upsert: true }
+    );
+    res.json({ ok: true, email, whatsapp });
+  } catch (err) {
+    console.error("PATCH /admin/website-apply-alerts:", err?.message || err);
+    res.status(500).json({ error: "Failed to save alert settings." });
   }
 });
 
@@ -8682,6 +8869,15 @@ app.post(
         savedLead._id
       );
 
+      const leadForAlert =
+        savedLead?.toObject?.() ||
+        (await Lead.findById(targetId).lean()) ||
+        savedLead;
+      await notifyWebsiteApplySubmission(tenantRaw, leadForAlert, {
+        isExisting,
+        uploadsMeta,
+      });
+
       return res.status(201).json({
         ok: true,
         id: String(targetId),
@@ -8802,6 +8998,11 @@ app.post("/public/website/apply-json", websiteApplyLimiter, async (req, res) => 
       `${isExisting ? "Website form updated" : "New website application"} from ${fullName}`,
       savedLead._id
     );
+
+    await notifyWebsiteApplySubmission(tenantRaw, savedLead?.toObject?.() || savedLead, {
+      isExisting,
+      uploadsMeta: [],
+    });
 
     console.log(`[website-apply-json] ${isExisting ? "MERGED" : "CREATED"} lead for ${fullName} (${phone})`);
     return res.status(201).json({ ok: true, id: String(targetId), merged: isExisting, status: isExisting ? "Updated" : "Pending Review" });
