@@ -128,6 +128,10 @@ export default function Settings() {
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMessage, setPwMessage] = useState("");
   const [pwError, setPwError] = useState("");
+  const [waDiagLoading, setWaDiagLoading] = useState(false);
+  const [waDiag, setWaDiag] = useState(null);
+  const [waTestMsg, setWaTestMsg] = useState("");
+  const [waTesting, setWaTesting] = useState(false);
   /** Lets you clear the field and type a new value (e.g. 21) without the input snapping to 1 */
   const [aiDailyLimitStr, setAiDailyLimitStr] = useState("100");
   const [dirty, setDirty] = useState(false);
@@ -174,6 +178,47 @@ export default function Settings() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const loadWhatsAppDiagnostics = useCallback(async () => {
+    if (!canEditOrgSettings) return;
+    setWaDiagLoading(true);
+    try {
+      const res = await api.get("/admin/whatsapp-ai/diagnostics");
+      setWaDiag(res.data || null);
+    } catch {
+      setWaDiag(null);
+    } finally {
+      setWaDiagLoading(false);
+    }
+  }, [canEditOrgSettings]);
+
+  useEffect(() => {
+    if (!loading && canEditOrgSettings) {
+      void loadWhatsAppDiagnostics();
+    }
+  }, [loading, canEditOrgSettings, loadWhatsAppDiagnostics]);
+
+  const testWhatsAppAi = async () => {
+    setWaTesting(true);
+    setWaTestMsg("");
+    try {
+      const res = await api.post("/admin/whatsapp-ai/test", {
+        phone: settings.whatsappNumber || "",
+      });
+      setWaDiag(res.data?.diagnostics || waDiag);
+      setWaTestMsg(
+        res.data?.sent
+          ? `Test message sent to +${res.data.to}. Check WhatsApp on that number.`
+          : "Test completed."
+      );
+    } catch (e) {
+      const data = e?.response?.data;
+      setWaDiag(data?.diagnostics || waDiag);
+      setWaTestMsg(data?.error || e?.message || "Test failed.");
+    } finally {
+      setWaTesting(false);
+    }
+  };
 
   useEffect(() => {
     if (loading) return;
@@ -503,6 +548,91 @@ export default function Settings() {
         <p style={{ fontSize: 12, color: "var(--text-3)", margin: "8px 0 0", lineHeight: 1.5 }}>
           Endpoints: <code>GET</code> / <code>POST</code> <code>/webhooks/whatsapp</code>
         </p>
+
+        {canEditOrgSettings ? (
+          <div style={{ marginTop: 16, padding: "14px 16px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--surface-2)" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>
+              WhatsApp AI diagnostics
+            </div>
+            {waDiagLoading ? (
+              <div style={{ fontSize: 12, color: "var(--text-3)" }}>Checking Groq + WhatsApp token…</div>
+            ) : waDiag ? (
+              <ul style={{ margin: "0 0 12px", paddingLeft: 18, fontSize: 12, color: "var(--text-2)", lineHeight: 1.6 }}>
+                <li>Auto AI replies: {waDiag.autoReplyEnabled ? "On" : "Off"}</li>
+                <li>Groq AI: {waDiag.groq?.ok ? "OK" : `Fail — ${waDiag.groq?.error || "unknown"}`}</li>
+                <li>
+                  WhatsApp token:{" "}
+                  {waDiag.whatsapp?.ok
+                    ? `OK (${waDiag.whatsapp.displayNumber || "connected"})`
+                    : `Fail — ${waDiag.whatsapp?.error || "unknown"}`}
+                </li>
+                {waDiag.issues?.length ? (
+                  <li style={{ color: "#b45309" }}>
+                    {waDiag.issues[0]}
+                    {waDiag.issues.length > 1 ? ` (+${waDiag.issues.length - 1} more)` : ""}
+                  </li>
+                ) : null}
+              </ul>
+            ) : (
+              <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 12 }}>Could not load diagnostics.</div>
+            )}
+            {waTestMsg ? (
+              <div
+                style={{
+                  fontSize: 12,
+                  marginBottom: 10,
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  background: waTestMsg.toLowerCase().includes("sent") ? "var(--ready-bg)" : "var(--danger-bg)",
+                  color: waTestMsg.toLowerCase().includes("sent") ? "var(--ready)" : "var(--danger)",
+                }}
+              >
+                {waTestMsg}
+              </div>
+            ) : null}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <button
+                type="button"
+                disabled={waTesting || orgLocked}
+                onClick={testWhatsAppAi}
+                style={{
+                  padding: "8px 14px",
+                  background: "var(--accent)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: waTesting || orgLocked ? "not-allowed" : "pointer",
+                  fontFamily: "var(--font-body)",
+                }}
+              >
+                {waTesting ? "Sending test…" : "Send test WhatsApp reply"}
+              </button>
+              <button
+                type="button"
+                disabled={waDiagLoading}
+                onClick={loadWhatsAppDiagnostics}
+                style={{
+                  padding: "8px 14px",
+                  background: "var(--surface)",
+                  color: "var(--text-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "var(--font-body)",
+                }}
+              >
+                Refresh
+              </button>
+            </div>
+            <p style={{ fontSize: 11, color: "var(--text-3)", margin: "10px 0 0", lineHeight: 1.5 }}>
+              Uses your WhatsApp Number above. If messages show in CRM but you get no reply, the error is almost always an expired <code>WHATSAPP_TOKEN</code> on Render.
+            </p>
+          </div>
+        ) : null}
       </div>
 
       {/* Section 2: Countries */}

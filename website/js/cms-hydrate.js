@@ -62,7 +62,12 @@
       } else if (hero.heroImage) {
         var imgEl = $(".hero-img");
         if (imgEl) {
-          imgEl.style.backgroundImage = "url('" + hero.heroImage + "')";
+          var imgUrl = String(hero.heroImage).trim();
+          if (/^https?:\/\//i.test(imgUrl)) {
+            imgEl.style.backgroundImage = "url('" + imgUrl.replace(/'/g, "%27") + "')";
+          } else {
+            imgEl.style.backgroundImage = "url('" + imgUrl + "')";
+          }
         }
         var oldVid = $(".hero-video");
         if (oldVid) oldVid.remove();
@@ -249,6 +254,59 @@
     if (about && foot.about) about.textContent = foot.about;
   }
 
+  function applyVideoGallery(content) {
+    var vg = content.videoGallery || {};
+    var sec = $("#video-gallery");
+    var divider = $(".vg-divider");
+    if (!sec) return;
+    var items = Array.isArray(vg.items) ? vg.items.filter(function (it) { return it && it.url; }) : [];
+    var show = vg.enabled !== false && items.length > 0;
+    sec.style.display = show ? "" : "none";
+    sec.setAttribute("aria-hidden", show ? "false" : "true");
+    if (divider) divider.style.display = show ? "" : "none";
+    if (!show) return;
+    setText(sec.querySelector(".vg-eyebrow"), vg.eyebrow);
+    setText(sec.querySelector(".vg-title"), vg.title);
+    var grid = $("#video-gallery-grid");
+    if (!grid) return;
+    grid.innerHTML = "";
+    if (items.length >= 3) grid.classList.add("cols-3");
+    else grid.classList.remove("cols-3");
+    items.forEach(function (item) {
+      var url = String(item.url || "").trim();
+      if (!url) return;
+      var card = document.createElement("article");
+      card.className = "video-card";
+      var media = document.createElement("div");
+      media.className = "video-card-media";
+      var isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(url) || String(item.mime || "").indexOf("video/") === 0;
+      if (isVideo) {
+        var vid = document.createElement("video");
+        vid.src = url;
+        vid.controls = true;
+        vid.playsInline = true;
+        vid.preload = "metadata";
+        vid.setAttribute("aria-label", item.title || "Student video");
+        media.appendChild(vid);
+      } else {
+        var img = document.createElement("img");
+        img.src = url;
+        img.alt = item.title || "";
+        img.loading = "lazy";
+        img.decoding = "async";
+        media.appendChild(img);
+      }
+      card.appendChild(media);
+      if (item.title) {
+        var cap = document.createElement("div");
+        cap.className = "video-card-cap";
+        cap.textContent = item.title;
+        card.appendChild(cap);
+      }
+      grid.appendChild(card);
+    });
+  }
+
   function applyAll(content) {
     if (!content) return;
     applyBrand(content);
@@ -257,6 +315,7 @@
     applyHero(content);
     applyStatsBand(content);
     applyAbout(content);
+    applyVideoGallery(content);
     applyPrograms(content);
     applyFaq(content);
     applyFooter(content);

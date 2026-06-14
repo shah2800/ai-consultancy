@@ -5751,20 +5751,21 @@ app.delete(
   requireRoles("admin", "manager"),
   async (req, res) => {
     try {
-      const raw = String(req.params.fileId || "").trim();
+      const raw = String(req.query.key || req.params.fileId || "").trim();
       if (!raw || raw.includes("..")) {
         return res.status(400).json({ error: "Invalid file id." });
       }
 
       const storage = String(req.query.storage || "").trim().toLowerCase();
-      if (storage === "r2" || raw.startsWith("cms/")) {
-        const key = decodeURIComponent(raw);
+      const decoded = decodeURIComponent(raw);
+      if (storage === "r2" || decoded.startsWith("cms/")) {
+        const key = decoded.startsWith("cms/") ? decoded : decodeURIComponent(raw);
         if (!key.startsWith("cms/")) {
           return res.status(400).json({ error: "Invalid R2 key." });
         }
         await deleteR2Object(key);
       } else {
-        const filename = path.basename(raw);
+        const filename = path.basename(decoded);
         const full = path.join(websiteCmsUploadDir, filename);
         if (fs.existsSync(full)) fs.unlinkSync(full);
       }

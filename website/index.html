@@ -636,6 +636,14 @@
       .pstep:nth-last-child(-n+2){border-bottom:none}
       .footer-top{grid-template-columns:1.4fr 1fr 1fr}
     }
+    .video-gallery-grid{display:grid;grid-template-columns:1fr;gap:20px;margin-top:28px}
+    .video-card{border-radius:var(--r);overflow:hidden;background:#fff;border:1px solid var(--border);box-shadow:0 2px 12px rgba(10,31,68,.06)}
+    .video-card-media{position:relative;width:100%;aspect-ratio:16/9;background:#0a1f44}
+    .video-card-media video,.video-card-media img{width:100%;height:100%;object-fit:cover;display:block}
+    .video-card-cap{padding:14px 16px;font-size:.9375rem;font-weight:600;color:var(--ink);line-height:1.4}
+    @media(min-width:640px){
+      .video-gallery-grid{grid-template-columns:repeat(2,1fr)}
+    }
     @media(min-width:1025px){
       .hdr-wa{display:flex}
       .hero-in{grid-template-columns:1fr 1fr;align-items:center}
@@ -646,6 +654,7 @@
       .pstep:nth-last-child(-n+4){border-bottom:none}
       .benefit-grid{grid-template-columns:repeat(4,1fr)}
       .why-grid{grid-template-columns:repeat(4,1fr)}
+      .video-gallery-grid.cols-3{grid-template-columns:repeat(3,1fr)}
     }
     @media(prefers-reduced-motion:reduce){
       *{animation:none!important;transition-duration:.01ms!important}
@@ -833,6 +842,15 @@
     </section>
 
     <hr class="divider">
+
+    <!-- ══ VIDEO GALLERY (CMS) ══ -->
+    <section id="video-gallery" class="sec reveal" style="display:none" aria-hidden="true">
+      <div class="eyebrow vg-eyebrow">Campus &amp; Life</div>
+      <h2 class="h2 vg-title">See life abroad with NextStep students</h2>
+      <div class="video-gallery-grid" id="video-gallery-grid"></div>
+    </section>
+
+    <hr class="divider vg-divider" style="display:none">
 
     <!-- ══ PROGRAMS ══ -->
     <section id="programs" class="sec reveal">
