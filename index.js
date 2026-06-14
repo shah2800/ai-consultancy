@@ -4898,21 +4898,6 @@ app.delete(
   }
 );
 
-app.get("/public/website/content", websiteTrackLimiter, async (req, res) => {
-  try {
-    const tenantRaw = String(process.env.WEBSITE_TENANT_USER_ID || "").trim();
-    if (!tenantRaw || !mongoose.Types.ObjectId.isValid(tenantRaw)) {
-      return res.status(503).json({ error: "Website content is not configured." });
-    }
-    const content = await loadWebsiteCmsForTenant(tenantRaw);
-    res.set("Cache-Control", "public, max-age=60");
-    res.json({ ok: true, content });
-  } catch (err) {
-    console.error("GET /public/website/content:", err?.message || err);
-    res.status(500).json({ error: "Could not load website content." });
-  }
-});
-
 /**
  * Leads can still reference assignedTo = deleted AuthUser _id. Clears those refs for this workspace.
  */
@@ -9805,6 +9790,21 @@ app.get("/public/website/reviews", websiteTrackLimiter, async (req, res) => {
   } catch (err) {
     console.error("GET /public/website/reviews:", err?.message || err);
     return res.status(500).json({ error: "Could not load reviews." });
+  }
+});
+
+app.get("/public/website/content", websiteTrackLimiter, async (req, res) => {
+  try {
+    const tenantRaw = String(process.env.WEBSITE_TENANT_USER_ID || "").trim();
+    if (!tenantRaw || !mongoose.Types.ObjectId.isValid(tenantRaw)) {
+      return res.status(503).json({ error: "Website content is not configured." });
+    }
+    const content = await loadWebsiteCmsForTenant(tenantRaw);
+    res.set("Cache-Control", "public, max-age=60");
+    res.json({ ok: true, content });
+  } catch (err) {
+    console.error("GET /public/website/content:", err?.message || err);
+    res.status(500).json({ error: "Could not load website content." });
   }
 });
 

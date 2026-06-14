@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "cd frontend && npm install && npm run build",
     "start": "node index.js",
     "set-password": "node scripts/set-user-password.js",
     "prune-team": "node scripts/prune-team-users.js",
