@@ -1802,68 +1802,213 @@ function getMailTransporter() {
   });
 }
 
+function resolveMailFrom() {
+  return (
+    process.env.MAIL_FROM ||
+    process.env.RESEND_FROM ||
+    process.env.SMTP_USER ||
+    '"NextStep CRM" <noreply@localhost>'
+  );
+}
+
+function parseMailFromAddress(fromRaw) {
+  const raw = String(fromRaw || "").trim();
+  const match = raw.match(/^(.+?)\s*<([^>]+)>$/);
+  if (match) {
+    return {
+      name: match[1].replace(/^["']|["']$/g, "").trim(),
+      email: match[2].trim(),
+    };
+  }
+  return { name: "", email: raw };
+}
+
+function getEmailTransportStatus() {
+  const resendConfigured = !!String(process.env.RESEND_API_KEY || "").trim();
+  const sendgridConfigured = !!String(process.env.SENDGRID_API_KEY || "").trim();
+  const smtpConfigured = !!getMailTransporter();
+  const httpConfigured = resendConfigured || sendgridConfigured;
+  const onRender = String(process.env.RENDER || "").toLowerCase() === "true";
+  let preferredMethod = "none";
+  if (resendConfigured) preferredMethod = "resend";
+  else if (sendgridConfigured) preferredMethod = "sendgrid";
+  else if (smtpConfigured) preferredMethod = "smtp";
+  return {
+    resendConfigured,
+    sendgridConfigured,
+    smtpConfigured,
+    httpConfigured,
+    emailConfigured: httpConfigured || smtpConfigured,
+    onRender,
+    preferredMethod,
+    renderSmtpBlocked:
+      onRender && smtpConfigured && !httpConfigured,
+  };
+}
+
+function formatEmailSendError(err) {
+  const code = String(err?.code || "").toUpperCase();
+  const msg = String(err?.message || err || "");
+  if (
+    /ECONNREFUSED|ETIMEDOUT|ENETUNREACH|ESOCKET|SMTP send timed out/i.test(
+      `${code} ${msg}`
+    )
+  ) {
+    return (
+      `${msg} — Render free tier blocks Gmail SMTP (ports 587/465). ` +
+      "Add RESEND_API_KEY (resend.com, free) or SENDGRID_API_KEY in Render Environment, then redeploy."
+    );
+  }
+  return msg;
+}
+
+async function sendEmailViaResend({ to, subject, text, html, from }) {
+  const key = String(process.env.RESEND_API_KEY || "").trim();
+  if (!key) return null;
+  await axios.post(
+    "https://api.resend.com/emails",
+    {
+      from: from || resolveMailFrom(),
+      to: [String(to).trim()],
+      subject,
+      text: text || undefined,
+      html: html || undefined,
+    },
+    {
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      timeout: 15_000,
+    }
+  );
+  return "resend";
+}
+
+async function sendEmailViaSendGrid({ to, subject, text, html, from }) {
+  const key = String(process.env.SENDGRID_API_KEY || "").trim();
+  if (!key) return null;
+  const parsed = parseMailFromAddress(from || resolveMailFrom());
+  const content = [];
+  if (text) content.push({ type: "text/plain", value: text });
+  if (html) content.push({ type: "text/html", value: html });
+  if (!content.length) content.push({ type: "text/plain", value: subject || " " });
+  await axios.post(
+    "https://api.sendgrid.com/v3/mail/send",
+    {
+      personalizations: [{ to: [{ email: String(to).trim() }] }],
+      from: parsed.name
+        ? { email: parsed.email, name: parsed.name }
+        : { email: parsed.email },
+      subject,
+      content,
+    },
+    {
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      timeout: 15_000,
+    }
+  );
+  return "sendgrid";
+}
+
+/** Resend/SendGrid HTTP first (works on Render free tier); SMTP fallback for local/VPS. */
+async function sendTransactionalEmail({ to, subject, text, html }) {
+  const from = resolveMailFrom();
+  const resendKey = String(process.env.RESEND_API_KEY || "").trim();
+  const sendgridKey = String(process.env.SENDGRID_API_KEY || "").trim();
+
+  if (resendKey) {
+    try {
+      return await sendEmailViaResend({ to, subject, text, html, from });
+    } catch (err) {
+      const detail =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Resend send failed";
+      throw new Error(`Resend: ${detail}`);
+    }
+  }
+
+  if (sendgridKey) {
+    try {
+      return await sendEmailViaSendGrid({ to, subject, text, html, from });
+    } catch (err) {
+      const detail =
+        err?.response?.data?.errors?.[0]?.message ||
+        err?.message ||
+        "SendGrid send failed";
+      throw new Error(`SendGrid: ${detail}`);
+    }
+  }
+
+  const transporter = getMailTransporter();
+  if (!transporter) return false;
+
+  try {
+    await Promise.race([
+      transporter.sendMail({ from, to, subject, text, html }),
+      new Promise((_, reject) =>
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                "SMTP send timed out — Render free tier blocks port 587. Use RESEND_API_KEY instead."
+              )
+            ),
+          12_000
+        )
+      ),
+    ]);
+    return "smtp";
+  } catch (err) {
+    throw new Error(formatEmailSendError(err));
+  }
+}
+
 /** 6-digit code; leading zeros allowed */
 function generatePasswordResetOtp() {
   return String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
 }
 
 async function sendPasswordResetOtpEmail(to, otp, validMinutes = 15) {
-  const from =
-    process.env.MAIL_FROM ||
-    process.env.SMTP_USER ||
-    '"NextStep CRM" <noreply@localhost>';
-
-  const transporter = getMailTransporter();
-
-  if (!transporter) {
+  const text = `Your verification code is: ${otp}\n\nIt expires in ${validMinutes} minutes.\n\nIf you did not request a password reset, ignore this email.`;
+  const html = `<p>Your verification code:</p><p style="font-size:26px;font-weight:700;letter-spacing:6px;font-family:monospace">${otp}</p><p>This code expires in <strong>${validMinutes} minutes</strong>.</p><p>If you did not request a password reset, you can ignore this email.</p>`;
+  const sent = await sendTransactionalEmail({
+    to,
+    subject: "Your NextStep CRM password reset code",
+    text,
+    html,
+  });
+  if (!sent) {
     console.warn(
-      "\n========== PASSWORD RESET (no SMTP — email not sent) ==========\n" +
+      "\n========== PASSWORD RESET (no email transport — not sent) ==========\n" +
         `  To:   ${to}\n` +
         `  OTP:  ${otp}   (expires in ${validMinutes} minutes)\n` +
-        "  Fix:  Add SMTP_HOST, SMTP_USER, SMTP_PASS to .env and restart the API.\n" +
-        "===============================================================\n"
+        "  Fix:  Add RESEND_API_KEY or SMTP_* in Render Environment.\n" +
+        "====================================================================\n"
     );
     return false;
   }
-
-  await transporter.sendMail({
-    from,
-    to,
-    subject: "Your NextStep CRM password reset code",
-    text: `Your verification code is: ${otp}\n\nIt expires in ${validMinutes} minutes.\n\nIf you did not request a password reset, ignore this email.`,
-    html: `<p>Your verification code:</p><p style="font-size:26px;font-weight:700;letter-spacing:6px;font-family:monospace">${otp}</p><p>This code expires in <strong>${validMinutes} minutes</strong>.</p><p>If you did not request a password reset, you can ignore this email.</p>`,
-  });
-
   return true;
 }
 
 async function sendSignupOtpEmail(to, otp, validMinutes = 10) {
-  const from =
-    process.env.MAIL_FROM ||
-    process.env.SMTP_USER ||
-    '"NextStep CRM" <noreply@localhost>';
-
-  const transporter = getMailTransporter();
-
-  if (!transporter) {
+  const text = `Your signup verification code is: ${otp}\n\nIt expires in ${validMinutes} minutes.\n\nIf you did not request this, you can ignore this email.`;
+  const html = `<p>Your signup verification code:</p><p style="font-size:26px;font-weight:700;letter-spacing:6px;font-family:monospace">${otp}</p><p>This code expires in <strong>${validMinutes} minutes</strong>.</p><p>If you did not request this, you can ignore this email.</p>`;
+  const sent = await sendTransactionalEmail({
+    to,
+    subject: "Your NextStep CRM signup verification code",
+    text,
+    html,
+  });
+  if (!sent) {
     console.warn(
-      "\n========== SIGNUP VERIFY (no SMTP — email not sent) ==========\n" +
+      "\n========== SIGNUP VERIFY (no email transport — not sent) ==========\n" +
         `  To:   ${to}\n` +
         `  OTP:  ${otp}   (expires in ${validMinutes} minutes)\n` +
-        "  Fix:  Add SMTP_HOST, SMTP_USER, SMTP_PASS to .env and restart the API.\n" +
-        "=============================================================\n"
+        "  Fix:  Add RESEND_API_KEY or SMTP_* in Render Environment.\n" +
+        "===================================================================\n"
     );
     return false;
   }
-
-  await transporter.sendMail({
-    from,
-    to,
-    subject: "Your NextStep CRM signup verification code",
-    text: `Your signup verification code is: ${otp}\n\nIt expires in ${validMinutes} minutes.\n\nIf you did not request this, you can ignore this email.`,
-    html: `<p>Your signup verification code:</p><p style="font-size:26px;font-weight:700;letter-spacing:6px;font-family:monospace">${otp}</p><p>This code expires in <strong>${validMinutes} minutes</strong>.</p><p>If you did not request this, you can ignore this email.</p>`,
-  });
-
   return true;
 }
 
@@ -2867,17 +3012,6 @@ function buildWebsiteApplyAlertBody(lead, { isExisting = false, uploadsMeta = []
 }
 
 async function sendWebsiteApplyAlertEmail(to, subject, bodyText) {
-  const from =
-    process.env.MAIL_FROM ||
-    process.env.SMTP_USER ||
-    '"NextStep CRM" <noreply@localhost>';
-  const transporter = getMailTransporter();
-  if (!transporter) {
-    console.warn(
-      `[website-apply-alert] SMTP not configured — would email ${to}:\n${bodyText.slice(0, 500)}…`
-    );
-    return false;
-  }
   const html = bodyText
     .split("\n")
     .map((line) => {
@@ -2887,18 +3021,18 @@ async function sendWebsiteApplyAlertEmail(to, subject, bodyText) {
       return `<p>${line.replace(/</g, "&lt;").replace(/>/g, "&gt;") || "&nbsp;"}</p>`;
     })
     .join("");
-  await Promise.race([
-    transporter.sendMail({
-      from,
-      to,
-      subject,
-      text: bodyText,
-      html: `<div style="font-family:system-ui,sans-serif;font-size:14px;line-height:1.5;color:#111">${html}</div>`,
-    }),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("SMTP send timed out")), 12_000)
-    ),
-  ]);
+  const sent = await sendTransactionalEmail({
+    to,
+    subject,
+    text: bodyText,
+    html: `<div style="font-family:system-ui,sans-serif;font-size:14px;line-height:1.5;color:#111">${html}</div>`,
+  });
+  if (!sent) {
+    console.warn(
+      `[website-apply-alert] No email transport — would email ${to}:\n${bodyText.slice(0, 500)}…`
+    );
+    return false;
+  }
   return true;
 }
 
@@ -2930,10 +3064,12 @@ async function notifyWebsiteApplySubmission(tenantUserId, lead, options = {}) {
         if (sent) {
           console.log(`[website-apply-alert] Email sent to ${alertEmail}`);
         } else {
-          failures.push("Email not sent — SMTP not configured on server");
+          failures.push(
+            "Email not sent — add RESEND_API_KEY (works on Render free) or SMTP on a paid host"
+          );
         }
       } catch (err) {
-        failures.push(`Email failed: ${err?.message || err}`);
+        failures.push(`Email failed: ${formatEmailSendError(err)}`);
       }
     }
 
@@ -4956,9 +5092,15 @@ app.post(
             "NextStep — test website apply alert",
             "This is a test alert from your CRM.\n\nIf you received this, Gmail/SMTP is working.\n\nNew real applications will include full student details."
           );
-          results.email = sent ? { ok: true } : { ok: false, error: "SMTP not configured on server" };
+          results.email = sent
+            ? { ok: true, method: getEmailTransportStatus().preferredMethod }
+            : {
+                ok: false,
+                error:
+                  "No email transport — add RESEND_API_KEY or SENDGRID_API_KEY in Render (Gmail SMTP is blocked on free tier).",
+              };
         } catch (err) {
-          results.email = { ok: false, error: err?.message || "Email send failed" };
+          results.email = { ok: false, error: formatEmailSendError(err) };
         }
       } else {
         results.email = { ok: false, error: "No alert email saved" };
@@ -5164,7 +5306,7 @@ async function buildWebsiteApplyAlertDiagnostics(crmTenantId) {
   const { settings, settingsUserId } = await loadWebsiteApplyAlertSettings(crmTenantId);
   const alertEmail = String(settings?.websiteApplyAlertEmail || "").trim();
   const alertWhatsApp = String(settings?.websiteApplyAlertWhatsApp || "").trim();
-  const smtpConfigured = !!getMailTransporter();
+  const emailTransport = getEmailTransportStatus();
   const whatsappTokenSet = !!String(process.env.WHATSAPP_TOKEN || "").trim();
   const whatsappPhoneId = resolveWhatsAppPhoneNumberId(settings || {});
   const groq = await testGroqConnection();
@@ -5174,8 +5316,15 @@ async function buildWebsiteApplyAlertDiagnostics(crmTenantId) {
   if (!alertEmail && !alertWhatsApp) {
     issues.push("No alert email or WhatsApp saved in Website apply settings.");
   }
-  if (alertEmail && !smtpConfigured) {
-    issues.push("Alert email is set but SMTP is missing (add SMTP_HOST, SMTP_USER, SMTP_PASS in Render).");
+  if (alertEmail && !emailTransport.emailConfigured) {
+    issues.push(
+      "Alert email is set but no mail transport — add RESEND_API_KEY (recommended on Render free) or SMTP_HOST/SMTP_USER/SMTP_PASS."
+    );
+  }
+  if (alertEmail && emailTransport.renderSmtpBlocked) {
+    issues.push(
+      "Render free tier blocks Gmail SMTP (ports 587/465). Your SMTP env vars exist but cannot connect. Add RESEND_API_KEY at resend.com (free) or upgrade Render to a paid instance."
+    );
   }
   if (alertWhatsApp && !whatsappTokenSet) {
     issues.push("Alert WhatsApp is set but WHATSAPP_TOKEN is missing on the server.");
@@ -5190,7 +5339,12 @@ async function buildWebsiteApplyAlertDiagnostics(crmTenantId) {
   return {
     email: alertEmail,
     whatsapp: alertWhatsApp,
-    smtpConfigured,
+    smtpConfigured: emailTransport.smtpConfigured,
+    resendConfigured: emailTransport.resendConfigured,
+    sendgridConfigured: emailTransport.sendgridConfigured,
+    httpEmailConfigured: emailTransport.httpConfigured,
+    emailTransportMethod: emailTransport.preferredMethod,
+    renderSmtpBlocked: emailTransport.renderSmtpBlocked,
     whatsappTokenSet,
     whatsappPhoneIdSet: !!whatsappPhoneId,
     websiteTenantUserId: websiteTenant || "",

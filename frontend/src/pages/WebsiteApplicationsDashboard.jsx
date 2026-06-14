@@ -221,6 +221,8 @@ export default function WebsiteApplicationsDashboard() {
   const [alertEmail, setAlertEmail] = useState("");
   const [alertWhatsApp, setAlertWhatsApp] = useState("");
   const [smtpConfigured, setSmtpConfigured] = useState(false);
+  const [renderSmtpBlocked, setRenderSmtpBlocked] = useState(false);
+  const [httpEmailConfigured, setHttpEmailConfigured] = useState(false);
   const [alertIssues, setAlertIssues] = useState([]);
   const [groqOk, setGroqOk] = useState(null);
   const [groqError, setGroqError] = useState("");
@@ -235,6 +237,8 @@ export default function WebsiteApplicationsDashboard() {
       setAlertEmail(res.data?.email || "");
       setAlertWhatsApp(res.data?.whatsapp || "");
       setSmtpConfigured(!!res.data?.smtpConfigured);
+      setRenderSmtpBlocked(!!res.data?.renderSmtpBlocked);
+      setHttpEmailConfigured(!!res.data?.httpEmailConfigured);
       setAlertIssues(Array.isArray(res.data?.issues) ? res.data.issues : []);
       setGroqOk(res.data?.groq?.ok ?? null);
       setGroqError(res.data?.groq?.error || "");
@@ -427,9 +431,16 @@ export default function WebsiteApplicationsDashboard() {
             />
           </label>
         </div>
-        {!smtpConfigured && alertEmail.trim() && (
+        {!httpEmailConfigured && renderSmtpBlocked && alertEmail.trim() && (
+          <p style={{ fontSize: 12, color: "#b45309", marginBottom: 10, lineHeight: 1.5 }}>
+            Render <strong>free tier blocks Gmail SMTP</strong> — your SMTP vars are set but email cannot send.
+            Add <strong>RESEND_API_KEY</strong> in Render Environment (free at resend.com), set MAIL_FROM to a verified
+            sender, redeploy, then click Send test alert.
+          </p>
+        )}
+        {!httpEmailConfigured && !smtpConfigured && alertEmail.trim() && (
           <p style={{ fontSize: 12, color: "#b45309", marginBottom: 10 }}>
-            SMTP is not configured on the server — add SMTP_HOST, SMTP_USER, SMTP_PASS in Render env for email alerts.
+            No email transport on server — add RESEND_API_KEY (works on Render free) or SMTP_* env vars.
           </p>
         )}
         {groqOk === false && (
