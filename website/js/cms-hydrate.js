@@ -34,8 +34,65 @@
     return u;
   }
 
-  /** Program + showcase images load only when user scrolls near that section. */
-  var progImagesQueued = [];
+  /** Program card slideshows — start when #programs scrolls into view. */
+  var progSlideshows = [];
+
+  function normalizeProgramImageList(item) {
+    var list = [];
+    if (item && Array.isArray(item.images)) {
+      item.images.forEach(function (u) {
+        var s = String(u || "").trim();
+        if (s && list.indexOf(s) === -1) list.push(s);
+      });
+    }
+    var single = item && String(item.image || "").trim();
+    if (single && list.indexOf(single) === -1) list.unshift(single);
+    return list;
+  }
+
+  function queueProgramSlideshow(img, urls) {
+    if (!img || !urls || !urls.length) return;
+    var resolved = urls.map(function (u) {
+      return resolveMediaUrl(String(u || "").trim());
+    }).filter(Boolean);
+    if (!resolved.length) return;
+    progSlideshows.push({ img: img, urls: resolved, idx: 0, timer: null, started: false });
+  }
+
+  function loadProgramImages() {
+    progSlideshows.forEach(function (slide) {
+      if (slide.started) return;
+      slide.started = true;
+      var img = slide.img;
+
+      function show(i, fade) {
+        if (fade) img.classList.remove("is-loaded");
+        var url = slide.urls[i];
+        if (!url) return;
+        img.onload = function () {
+          img.classList.add("is-loaded");
+        };
+        if (img.getAttribute("src") === url && img.classList.contains("is-loaded")) return;
+        if (fade) {
+          setTimeout(function () {
+            img.src = url;
+          }, 450);
+        } else {
+          img.src = url;
+        }
+      }
+
+      show(0, false);
+
+      if (slide.urls.length > 1) {
+        slide.timer = setInterval(function () {
+          slide.idx = (slide.idx + 1) % slide.urls.length;
+          show(slide.idx, true);
+        }, 5000);
+      }
+    });
+    progSlideshows = [];
+  }
 
   function apiBase() {
     return String((window.NSI_CONFIG || {}).apiBase || "").replace(/\/+$/, "");
@@ -74,24 +131,6 @@
       { rootMargin: "120px 0px", threshold: 0.05 }
     );
     ob.observe(sec);
-  }
-
-  function queueProgramImage(img, url) {
-    if (!img || !url) return;
-    img.dataset.src = resolveMediaUrl(String(url).trim());
-    progImagesQueued.push(img);
-  }
-
-  function loadProgramImages() {
-    progImagesQueued.forEach(function (img) {
-      var url = img.dataset.src;
-      if (!url || img.getAttribute("src")) return;
-      img.onload = function () {
-        img.classList.add("is-loaded");
-      };
-      img.src = url;
-    });
-    progImagesQueued = [];
   }
 
   function sectionNearViewport(id) {
@@ -309,6 +348,10 @@
   }
 
   function applyPrograms(content) {
+    progSlideshows.forEach(function (slide) {
+      if (slide.timer) clearInterval(slide.timer);
+    });
+    progSlideshows = [];
     var prog = content.programs || {};
     var sec = $("#programs");
     if (!sec) return;
@@ -324,7 +367,8 @@
       setText(btn.querySelector(".prog-fee-val"), item.fee);
       setText(btn.querySelector(".prog-fee-sub"), item.feeSub);
       var img = btn.querySelector(".prog-cover");
-      if (img && item.image) queueProgramImage(img, item.image);
+      var urls = normalizeProgramImageList(item);
+      if (img && urls.length) queueProgramSlideshow(img, urls);
       var pills = btn.querySelectorAll(".prog-pill");
       (item.pills || []).forEach(function (p, i) {
         if (pills[i]) pills[i].textContent = p;

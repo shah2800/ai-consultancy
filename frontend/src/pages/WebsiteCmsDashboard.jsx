@@ -52,7 +52,14 @@ function getMediaPlacements(content, url) {
   if (content?.hero?.heroImage === url) places.push("Hero image");
   if ((content?.videoGallery?.items || []).some((v) => v.url === url)) places.push("Media showcase");
   (content?.programs?.items || []).forEach((p) => {
-    if (p.image === url) places.push(`Program: ${p.name || p.id || "course"}`);
+    const imgs = [
+      ...(Array.isArray(p.images) ? p.images : []),
+      ...(p.image && !(p.images || []).includes(p.image) ? [p.image] : []),
+    ].filter(Boolean);
+    if (imgs.includes(url)) {
+      const label = p.name || p.id || "course";
+      places.push(imgs.length > 1 ? `Program slideshow: ${label} (${imgs.length} photos)` : `Program: ${label}`);
+    }
   });
   return places;
 }
@@ -84,9 +91,14 @@ function clearMediaFromSite(content, url) {
     next.videoGallery.items = next.videoGallery.items.filter((v) => v.url !== url);
   }
   if (Array.isArray(next.programs?.items)) {
-    next.programs.items = next.programs.items.map((p) =>
-      p.image === url ? { ...p, image: "" } : p
-    );
+    next.programs.items = next.programs.items.map((p) => {
+      const imgs = (Array.isArray(p.images) ? p.images : p.image ? [p.image] : []).filter((u) => u !== url);
+      return {
+        ...p,
+        images: imgs,
+        image: imgs[0] || "",
+      };
+    });
   }
   return next;
 }
@@ -328,15 +340,39 @@ export default function WebsiteCmsDashboard() {
     setMessage(`Added to homepage media showcase — click Save website.`);
   }
 
-  function setProgramImage(programIndex, url) {
+  function addProgramImage(programIndex, url) {
     setContent((prev) => {
       const items = [...(prev?.programs?.items || [])];
       if (!items[programIndex]) return prev;
       const progName = items[programIndex].name || "Program";
-      items[programIndex] = { ...items[programIndex], image: url };
-      setMessage(`Set ${progName} card image — click Save website.`);
+      const prevImages = [
+        ...(Array.isArray(items[programIndex].images) ? items[programIndex].images : []),
+        ...(items[programIndex].image && !(items[programIndex].images || []).includes(items[programIndex].image)
+          ? [items[programIndex].image]
+          : []),
+      ].filter(Boolean);
+      if (prevImages.includes(url)) {
+        setMessage(`Already on ${progName} slideshow.`);
+        return prev;
+      }
+      prevImages.push(url);
+      items[programIndex] = { ...items[programIndex], image: prevImages[0], images: prevImages };
+      setMessage(
+        `Added to ${progName} slideshow (${prevImages.length} photo${prevImages.length === 1 ? "" : "s"}) — rotates every 5s on the website. Save website.`
+      );
       return { ...prev, programs: { ...(prev.programs || {}), items } };
     });
+  }
+
+  function removeProgramImage(programIndex, url) {
+    setContent((prev) => {
+      const items = [...(prev?.programs?.items || [])];
+      if (!items[programIndex]) return prev;
+      const imgs = (Array.isArray(items[programIndex].images) ? items[programIndex].images : []).filter((u) => u !== url);
+      items[programIndex] = { ...items[programIndex], images: imgs, image: imgs[0] || "" };
+      return { ...prev, programs: { ...(prev.programs || {}), items } };
+    });
+    setMessage("Removed from program slideshow — Save website.");
   }
 
   function handleMediaPlacement({ zone, programIndex, media: m }) {
@@ -350,7 +386,7 @@ export default function WebsiteCmsDashboard() {
     } else if (zone === "showcase") {
       addToShowcase(m);
     } else if (zone.startsWith("program-") && typeof programIndex === "number") {
-      setProgramImage(programIndex, m.url);
+      addProgramImage(programIndex, m.url);
     }
   }
 
@@ -653,7 +689,7 @@ export default function WebsiteCmsDashboard() {
             <>
               <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Programs</h2>
               <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 16 }}>
-                Card images: upload in <strong>Media library</strong>, then click &quot;Set program image&quot; on each file.
+                Add multiple photos per program in <strong>Media library</strong> — they rotate every 5 seconds on the website.
               </p>
               <Field label="Eyebrow">
                 <input style={inputStyle} value={c.programs?.eyebrow || ""} onChange={(e) => patch("programs.eyebrow", e.target.value)} />
@@ -667,14 +703,43 @@ export default function WebsiteCmsDashboard() {
               {(c.programs?.items || []).map((item, i) => (
                 <div key={item.id || i} style={{ borderTop: "1px solid var(--border)", paddingTop: 16, marginTop: 16 }}>
                   <div style={{ fontWeight: 700, marginBottom: 10 }}>{item.name || `Program ${i + 1}`}</div>
-                  {item.image ? (
-                    <div style={{ marginBottom: 12, maxWidth: 280, borderRadius: 10, overflow: "hidden", border: "1px solid var(--border)" }}>
-                      <CmsMediaThumb media={{ url: item.image, mime: "image/", storage: item.image.includes("cms/") ? "r2" : "" }} height={120} />
-                      <div style={{ fontSize: 11, padding: "6px 10px", color: "var(--text-3)", wordBreak: "break-all" }}>{item.image}</div>
-                    </div>
-                  ) : (
-                    <p style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 12 }}>No image selected — pick from Media library.</p>
-                  )}
+                  {(() => {
+                    const slideshow = [
+                      ...(Array.isArray(item.images) ? item.images : []),
+                      ...(item.image && !(item.images || []).includes(item.image) ? [item.image] : []),
+                    ].filter(Boolean);
+                    if (!slideshow.length) {
+                      return (
+                        <p style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 12 }}>
+                          No photos yet — use Media library → &quot;Add to program slideshow&quot;.
+                        </p>
+                      );
+                    }
+                    return (
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: "var(--text-2)" }}>
+                          Slideshow ({slideshow.length} photo{slideshow.length === 1 ? "" : "s"}, 5s loop)
+                        </div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          {slideshow.map((url) => (
+                            <div key={url} style={{ width: 88, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
+                              <CmsMediaThumb
+                                media={{ url, mime: "image/", storage: url.includes("cms/") ? "r2" : "" }}
+                                height={56}
+                              />
+                              <button
+                                type="button"
+                                style={{ ...mediaBtnStyle, width: "100%", borderRadius: 0, fontSize: 10, color: "#b91c1c" }}
+                                onClick={() => removeProgramImage(i, url)}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <Field label="Name">
                     <input
                       style={inputStyle}
@@ -709,13 +774,16 @@ export default function WebsiteCmsDashboard() {
                         }}
                       />
                     </Field>
-                    <Field label="Image URL (or pick from Media library)">
+                    <Field label="Primary image URL (first in slideshow)">
                       <input
                         style={inputStyle}
                         value={item.image || ""}
                         onChange={(e) => {
                           const items = [...(c.programs?.items || [])];
-                          items[i] = { ...items[i], image: e.target.value };
+                          const url = e.target.value;
+                          const rest = (Array.isArray(items[i].images) ? items[i].images : []).filter((u) => u !== items[i].image);
+                          const images = url ? [url, ...rest.filter((u) => u !== url)] : rest;
+                          items[i] = { ...items[i], image: url, images };
                           patch("programs.items", items);
                         }}
                       />
@@ -1052,17 +1120,20 @@ export default function WebsiteCmsDashboard() {
                               value=""
                               onChange={(e) => {
                                 const idx = Number(e.target.value);
-                                if (Number.isFinite(idx) && idx >= 0) setProgramImage(idx, m.url);
+                                if (Number.isFinite(idx) && idx >= 0) addProgramImage(idx, m.url);
                                 e.target.value = "";
                               }}
                             >
-                              <option value="">Set program card image…</option>
-                              {(c.programs?.items || []).map((p, pi) => (
+                              <option value="">Add to program slideshow…</option>
+                              {(c.programs?.items || []).map((p, pi) => {
+                                const count = (Array.isArray(p.images) ? p.images : p.image ? [p.image] : []).filter(Boolean).length;
+                                const onSlideshow = (Array.isArray(p.images) ? p.images : []).includes(m.url) || p.image === m.url;
+                                return (
                                 <option key={p.id || pi} value={pi}>
                                   {p.name || `Program ${pi + 1}`}
-                                  {p.image === m.url ? " ✓" : ""}
+                                  {onSlideshow ? " ✓" : count > 0 ? ` (${count} photo${count === 1 ? "" : "s"})` : ""}
                                 </option>
-                              ))}
+                              );})}
                             </select>
                           )}
                           {onSite && (

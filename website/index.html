@@ -388,7 +388,7 @@
     .prog::before{content:"";position:absolute;inset:0;border-radius:16px;box-shadow:0 20px 56px rgba(10,31,68,.18);opacity:0;transition:opacity .28s;z-index:-1;pointer-events:none}
     .prog:hover{transform:translateY(-5px);border-color:rgba(10,31,68,.18)}
     .prog:hover::before{opacity:1}
-    /* Program card image — one image from CMS/R2, loaded only when section scrolls into view */
+    /* Program card slideshow — CMS photos rotate every 5s when section is visible */
     .prog-img{width:100%;height:200px;flex-shrink:0;position:relative;background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);overflow:hidden}
     .prog-cover{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .45s ease;z-index:1}
     .prog-cover.is-loaded{opacity:.88}

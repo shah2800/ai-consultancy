@@ -179,7 +179,7 @@ function slotDescription(zone, content, programIndex) {
   const p = content?.programs?.items?.[programIndex];
   return {
     title: `Program card: ${p?.name || "Course"}`,
-    body: "Shows as the card background when visitors hover or view that program (MBBS, BBA, IT). Images only — not videos.",
+    body: "Adds this photo to the program card slideshow (rotates every 5 seconds). You can add up to several images per program — images only, not videos.",
     path: "Lower → Programs section",
   };
 }

@@ -27,7 +27,7 @@ try {
 
 const { calculatePriority, enrichLead } = require("./utils/calculatePriority");
 const { mergeWebsiteCmsContent, deepMerge } = require("./lib/website-cms-defaults");
-const { stripMediaFilename, isLikelyCmsMediaUrl } = require("./lib/media-display");
+const { stripMediaFilename, isLikelyCmsMediaUrl, normalizeProgramImages } = require("./lib/media-display");
 const { optimizeMediaUpload } = require("./lib/media-optimize");
 const {
   isR2Configured,
@@ -5422,11 +5422,19 @@ function sanitizePublicWebsiteContent(content) {
       };
     }) };
   }
-  if (Array.isArray(c.programs)) {
-    c.programs = c.programs.map((p) => {
-      if (!p || typeof p !== "object") return p;
-      return p.image ? { ...p, image: publicCmsMediaProxyUrl(p.image) } : p;
-    });
+  if (c.programs && Array.isArray(c.programs.items)) {
+    c.programs = {
+      ...c.programs,
+      items: c.programs.items.map((p) => {
+        if (!p || typeof p !== "object") return p;
+        const images = normalizeProgramImages(p).map((u) => publicCmsMediaProxyUrl(u));
+        return {
+          ...p,
+          image: images[0] || "",
+          images,
+        };
+      }),
+    };
   }
   return c;
 }
