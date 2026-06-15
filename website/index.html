@@ -655,13 +655,25 @@
       .video-gallery-grid.cols-3{grid-template-columns:repeat(3,1fr)}
     }
     @media(prefers-reduced-motion:reduce){
-      *{animation:none!important;transition-duration:.01ms!important}
+      .reveal,.wa-pulse,.hero-pill i{animation:none!important}
+      .reveal{opacity:1!important;transform:none!important}
+      html{scroll-behavior:auto}
     }
   </style>
+  <link rel="stylesheet" href="css/site-ui.css">
 </head>
-<body>
+<body class="has-mobile-bar">
 
-  <!-- Floating WhatsApp -->
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <!-- Mobile sticky CTAs (shown after scroll) -->
+  <div class="mobile-action-bar" id="mobileBar" role="region" aria-label="Quick actions">
+    <a class="btn btn-navy" href="apply.html">Apply Free</a>
+    <a class="btn btn-wa" href="https://wa.me/923142638901?text=Assalam%20o%20Alaikum%2C%20I%20want%20to%20know%20about%20study%20abroad%20programs" target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.134.558 4.133 1.532 5.866L.057 23.857a.5.5 0 00.606.606l6.056-1.467A11.944 11.944 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.013-1.375l-.36-.213-3.733.904.921-3.648-.233-.376A9.818 9.818 0 1112 21.818z"/></svg>
+      <span>WhatsApp</span>
+    </a>
+  </div>
   <a class="wa-float" href="https://wa.me/923142638901?text=Assalam%20o%20Alaikum%2C%20I%20want%20to%20know%20about%20study%20abroad%20programs" target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp">
     <span class="wa-float-label">Chat with us</span>
     <div class="wa-float-btn">
@@ -712,7 +724,7 @@
         </a>
         <a class="btn btn-sm hdr-track" href="track.html" style="display:none;background:var(--navylight);color:var(--navy);border:1.5px solid var(--border);font-weight:700;white-space:nowrap">Track</a>
         <a class="btn btn-navy btn-sm hdr-apply" href="apply.html">Apply Now</a>
-        <button class="hamburger" id="hbg" aria-label="Open menu">
+        <button class="hamburger" id="hbg" aria-label="Open menu" aria-expanded="false" aria-controls="drawer">
           <span></span><span></span><span></span>
         </button>
       </div>
@@ -721,7 +733,7 @@
   </header>
 
   <!-- Mobile nav drawer -->
-  <div class="nav-drawer" id="drawer">
+  <div class="nav-drawer" id="drawer" aria-hidden="true">
     <div class="nav-overlay" id="nav-ov"></div>
     <div class="nav-panel">
       <div class="nav-panel-head">
@@ -1420,12 +1432,15 @@
   (function(){
     "use strict";
 
-    // Sticky header shadow + back to top
+    // Sticky header shadow + back to top + mobile action bar
     var hdr = document.getElementById("hdr");
     var backTop = document.getElementById("backTop");
+    var mobileBar = document.getElementById("mobileBar");
     window.addEventListener("scroll", function(){
-      hdr.classList.toggle("scrolled", window.scrollY > 10);
-      backTop.classList.toggle("show", window.scrollY > 400);
+      var y = window.scrollY;
+      hdr.classList.toggle("scrolled", y > 10);
+      backTop.classList.toggle("show", y > 400);
+      if (mobileBar) mobileBar.classList.toggle("is-visible", y > 280);
     }, {passive:true});
     backTop.addEventListener("click", function(){ window.scrollTo({top:0,behavior:"smooth"}); });
 
@@ -1434,12 +1449,32 @@
     var drawer = document.getElementById("drawer");
     var navX = document.getElementById("nav-x");
     var navOv = document.getElementById("nav-ov");
-    function openDrawer(){ drawer.classList.add("open"); document.body.style.overflow="hidden"; }
-    function closeDrawer(){ drawer.classList.remove("open"); document.body.style.overflow=""; }
-    hbg.addEventListener("click", openDrawer);
+    function openDrawer(){
+      drawer.classList.add("open");
+      drawer.setAttribute("aria-hidden", "false");
+      hbg.classList.add("is-open");
+      hbg.setAttribute("aria-expanded", "true");
+      hbg.setAttribute("aria-label", "Close menu");
+      document.body.style.overflow = "hidden";
+    }
+    function closeDrawer(){
+      drawer.classList.remove("open");
+      drawer.setAttribute("aria-hidden", "true");
+      hbg.classList.remove("is-open");
+      hbg.setAttribute("aria-expanded", "false");
+      hbg.setAttribute("aria-label", "Open menu");
+      document.body.style.overflow = "";
+    }
+    hbg.addEventListener("click", function(){
+      if (drawer.classList.contains("open")) closeDrawer();
+      else openDrawer();
+    });
     navX.addEventListener("click", closeDrawer);
     navOv.addEventListener("click", closeDrawer);
     drawer.querySelectorAll("a").forEach(function(a){ a.addEventListener("click", closeDrawer); });
+    document.addEventListener("keydown", function(e){
+      if (e.key === "Escape" && drawer.classList.contains("open")) closeDrawer();
+    });
 
     // Counter animation
     function countUp(el){
