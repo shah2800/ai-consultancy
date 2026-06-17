@@ -491,6 +491,16 @@ html {
   scroll-padding-top: 80px;
 }
 
+/* ─── Homepage hero/bands must be full-bleed ───
+   The shared ".ns-site main" padding (meant for simple content pages)
+   was insetting the homepage hero, stats band and trust strip into a
+   framed card. The homepage manages padding per-section instead, so
+   reset the wrapper to let those bands run edge-to-edge. */
+.ns-site main.home-main {
+  padding: 0;
+  max-width: none;
+}
+
 /* ─── Scroll progress bar (zero-JS, scroll-driven CSS) ───
    Graceful fallback: where scroll-timeline is unsupported the bar
    simply stays at scaleX(0) and is invisible. */
