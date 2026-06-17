@@ -428,3 +428,331 @@ body.has-mobile-bar {
     scroll-behavior: auto;
   }
 }
+
+/* ───────────────────────────────────────────────────────────
+   MOBILE DECLUTTER & POLISH (≤767px) — ~70% of traffic is mobile
+   Authoritative overrides; this is the last-loaded stylesheet.
+   ─────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  /* Remove top promo notice bar ("2026 Intakes Now Open …") */
+  .notice {
+    display: none !important;
+  }
+
+  /* Remove header "Apply Now" — the slide-out drawer and the bottom
+     sticky action bar both already carry the Apply CTA */
+  .hdr-apply {
+    display: none !important;
+  }
+
+  /* Remove floating WhatsApp bubble + pulse — the bottom action bar
+     already exposes WhatsApp, so this is redundant clutter on mobile */
+  .wa-float {
+    display: none !important;
+  }
+
+  /* Slightly tighter header for more above-the-fold content */
+  .hdr {
+    height: 64px;
+  }
+
+  /* Logo block: prevent any chance of wrap on narrow phones */
+  .logo-name {
+    font-size: 1.02rem;
+  }
+
+  /* Header now holds only logo + menu — push the hamburger to the
+     far right and give it breathing room */
+  .hdr-actions {
+    gap: 6px;
+  }
+
+  /* Back-to-top sits clear above the bottom action bar (no WA bubble
+     above it anymore) */
+  .back-top {
+    bottom: calc(84px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* A touch more vertical air in the hero now that the notice bar is gone */
+  .hero {
+    min-height: min(86vh, 720px);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PREMIUM MOTION & DEPTH LAYER
+   Senior-grade micro-interactions, scroll-driven motion, and
+   tactile feedback. GPU-only (transform/opacity), fully guarded
+   by prefers-reduced-motion. Mobile-first; scales to desktop.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Anchor links land below the sticky header, never under it */
+html {
+  scroll-padding-top: 80px;
+}
+
+/* ─── Scroll progress bar (zero-JS, scroll-driven CSS) ───
+   Graceful fallback: where scroll-timeline is unsupported the bar
+   simply stays at scaleX(0) and is invisible. */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  z-index: 9999;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--gold), var(--goldbright), #ffe9a8);
+  box-shadow: 0 1px 6px rgba(184, 150, 12, 0.45);
+  animation: uiScrollProgress linear;
+  animation-timeline: scroll(root);
+  pointer-events: none;
+}
+@keyframes uiScrollProgress {
+  to { transform: scaleX(1); }
+}
+
+/* ─── Hero — cinematic depth ─── */
+/* Slow Ken Burns drift on the hero photograph */
+.hero-img {
+  animation: uiKenBurns 24s ease-in-out infinite alternate;
+  transform-origin: 60% 40%;
+  will-change: transform;
+}
+@keyframes uiKenBurns {
+  from { transform: scale(1.02); }
+  to   { transform: scale(1.12); }
+}
+/* Gold headline words get a living, sweeping sheen */
+.hero h1 span {
+  background: linear-gradient(100deg, #ffd369 0%, #fff6d6 35%, #ffd369 60%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: uiTextSheen 7s linear infinite;
+}
+@keyframes uiTextSheen {
+  to { background-position: -220% 0; }
+}
+/* Status pill: soft breathing glow ring */
+.hero-pill {
+  position: relative;
+  overflow: hidden;
+}
+.hero-pill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 235, 160, 0.25), transparent 70%);
+  transform: translateX(-100%);
+  animation: uiPillSweep 4.5s ease-in-out infinite;
+}
+@keyframes uiPillSweep {
+  0%, 60% { transform: translateX(-100%); }
+  100%    { transform: translateX(100%); }
+}
+
+/* ─── Buttons — light sheen sweep + spring press ─── */
+.btn-gold,
+.btn-navy,
+.btn-white {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.btn-gold::after,
+.btn-navy::after,
+.btn-white::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -130%;
+  width: 55%;
+  height: 100%;
+  z-index: -1;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.38), transparent);
+  transform: skewX(-18deg);
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .btn-gold:hover::after,
+  .btn-navy:hover::after,
+  .btn-white:hover::after {
+    animation: uiBtnSheen 0.75s var(--ease-out);
+  }
+}
+@keyframes uiBtnSheen {
+  to { left: 130%; }
+}
+/* The persistent mobile CTA gently catches the eye every few seconds */
+.mobile-action-bar.is-visible .btn-navy::after {
+  animation: uiBtnSheen 1.1s var(--ease-out) 1.5s infinite;
+}
+
+/* ─── Cards — tactile press + refined elevation ─── */
+.prog,
+.dest-card,
+.bcard,
+.wcard,
+.tcard,
+.testi-card,
+.video-card,
+.comment-item,
+.contact-method {
+  transition: transform 0.28s var(--ease-out), box-shadow 0.28s var(--ease-out),
+    border-color 0.28s var(--ease-out);
+}
+@media (hover: none) {
+  .prog:active,
+  .dest-card:active,
+  .bcard:active,
+  .wcard:active,
+  .tcard:active,
+  .testi-card:active,
+  .video-card:active,
+  .comment-item:active,
+  .contact-method:active {
+    transform: scale(0.98);
+  }
+  .btn:active {
+    transform: scale(0.965);
+  }
+}
+
+/* Program cards — animated gradient halo on focus/hover */
+.prog {
+  position: relative;
+}
+.prog::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--goldbright), transparent 40%, transparent 60%, var(--navy2));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s var(--ease-out);
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .prog:hover::after { opacity: 0.9; }
+}
+.prog:focus-visible::after { opacity: 0.9; }
+
+/* Benefit-card icon tiles get a subtle depth + lift on entry */
+.bcard-ico {
+  box-shadow: inset 0 0 0 1px rgba(10, 31, 68, 0.06), 0 4px 12px rgba(10, 31, 68, 0.08);
+  transition: transform 0.28s var(--ease-out);
+}
+@media (hover: hover) {
+  .bcard:hover .bcard-ico { transform: translateY(-2px) scale(1.05); }
+}
+
+/* ─── Eyebrow accent line draws in when revealed ─── */
+.reveal .eyebrow::before {
+  transform-origin: left center;
+  animation: uiLineGrow 0.6s var(--ease-out) both;
+}
+.reveal.in .eyebrow::before {
+  animation-delay: 0.15s;
+}
+@keyframes uiLineGrow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* ─── Reveal — richer spring-like entrance ─── */
+.reveal {
+  transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out);
+}
+
+/* ─── Stats / numeric figures — tabular so count-up doesn't jitter ─── */
+.hstat-n,
+.sbox-n,
+.prog-fee-val,
+.dest-fee {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* ─── Section reveal stagger for grids (CSS-only, view-driven) ─── */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .prog-list > .prog,
+    .benefit-grid > .bcard,
+    .why-grid > .wcard,
+    .testi-grid > .testi-card {
+      animation: uiCardRise both linear;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+    @keyframes uiCardRise {
+      from { opacity: 0; transform: translateY(34px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  }
+}
+
+/* ─── Smoother momentum + no blue tap flash on iOS ─── */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ─── Crisp vector icons replace emoji (cross-platform consistent) ─── */
+/* Destination flags rendered as clean circular pins */
+.dest-flag {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  overflow: hidden;
+  font-size: 0;
+  box-shadow: 0 3px 10px rgba(10, 31, 68, 0.18), inset 0 0 0 1px rgba(10, 31, 68, 0.08);
+  transition: transform 0.28s var(--ease-out);
+}
+.dest-flag svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+@media (hover: hover) {
+  .dest-card:hover .dest-flag { transform: scale(1.06) rotate(-2deg); }
+}
+/* Program meta-pill icons sit on the text baseline */
+.prog-pill svg {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+/* Benefit icon SVGs inherit the navy tile colour */
+.bcard-ico svg { display: block; }
+
+/* ─── Honour reduced-motion for every premium effect ─── */
+@media (prefers-reduced-motion: reduce) {
+  body::before,
+  .hero-img,
+  .hero h1 span,
+  .hero-pill::after,
+  .btn-gold::after,
+  .btn-navy::after,
+  .btn-white::after,
+  .mobile-action-bar.is-visible .btn-navy::after,
+  .reveal .eyebrow::before,
+  .prog-list > .prog,
+  .benefit-grid > .bcard,
+  .why-grid > .wcard,
+  .testi-grid > .testi-card {
+    animation: none !important;
+  }
+  .hero h1 span {
+    -webkit-text-fill-color: #ffd369;
+    color: #ffd369;
+  }
+}
