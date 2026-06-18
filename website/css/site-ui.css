@@ -165,6 +165,52 @@ details.fq summary:focus-visible {
   }
 }
 
+/* ─── Hero overflow safety (any viewport) ───
+   The hero content column must never force horizontal overflow, even if
+   a label is long or injected by the CMS. min-width:0 lets the grid/flex
+   children shrink instead of pushing the layout off-screen. */
+.hero-in > div {
+  min-width: 0;
+  max-width: 100%;
+}
+.hero-btns .btn {
+  max-width: 100%;
+}
+.btn .btn-label {
+  min-width: 0;
+}
+
+/* ─── Desktop/tablet: keep the hero from dominating the screen ───
+   On large screens the single-column content stack was making the hero
+   taller than the viewport. Tighten height + vertical rhythm. */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .hero {
+    min-height: min(80vh, 620px);
+  }
+  .hero-in {
+    padding-top: clamp(2rem, 6vw, 3.25rem);
+    padding-bottom: clamp(2rem, 6vw, 3.25rem);
+  }
+}
+@media (min-width: 1025px) {
+  .hero {
+    min-height: min(82vh, 660px);
+  }
+  .hero-in {
+    padding-top: clamp(2rem, 5vh, 3.25rem);
+    padding-bottom: clamp(2rem, 5vh, 3.25rem);
+  }
+  .hero h1 {
+    margin-bottom: 14px;
+  }
+  .hero-desc {
+    margin-bottom: 26px;
+  }
+  .hero-btns {
+    margin-bottom: 34px;
+  }
+}
+
 /* ─── Sections — consistent vertical rhythm ─── */
 .sec {
   padding-top: var(--space-xl);

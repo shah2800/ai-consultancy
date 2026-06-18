@@ -220,23 +220,29 @@
     var primary = hero.ctaPrimary || {};
     var secondary = hero.ctaSecondary || {};
     var btns = $all(".hero-btns .btn");
-    if (btns[0]) {
-      btns[0].href = resolveUrl(primary.url, contact);
-      var pLabel = btns[0].querySelector("svg") ? btns[0].lastChild : btns[0];
-      if (btns[0].childNodes.length > 1) {
-        btns[0].childNodes[btns[0].childNodes.length - 1].textContent = " " + (primary.text || "");
-      } else {
-        setText(btns[0], primary.text);
+    // Update a hero CTA without disturbing its icon. Label lives in a
+    // `.btn-label` span, so icon position (left or right) is irrelevant.
+    function setHeroCta(btn, data) {
+      if (!btn) return;
+      var url = resolveUrl(data.url, contact);
+      if (url) btn.href = url;
+      if (data.text == null || data.text === "") return;
+      var label = btn.querySelector(".btn-label");
+      if (label) {
+        label.textContent = data.text;
+        return;
       }
+      // Fallback (no label span): drop existing text nodes, keep the icon.
+      var svg = btn.querySelector("svg");
+      Array.prototype.slice.call(btn.childNodes).forEach(function (n) {
+        if (n.nodeType === 3) btn.removeChild(n);
+      });
+      var t = document.createTextNode(data.text);
+      if (svg && !svg.previousElementSibling) btn.appendChild(t);
+      else btn.insertBefore(t, svg || null);
     }
-    if (btns[1]) {
-      btns[1].href = resolveUrl(secondary.url, contact);
-      if (btns[1].childNodes.length > 1) {
-        btns[1].childNodes[btns[1].childNodes.length - 1].textContent = " " + (secondary.text || "");
-      } else {
-        setText(btns[1], secondary.text);
-      }
-    }
+    setHeroCta(btns[0], primary);
+    setHeroCta(btns[1], secondary);
 
     var hstats = $all(".hero-stats .hstat");
     (hero.stats || []).forEach(function (s, i) {
