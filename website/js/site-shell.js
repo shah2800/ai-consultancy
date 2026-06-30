@@ -1,6 +1,21 @@
 (function () {
   "use strict";
 
+  // Google Analytics 4 (gtag.js) — loaded once here so every page that includes
+  // site-shell.js is tracked. Property: Next Step Internationals.
+  (function loadGA() {
+    var GA_ID = "G-KL5PD5VVTN";
+    if (window.gtag) return; // already loaded
+    var s = document.createElement("script");
+    s.async = true;
+    s.src = "https://www.googletagmanager.com/gtag/js?id=" + GA_ID;
+    document.head.appendChild(s);
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () { window.dataLayer.push(arguments); };
+    window.gtag("js", new Date());
+    window.gtag("config", GA_ID);
+  })();
+
   var WA =
     "https://wa.me/923142638901?text=" +
     encodeURIComponent("Assalam o Alaikum, I want to know about study abroad programs");
@@ -113,6 +128,34 @@
     });
   }
 
+  // Honest urgency: render a live "closes in N days" counter from a real date.
+  // Markup: <div class="deadline-banner" data-deadline="2026-09-15"
+  //              data-intake="September 2026 Intake" data-region="Georgia & Europe"></div>
+  function initDeadlineBanners() {
+    var els = document.querySelectorAll(".deadline-banner[data-deadline]");
+    if (!els.length) return;
+    var DAY = 86400000;
+    Array.prototype.forEach.call(els, function (el) {
+      var deadline = new Date(el.getAttribute("data-deadline") + "T23:59:59");
+      if (isNaN(deadline.getTime())) { el.hidden = true; return; }
+      var days = Math.ceil((deadline - new Date()) / DAY);
+      if (days < 0) { el.hidden = true; return; } // past deadline → hide until date is updated
+      var intake = el.getAttribute("data-intake") || "Next intake";
+      var region = el.getAttribute("data-region") || "";
+      var cta = el.getAttribute("data-cta") || "apply.html";
+      var label = days === 0 ? "today" : days === 1 ? "1 day" : days + " days";
+      var urgent = days <= 21 ? " urgent" : "";
+      var title = intake + (region ? " — " + region : "");
+      el.innerHTML =
+        '<div class="dl-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>' +
+        '<div class="dl-text"><strong class="dl-title">' + title + '</strong>' +
+        '<span class="dl-sub">Applications close in <b class="dl-count' + urgent + '">' + label +
+        '</b>. Start your free profile evaluation today to submit on time.</span></div>' +
+        '<a class="dl-cta" href="' + cta + '">Start Free Evaluation' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6"/></svg></a>';
+    });
+  }
+
   function markMain() {
     var wrap = document.querySelector(".article-wrap");
     if (wrap && !wrap.id) wrap.id = "main";
@@ -130,5 +173,6 @@
     ensureMobileBar();
     initReadingProgress();
     initArticleMobileTools();
+    initDeadlineBanners();
   });
 })();
