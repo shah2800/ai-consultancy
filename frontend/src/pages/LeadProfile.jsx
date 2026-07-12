@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, useMemo, memo } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo, memo, Fragment } from "react";
 import api from "../api/api";
 import SkeletonPulse from "../components/SkeletonPulse";
 import { useParams, useNavigate, Link } from "react-router-dom";
@@ -590,10 +590,65 @@ function chatMessageRenderSignature(msg) {
   ].join("|");
 }
 
+/** WhatsApp-style day grouping: "Today", "Yesterday", weekday, then dd/mm/yyyy. */
+function chatDayKey(at) {
+  const d = at ? new Date(at) : null;
+  if (!d || isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function chatDayLabel(at) {
+  const d = new Date(at);
+  if (isNaN(d.getTime())) return "";
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfThat = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diffDays = Math.round((startOfToday - startOfThat) / 86400000);
+  if (diffDays <= 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return d.toLocaleDateString("en-US", { weekday: "long" });
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+/** Message time like WhatsApp, but relative when fresh: "Just now", "5 min ago", else clock time. */
+function chatMsgTime(at) {
+  if (!at) return "";
+  const d = new Date(at);
+  if (isNaN(d.getTime())) return "";
+  const diffMins = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (diffMins >= 0 && diffMins < 1) return "Just now";
+  if (diffMins >= 1 && diffMins < 60) return `${diffMins} min ago`;
+  return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+}
+
+function ChatDateDivider({ at }) {
+  const label = chatDayLabel(at);
+  if (!label) return null;
+  return (
+    <div style={{ display: "flex", justifyContent: "center", margin: "14px 0 10px" }}>
+      <span
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: "0.04em",
+          color: "var(--text-3)",
+          background: "var(--surface-2, rgba(0,0,0,0.06))",
+          border: "1px solid var(--border)",
+          borderRadius: 999,
+          padding: "4px 12px",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+        }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
 const ChatBubble = memo(function ChatBubble({ msg }) {
   const isUser = msg.role === "user";
   const isAI = msg.role === "assistant" || msg.role === "ai";
-  const time = msg.at ? new Date(msg.at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "";
+  const time = chatMsgTime(msg.at);
   const inboundKind = effectiveInboundKind(msg);
   const isInboundMedia = isUser && INBOUND_MEDIA_KINDS.includes(inboundKind);
   const deliveryStatus = String(msg.whatsappDeliveryStatus || "").trim().toLowerCase();
@@ -2010,12 +2065,19 @@ export default function LeadProfile() {
                 </button>
               </div>
             ) : chatThreadReady ? (
-              messages.map((msg, i) => (
-                <ChatBubble
-                  key={msg?._id || msg?.whatsappMediaId || `${msg?.at || "t"}-${msg?.role || "r"}-${i}`}
-                  msg={msg}
-                />
-              ))
+              messages.map((msg, i) => {
+                const prevMsg = i > 0 ? messages[i - 1] : null;
+                const showDayDivider =
+                  msg?.at && chatDayKey(msg.at) !== chatDayKey(prevMsg?.at);
+                return (
+                  <Fragment
+                    key={msg?._id || msg?.whatsappMediaId || `${msg?.at || "t"}-${msg?.role || "r"}-${i}`}
+                  >
+                    {showDayDivider ? <ChatDateDivider at={msg.at} /> : null}
+                    <ChatBubble msg={msg} />
+                  </Fragment>
+                );
+              })
             ) : (
               <LeadChatThreadSkeleton />
             )}

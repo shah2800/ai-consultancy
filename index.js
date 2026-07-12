@@ -734,6 +734,39 @@ function applyAutomationRules(lead) {
   }
 }
 
+/**
+ * True when a candidate string plausibly IS a person's name:
+ * 1-3 words, letters only, 2-30 chars, and none of the words are common
+ * conversation words ("amount", "interested", "pkr", ...). Prevents garbage
+ * like "amount in pkr" or "interested in LLB but" being used as a name.
+ */
+const NON_NAME_WORDS = new Set([
+  "amount", "pkr", "fee", "fees", "cost", "price", "interested", "interest",
+  "looking", "want", "need", "asking", "about", "info", "information",
+  "details", "detail", "apply", "applying", "application", "admission",
+  "scholarship", "university", "universities", "visa", "study", "studying",
+  "abroad", "mbbs", "bba", "mba", "llb", "course", "program", "degree",
+  "there", "here", "this", "that", "what", "when", "where", "how", "why",
+  "possible", "possib", "but", "and", "the", "for", "from", "with", "help",
+  "please", "plz", "sir", "madam", "brother", "sister", "consultant",
+  "russia", "georgia", "turkey", "china", "azerbaijan", "canada", "just",
+  "checking", "following", "message", "msg", "number", "contact", "call",
+]);
+
+function isLikelyPersonName(candidate) {
+  const s = String(candidate || "").trim().replace(/\s+/g, " ");
+  if (s.length < 2 || s.length > 30) return false;
+  if (/[0-9@#$%^&*_=+\\/<>[\]{}|~`]/.test(s)) return false;
+  const words = s.split(" ");
+  if (words.length > 3) return false;
+  for (const w of words) {
+    const lw = w.toLowerCase().replace(/[.'-]/g, "");
+    if (!lw) continue;
+    if (NON_NAME_WORDS.has(lw)) return false;
+  }
+  return true;
+}
+
 function extractNameFromMessage(text = "") {
   const raw = String(text || "").trim();
   if (!raw) return "";
@@ -756,6 +789,7 @@ function extractNameFromMessage(text = "") {
     /(?:this is)\s+([a-zA-Z][a-zA-Z\s.'-]{1,40})/i,
     /(?:name is)\s+([a-zA-Z][a-zA-Z\s.'-]{1,40})/i,
     /(?:my name)\s+([a-zA-Z][a-zA-Z\s.'-]{1,40})/i,
+    /(?:mera naam|mera name|m[ae]ra naam)\s+([a-zA-Z][a-zA-Z\s.'-]{1,40})/i,
   ];
 
   for (const pattern of patterns) {
@@ -765,17 +799,18 @@ function extractNameFromMessage(text = "") {
       candidate = candidate
         .replace(/\b(is|am|i'm|my|name)\b/gi, "")
         .trim();
-      if (candidate.length >= 2 && !blockedNameTokens.has(candidate.toLowerCase())) {
+      // Cut at the first connective — "Saim Khalid hai aur main..." → "Saim Khalid"
+      candidate = candidate.split(/\b(?:and|aur|hai|hoon|hun|se|from|here)\b/i)[0].trim();
+      if (
+        candidate.length >= 2 &&
+        !blockedNameTokens.has(candidate.toLowerCase()) &&
+        isLikelyPersonName(candidate)
+      ) {
         return candidate;
       }
     }
   }
-
-  // Fallback: "ali here", "it's ali", "this is ali khan"
-  const shortNameMatch = raw.match(/\b(?:it's|its|here is|here)\s+([a-zA-Z][a-zA-Z\s.'-]{1,30})/i);
-  if (shortNameMatch?.[1]) {
-    return shortNameMatch[1].trim().replace(/\s+/g, " ");
-  }
+  // (removed the "it's/here" fallback — it captured garbage like "it's amount in pkr")
 
   return "";
 }
@@ -1129,6 +1164,18 @@ const leadSchema = new mongoose.Schema(
       /** When set (1–1000), caps this lead's AI replies per day instead of Settings.aiDailyReplyLimit. */
       aiDailyReplyLimitOverride: Number,
       aiLimitResetAt: String,
+      aiDailyLimit: Number,
+      /** Guided conversation state (menu_sent / program_shown / ...). Must exist in schema or Mongoose silently drops it. */
+      guidedState: String,
+      /** ISO timestamp of last welcome-menu send — prevents the menu repeating. */
+      lastWelcomeAt: String,
+      /** ISO timestamp of last automated follow-up — prevents follow-up spam. */
+      autoReminderSentAt: String,
+      /** Follow-ups sent since the student's last reply (capped). */
+      autoReminderCount: {
+        type: Number,
+        default: 0,
+      },
     },
 
     lastActivity: Date,
@@ -1155,6 +1202,11 @@ const leadSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    mergedInto: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Lead",
+    },
+    mergedAt: Date,
 
     activityLog: [
       {
@@ -2670,9 +2722,13 @@ function handleGuidedConversation(lead, inboundText, cName) {
   const isTurkey     = /turkey/i.test(text);
 
   // First ever message → welcome menu (user message already saved before this runs)
+  // Never resend the welcome if one already went out in the last 24h — this is
+  // what caused the menu to repeat 4x when a student sent several quick messages.
   const userMsgCount = (lead.messages || []).filter((m) => m.role === "user").length;
-  if (!state && userMsgCount <= 1) {
-    return { reply: guidedWelcome(cName), newState: "menu_sent" };
+  const lastWelcomeMs = Date.parse(String(lead.extractedData?.lastWelcomeAt || "")) || 0;
+  const welcomeRecently = lastWelcomeMs && Date.now() - lastWelcomeMs < 24 * 60 * 60 * 1000;
+  if (!state && userMsgCount <= 1 && !welcomeRecently) {
+    return { reply: guidedWelcome(cName), newState: "menu_sent", isWelcome: true };
   }
   // If no state but returning student says hi → let normal AI handle warmly
   // Only resend menu if student explicitly types "menu" or "start"
@@ -2754,8 +2810,32 @@ Return ONLY the JSON object, nothing else.`,
   }
 }
 
-async function askAI(history, userId) {
-  const confirmedStudentName = extractConfirmedStudentName(history);
+async function askAI(history, userId, lead = null) {
+  const extractedName = extractConfirmedStudentName(history);
+  const leadName = String(lead?.name || "").trim();
+  const confirmedStudentName = isLikelyPersonName(leadName)
+    ? leadName
+    : isLikelyPersonName(extractedName)
+      ? extractedName
+      : "";
+
+  // Known CRM profile — so the AI never forgets what the student already told us
+  // (e.g. "4th-year MBBS transfer from Kazakhstan") and never re-asks basics.
+  const profileLines = [];
+  if (lead) {
+    if (confirmedStudentName) profileLines.push(`- Name: ${confirmedStudentName}`);
+    const ci = String(lead.courseInterest || "").trim();
+    if (ci) profileLines.push(`- Course interest: ${ci}`);
+    const co = String(lead.countryInterest || "").trim();
+    if (co) profileLines.push(`- Country interest: ${co}`);
+    const st = String(lead.status || "").trim();
+    if (st && st !== "new") profileLines.push(`- CRM stage: ${st}`);
+    const imp = String(lead.importantDetails || "").trim();
+    if (imp) profileLines.push(`- Known facts: ${imp.slice(0, 600)}`);
+  }
+  const profileBlock = profileLines.length
+    ? `\nSTUDENT PROFILE (facts already collected — USE these, never re-ask, never contradict):\n${profileLines.join("\n")}\n`
+    : "";
 
   let settings = null;
 
@@ -2930,7 +3010,7 @@ ${aboutBlock ? `\n${aboutBlock}\n` : ""}
 
 CONFIRMED STUDENT NAME:
 ${confirmedStudentName || "(not confirmed — do NOT use any name)"}
-${smartRulesBlock}
+${profileBlock}${smartRulesBlock}
 
 CORE RULES:
 - Max 80 words per reply
@@ -3247,8 +3327,19 @@ function build24hFollowupText({ confirmedName, lastOutboundText }) {
   return `${greeting} just following up on our last message. Let me know if you want to continue with the next steps.`;
 }
 
+const FOLLOWUP_MAX_PER_WAIT = 2; // max follow-ups until the student replies again
+const FOLLOWUP_SEND_HOUR_START_PK = 10; // 10:00 PKT
+const FOLLOWUP_SEND_HOUR_END_PK = 20; // 20:00 PKT
+
+function isWithinFollowupHours() {
+  const nowPK = new Date(Date.now() + 5 * 60 * 60 * 1000); // UTC+5
+  const h = nowPK.getUTCHours();
+  return h >= FOLLOWUP_SEND_HOUR_START_PK && h < FOLLOWUP_SEND_HOUR_END_PK;
+}
+
 async function runInactivityFollowupSweep() {
   if (followupSweepInProgress) return;
+  if (!isWithinFollowupHours()) return; // never message students at night
   followupSweepInProgress = true;
   try {
     const cutoff = new Date(Date.now() - FOLLOWUP_IDLE_MS);
@@ -3258,7 +3349,7 @@ async function runInactivityFollowupSweep() {
       phone: { $exists: true, $ne: "" },
       status: { $nin: ["converted", "lost"] },
       lastActivity: { $lte: cutoff },
-    }).select("_id userId phone status messages extractedData lastActivity");
+    }).select("_id userId name phone status messages extractedData lastActivity");
 
     if (!leads.length) return;
 
@@ -3282,8 +3373,24 @@ async function runInactivityFollowupSweep() {
       const lastUserMsg = latestMessageByRoles(msgs, ["user"]);
       const lastUserAtMs = toMs(lastUserMsg?.at);
       const lastReminderAtMs = toMs(lead.extractedData?.autoReminderSentAt);
-      if (lastReminderAtMs && (!lastUserAtMs || lastUserAtMs <= lastReminderAtMs)) {
-        continue; // already reminded for this waiting period
+      const studentRepliedSinceReminder =
+        lastUserAtMs && lastReminderAtMs && lastUserAtMs > lastReminderAtMs;
+
+      // Cap: at most FOLLOWUP_MAX_PER_WAIT reminders until the student replies.
+      const reminderCount = studentRepliedSinceReminder
+        ? 0
+        : Number(lead.extractedData?.autoReminderCount || 0);
+      if (reminderCount >= FOLLOWUP_MAX_PER_WAIT) {
+        continue;
+      }
+
+      // Wait a fresh 24h after the previous reminder before sending the next one.
+      if (
+        lastReminderAtMs &&
+        !studentRepliedSinceReminder &&
+        Date.now() - lastReminderAtMs < FOLLOWUP_IDLE_MS
+      ) {
+        continue;
       }
 
       const uid = String(lead.userId || "");
@@ -3302,11 +3409,45 @@ async function runInactivityFollowupSweep() {
         String(process.env.WHATSAPP_PHONE_NUMBER_ID || "").trim();
       if (!phoneNumberId) continue;
 
-      const confirmedName = extractConfirmedStudentName(msgs);
+      // Greeting name: real names only — never message-fragment garbage.
+      const profileName = String(lead.name || "").trim();
+      const extractedName = extractConfirmedStudentName(msgs);
+      const confirmedName = isLikelyPersonName(profileName)
+        ? profileName
+        : isLikelyPersonName(extractedName)
+          ? extractedName
+          : "";
+
       const reminderText = build24hFollowupText({
         confirmedName,
         lastOutboundText: String(lastMsg.content || ""),
       });
+
+      // Atomically CLAIM this reminder before sending. If another sweep (or a
+      // restarted instance) already claimed it, modifiedCount is 0 and we skip.
+      // This is what makes double-sends impossible even if a later save fails.
+      const nowIso = new Date().toISOString();
+      const prevStamp = String(lead.extractedData?.autoReminderSentAt || "");
+      const claim = await Lead.updateOne(
+        {
+          _id: lead._id,
+          ...(prevStamp
+            ? { "extractedData.autoReminderSentAt": prevStamp }
+            : {
+                $or: [
+                  { "extractedData.autoReminderSentAt": { $exists: false } },
+                  { "extractedData.autoReminderSentAt": { $in: [null, ""] } },
+                ],
+              }),
+        },
+        {
+          $set: {
+            "extractedData.autoReminderSentAt": nowIso,
+            "extractedData.autoReminderCount": reminderCount + 1,
+          },
+        }
+      );
+      if (!claim.modifiedCount) continue;
 
       try {
         await sendWhatsAppCloudText({
@@ -3319,23 +3460,26 @@ async function runInactivityFollowupSweep() {
           "Auto follow-up send failed:",
           sendErr?.response?.data || sendErr?.message || sendErr
         );
-        continue;
+        continue; // claim stays — better to under-send than spam
       }
 
-      lead.messages.push({
-        role: "assistant",
-        content: reminderText,
-        whatsappDeliveryChannel: "whatsapp",
-        whatsappDeliveryStatus: "sent",
-        whatsappDeliveredAt: new Date(),
-        at: new Date(),
-      });
-      lead.lastActivity = new Date();
-      lead.extractedData = {
-        ...(lead.extractedData || {}),
-        autoReminderSentAt: new Date().toISOString(),
-      };
-      await lead.save();
+      // Record the sent message atomically (avoids full-document save races).
+      await Lead.updateOne(
+        { _id: lead._id },
+        {
+          $push: {
+            messages: {
+              role: "assistant",
+              content: reminderText,
+              whatsappDeliveryChannel: "whatsapp",
+              whatsappDeliveryStatus: "sent",
+              whatsappDeliveredAt: new Date(),
+              at: new Date(),
+            },
+          },
+          $set: { lastActivity: new Date() },
+        }
+      );
     }
   } catch (e) {
     console.log("Auto follow-up sweep failed:", e?.message || e);
@@ -3643,6 +3787,85 @@ const signupOtpLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many verification code requests. Please wait and retry." },
 });
+
+/* ============================================================
+   LEAD CREATION DEDUP UTILITIES
+   Prevents duplicate leads from concurrent webhook deliveries
+   and Meta retry storms.
+============================================================ */
+
+/**
+ * In-memory lock keyed on userId:phone.
+ * Serializes the findOne→create window so two concurrent
+ * webhooks for the same phone cannot both create a lead.
+ */
+const _leadCreationLocks = new Map();
+const LEAD_LOCK_TTL_MS = 15_000; // auto-expire after 15 s (safety)
+
+async function withLeadLock(key, fn) {
+  const deadline = Date.now() + LEAD_LOCK_TTL_MS;
+  while (_leadCreationLocks.has(key)) {
+    if (Date.now() > deadline) {
+      // Safety: if something went very wrong, break out
+      _leadCreationLocks.delete(key);
+      break;
+    }
+    await new Promise((r) => setTimeout(r, 60));
+  }
+  _leadCreationLocks.set(key, Date.now());
+  try {
+    return await fn();
+  } finally {
+    _leadCreationLocks.delete(key);
+  }
+}
+
+// Periodic cleanup of stale locks (defensive)
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, ts] of _leadCreationLocks) {
+    if (now - ts > LEAD_LOCK_TTL_MS) _leadCreationLocks.delete(k);
+  }
+}, 30_000);
+
+/**
+ * Recently-processed WhatsApp inbound message IDs.
+ * If Meta retries the same webhook delivery, we skip processing entirely.
+ */
+const _processedWaMsgIds = new Map();
+const WA_MSG_DEDUP_TTL_MS = 120_000; // keep IDs for 2 minutes
+
+function isWaMsgAlreadyProcessed(msgId) {
+  if (!msgId) return false;
+  return _processedWaMsgIds.has(msgId);
+}
+function markWaMsgProcessed(msgId) {
+  if (!msgId) return;
+  _processedWaMsgIds.set(msgId, Date.now());
+}
+
+// Periodic cleanup of old message IDs
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, ts] of _processedWaMsgIds) {
+    if (now - ts > WA_MSG_DEDUP_TTL_MS) _processedWaMsgIds.delete(id);
+  }
+}, 60_000);
+
+/**
+ * Leads that received the welcome menu very recently (in-memory).
+ * Closes the sub-second race when a student fires several messages at once
+ * and parallel webhook deliveries each think "first message → send menu".
+ */
+const _welcomeSentRecently = new Map();
+const WELCOME_DEDUP_TTL_MS = 6 * 60 * 60 * 1000; // 6h
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, ts] of _welcomeSentRecently) {
+    if (now - ts > WELCOME_DEDUP_TTL_MS) _welcomeSentRecently.delete(k);
+  }
+}, 10 * 60_000);
 
 const webhookLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -4512,6 +4735,11 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
           if (!fromPhone) continue;
           const inboundMessageId = String(parsedInbound.data.id || "").trim();
 
+          // ── Dedup: skip if Meta retried the same webhook delivery ──
+          if (isWaMsgAlreadyProcessed(inboundMessageId)) {
+            continue;
+          }
+
           // ── Blue ticks: mark message as read ──
           if (inboundMessageId && phoneNumberId) {
             const waToken = String(process.env.WHATSAPP_TOKEN || "").trim();
@@ -4532,47 +4760,52 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
               : "";
 
           /* --- Find existing lead: exact phone first, then fuzzy (last 8 digits) --- */
-          let lead = await Lead.findOne({
-            phone: fromPhone,
-            userId: accountSettings.userId,
-          });
+          /* Wrapped in withLeadLock to prevent race-condition duplicates from concurrent webhook deliveries */
+          const lockKey = `${String(accountSettings.userId)}:${fromPhone}`;
+          let lead = await withLeadLock(lockKey, async () => {
+            let _lead = await Lead.findOne({
+              phone: fromPhone,
+              userId: accountSettings.userId,
+            });
 
-          if (!lead) {
-            const digits = fromPhone.replace(/\D/g, "");
-            if (digits.length >= 6) {
-              lead = await Lead.findOne({
-                userId: accountSettings.userId,
-                isMerged: { $ne: true },
-                phone: { $regex: digits.slice(-8) },
-              });
-              if (lead) {
-                lead.phone = fromPhone;
-                if (!lead.source || lead.source === "Website") {
-                  lead.activityLog = lead.activityLog || [];
-                  lead.activityLog.push({
-                    type: "whatsapp_linked",
-                    description: `WhatsApp contact matched to existing ${lead.source || "website"} lead (phone updated)`,
-                    at: new Date(),
-                    by: "system",
-                  });
+            if (!_lead) {
+              const digits = fromPhone.replace(/\D/g, "");
+              if (digits.length >= 6) {
+                _lead = await Lead.findOne({
+                  userId: accountSettings.userId,
+                  isMerged: { $ne: true },
+                  phone: { $regex: digits.slice(-8) },
+                });
+                if (_lead) {
+                  _lead.phone = fromPhone;
+                  if (!_lead.source || _lead.source === "Website") {
+                    _lead.activityLog = _lead.activityLog || [];
+                    _lead.activityLog.push({
+                      type: "whatsapp_linked",
+                      description: `WhatsApp contact matched to existing ${_lead.source || "website"} lead (phone updated)`,
+                      at: new Date(),
+                      by: "system",
+                    });
+                  }
                 }
               }
             }
-          }
 
-          if (!lead) {
-            lead = await Lead.create({
-              name: String(profileName || introName || "").trim(),
-              phone: fromPhone,
-              source: "WhatsApp",
-              userId: accountSettings.userId,
-              status: "new",
-              messages: [],
-              lastActivity: new Date(),
-            });
-          } else if (!lead.name && (profileName || introName)) {
-            lead.name = String(profileName || introName || "").trim();
-          }
+            if (!_lead) {
+              _lead = await Lead.create({
+                name: String(profileName || introName || "").trim(),
+                phone: fromPhone,
+                source: "WhatsApp",
+                userId: accountSettings.userId,
+                status: "new",
+                messages: [],
+                lastActivity: new Date(),
+              });
+            } else if (!_lead.name && (profileName || introName)) {
+              _lead.name = String(profileName || introName || "").trim();
+            }
+            return _lead;
+          });
 
           if (
             inboundMessageId &&
@@ -4697,7 +4930,33 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
             } else {
               // ── Guided conversation flow ──
               const cName = String(accountSettings?.consultancyName || "NextStep International");
-              const guidedResult = handleGuidedConversation(lead, inboundText, cName);
+              let guidedResult = handleGuidedConversation(lead, inboundText, cName);
+
+              // Welcome-menu race guard: if a parallel webhook already sent the
+              // welcome seconds ago, don't send it again — let the AI answer.
+              if (guidedResult?.isWelcome) {
+                const wkey = String(lead._id);
+                if (_welcomeSentRecently.has(wkey)) {
+                  guidedResult = null;
+                } else {
+                  _welcomeSentRecently.set(wkey, Date.now());
+                  const nowIso = new Date().toISOString();
+                  lead.extractedData = { ...(lead.extractedData || {}), lastWelcomeAt: nowIso };
+                  // Persist state immediately (atomic) so the next quick message
+                  // sees menu_sent even before this handler finishes.
+                  try {
+                    await Lead.updateOne(
+                      { _id: lead._id },
+                      {
+                        $set: {
+                          "extractedData.guidedState": "menu_sent",
+                          "extractedData.lastWelcomeAt": nowIso,
+                        },
+                      }
+                    );
+                  } catch (_) {}
+                }
+              }
 
               if (guidedResult) {
                 // Save guided state + course/country if detected
@@ -4748,7 +5007,7 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
                     role: m.role === "admin" || m.role === "assistant" ? "assistant" : "user",
                     content: String(m.content || ""),
                   }));
-                  aiReply = await askAI(history, accountSettings.userId);
+                  aiReply = await askAI(history, accountSettings.userId, lead);
                 } catch (aiErr) {
                   console.error("WhatsApp askAI failed:", aiErr?.message || aiErr);
                   aiReply = "Thanks for your message. Our consultant will reply shortly.";
@@ -4827,6 +5086,7 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
 
           lead.lastActivity = new Date();
           await lead.save();
+          markWaMsgProcessed(inboundMessageId);
           await maybeAutoRefreshLeadAiSummary(lead);
 
           await createNotification(
@@ -4907,7 +5167,7 @@ app.post("/message", auth, aiMessageLimiter, async (req, res) => {
       content: message,
     });
 
-    const aiReply = await askAI(history, tenantUserId(req));
+    const aiReply = await askAI(history, tenantUserId(req), lead);
 
     lead.messages.push(
       {
@@ -6466,7 +6726,7 @@ app.post(
         return res.json({ suggestion: `Assalam o Alaikum ${lead.name || ""}! How can I help you today? 😊` });
       }
 
-      const suggestion = await askAI(history, tenantUserId(req));
+      const suggestion = await askAI(history, tenantUserId(req), lead);
       return res.json({ suggestion: suggestion || "Thank you for your message! Our consultant will get back to you shortly." });
     } catch (err) {
       res.status(500).json({ error: "Could not generate suggestion." });
@@ -7687,15 +7947,134 @@ app.get("/admin/whatsapp/media/:mediaId", auth, async (req, res) => {
       "WhatsApp media proxy:",
       err?.response?.data || err?.message || err
     );
-    const msg =
+    const rawMsg =
       err?.response?.data?.error?.message ||
       err?.message ||
       "Could not fetch media from WhatsApp";
-    const code =
-      String(msg).includes("missing") || String(msg).includes("WHATSAPP_TOKEN")
-        ? 503
-        : 400;
-    res.status(code).json({ error: msg });
+    // Never surface raw Graph API errors in the chat UI.
+    if (String(rawMsg).includes("WHATSAPP_TOKEN") || String(rawMsg).includes("missing")) {
+      return res.status(503).json({ error: "WhatsApp connection issue — check WHATSAPP_TOKEN in server settings." });
+    }
+    if (/unsupported get request|does not exist|missing permissions/i.test(String(rawMsg))) {
+      return res.status(410).json({
+        error: "This media has expired on WhatsApp (media stays downloadable for ~14 days). Ask the student to resend it.",
+      });
+    }
+    res.status(400).json({ error: "Could not load this media from WhatsApp. Please try again." });
+  }
+});
+
+/* ============================================================
+   MAINTENANCE — merge duplicate leads (same phone, two records)
+============================================================ */
+
+/**
+ * POST /admin/maintenance/merge-duplicate-leads
+ * Groups this workspace's leads by the last 10 digits of their phone number,
+ * keeps the record with the most messages (tie → oldest), copies missing
+ * fields + all messages/activity into it, and marks the rest isMerged:true
+ * (hidden from all lists). Dry-run by default; pass { "apply": true } to write.
+ */
+app.post("/admin/maintenance/merge-duplicate-leads", auth, requireRoles("admin", "manager"), async (req, res) => {
+  try {
+    const apply = req.body?.apply === true;
+    const uid = tenantUserId(req);
+
+    const leads = await Lead.find({
+      ...leadTenantUserIdMatch(uid),
+      isMerged: { $ne: true },
+      phone: { $exists: true, $ne: "" },
+    }).select("_id name email phone source status messages activityLog importantDetails courseInterest countryInterest admissionProfile createdAt lastActivity");
+
+    const groups = new Map();
+    for (const l of leads) {
+      const digits = String(l.phone || "").replace(/\D+/g, "");
+      if (digits.length < 7) continue;
+      const key = digits.slice(-10);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(l);
+    }
+
+    const plans = [];
+    for (const [key, group] of groups) {
+      if (group.length < 2) continue;
+      group.sort((a, b) => {
+        const am = (a.messages || []).length;
+        const bm = (b.messages || []).length;
+        if (bm !== am) return bm - am; // most messages first
+        return new Date(a.createdAt || 0) - new Date(b.createdAt || 0); // then oldest
+      });
+      const [primary, ...dupes] = group;
+      plans.push({
+        phoneKey: key,
+        keep: { id: String(primary._id), name: primary.name, messages: (primary.messages || []).length },
+        merge: dupes.map((d) => ({ id: String(d._id), name: d.name, source: d.source, messages: (d.messages || []).length })),
+      });
+
+      if (!apply) continue;
+
+      for (const dupe of dupes) {
+        const setFields = {};
+        if (!primary.name && dupe.name) setFields.name = dupe.name;
+        if (!primary.email && dupe.email) setFields.email = dupe.email;
+        if (!primary.courseInterest && dupe.courseInterest) setFields.courseInterest = dupe.courseInterest;
+        if (!primary.countryInterest && dupe.countryInterest) setFields.countryInterest = dupe.countryInterest;
+        if (dupe.importantDetails) {
+          const merged = [primary.importantDetails, dupe.importantDetails].filter(Boolean).join(" | ");
+          setFields.importantDetails = merged.slice(0, 4000);
+        }
+        if (dupe.admissionProfile && !primary.admissionProfile?.whatsappNumber) {
+          setFields.admissionProfile = dupe.admissionProfile;
+        }
+
+        const extraMessages = Array.isArray(dupe.messages) ? dupe.messages : [];
+        const extraActivity = Array.isArray(dupe.activityLog) ? dupe.activityLog : [];
+
+        await Lead.updateOne(
+          { _id: primary._id },
+          {
+            $set: setFields,
+            $push: {
+              ...(extraMessages.length ? { messages: { $each: extraMessages } } : {}),
+              activityLog: {
+                $each: [
+                  ...extraActivity,
+                  {
+                    type: "lead_merged",
+                    description: `Merged duplicate lead ${dupe._id} (${dupe.source || "?"}, ${extraMessages.length} msgs) into this record`,
+                    at: new Date(),
+                    by: "system",
+                  },
+                ],
+              },
+            },
+          }
+        );
+        await Lead.updateOne(
+          { _id: dupe._id },
+          { $set: { isMerged: true, mergedInto: primary._id, mergedAt: new Date() } }
+        );
+      }
+
+      // Re-sort merged message history by time so the chat reads correctly.
+      if (dupes.length) {
+        const fresh = await Lead.findById(primary._id).select("messages");
+        if (fresh && Array.isArray(fresh.messages)) {
+          fresh.messages.sort((a, b) => new Date(a.at || 0) - new Date(b.at || 0));
+          await Lead.updateOne({ _id: primary._id }, { $set: { messages: fresh.messages } });
+        }
+      }
+    }
+
+    res.json({
+      ok: true,
+      mode: apply ? "applied" : "dry-run (pass {\"apply\":true} to write)",
+      duplicateGroups: plans.length,
+      plans,
+    });
+  } catch (err) {
+    console.error("merge-duplicate-leads:", err?.message || err);
+    res.status(500).json({ error: "Merge failed: " + (err?.message || "unknown") });
   }
 });
 
