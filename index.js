@@ -2653,20 +2653,19 @@ async function updateLeadImportantDetailsFromStudentMessage(lead, messageText) {
 // ══════════════════════════════════════════════════════
 
 function guidedWelcome(cName) {
-  return `Assalam o Alaikum! 👋
-Welcome to *${cName}*
+  return `Assalam o Alaikum, and welcome to *${cName}*. 🎓
 
-Don't worry — we will guide you through everything! 😊
+Thank you for contacting us — we help students secure admissions at recognised universities abroad, from application to visa.
 
-First tell me — what do you want to become in life?
+To connect you with the right guidance, please select your field of interest:
 
-1️⃣ Doctor (MBBS)
+1️⃣ MBBS / Medicine
 2️⃣ Business (BBA / MBA)
-3️⃣ Computer Expert (IT)
-4️⃣ Engineer
-5️⃣ I don't know yet 🤔
+3️⃣ IT / Computer Science
+4️⃣ Engineering
+5️⃣ Not sure yet — I'd like guidance
 
-*Just reply with a number 1-5!*`;
+*Reply with a number (1–5)* — or simply type your question and we'll assist you right away.`;
 }
 
 const GUIDED_MBBS = `Great choice! 🏥 *MBBS — Become a Doctor!*
@@ -2796,13 +2795,15 @@ Meanwhile you can:
 📋 Fill full application: ${applyUrl || "https://www.nextstepinternationals.com/?apply=true"}
 ❓ Ask me anything about studying abroad!`;
 
-const GUIDED_REPROMPT = `Please reply with a number between *1 and 5* 😊
+const GUIDED_REPROMPT = `Certainly — to guide you correctly, please choose your field of interest:
 
-1️⃣ Doctor (MBBS)
+1️⃣ MBBS / Medicine
 2️⃣ Business (BBA / MBA)
-3️⃣ Computer Expert (IT)
-4️⃣ Engineer
-5️⃣ I don't know yet 🤔`;
+3️⃣ IT / Computer Science
+4️⃣ Engineering
+5️⃣ Not sure yet — I'd like guidance
+
+*Reply with a number (1–5)*, or type your question directly.`;
 
 /** Build the "program shown" card from the workspace's fee table (falls back to code defaults). */
 function guidedProgramCard(programLabel, matcher, settings) {
@@ -2856,6 +2857,11 @@ function handleGuidedConversation(lead, inboundText, cName, settings = null) {
     if (num === "3") return { reply: guidedProgramCard("IT / Computer Science! 💻", /it|computer|cs|software/i, settings) || GUIDED_IT, newState: "program_shown", course: "IT" };
     if (num === "4") return { reply: guidedProgramCard("Engineering! ⚙️", /engineer/i, settings) || GUIDED_ENG, newState: "program_shown", course: "Engineering" };
     if (num === "5") return { reply: GUIDED_UNKNOWN, newState: "subject_asked" };
+    // A real question/message (not just "hi") → let the AI answer it directly,
+    // as the welcome promises. Re-prompt only for short unclear replies.
+    if (inboundText.trim().length > 18 || /[?؟]/.test(inboundText)) {
+      return null;
+    }
     return { reply: GUIDED_REPROMPT, newState: "menu_sent" };
   }
 
