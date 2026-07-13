@@ -129,6 +129,7 @@ export default function Settings() {
     followUpMaxPerWait: 2,
     leadAlertMode: "all",
     websiteApplyAlertWhatsApp: "",
+    allCountriesMode: false,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -652,6 +653,33 @@ export default function Settings() {
       {/* Section 2: Countries */}
       <div id="settings-countries" className="settings-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px", marginBottom: 20 }}>
         <SectionHeader title="Enabled Countries" desc="AI talks about these destinations only—add from the list, remove with a chip." />
+
+        {/* 🌍 All-countries mode */}
+        <label
+          style={{
+            display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 16,
+            padding: "12px 14px", borderRadius: 10, cursor: orgLocked ? "default" : "pointer",
+            border: `1.5px solid ${settings.allCountriesMode ? "var(--accent)" : "var(--border)"}`,
+            background: settings.allCountriesMode ? "var(--accent-light)" : "var(--surface-2)",
+          }}
+        >
+          <input
+            type="checkbox"
+            disabled={orgLocked}
+            checked={settings.allCountriesMode === true}
+            onChange={(e) => setSettings((p) => ({ ...p, allCountriesMode: e.target.checked }))}
+            style={{ accentColor: "var(--accent)", width: 16, height: 16, marginTop: 2 }}
+          />
+          <span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", display: "block" }}>
+              🌍 We process ALL countries
+            </span>
+            <span style={{ fontSize: 12, color: "var(--text-3)", display: "block", marginTop: 3, lineHeight: 1.5 }}>
+              AI tells students you handle every study destination worldwide. The list below becomes your
+              &quot;popular choices&quot;. Fees are still quoted only from your fee table.
+            </span>
+          </span>
+        </label>
 
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>

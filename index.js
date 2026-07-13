@@ -1630,6 +1630,13 @@ const settingsSchema = new mongoose.Schema(
       type: String,
       default: "all",
     },
+
+    /** 🌍 "We process ALL countries" — AI is open to every destination;
+        enabledCountries become just the "popular" examples. */
+    allCountriesMode: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
@@ -2866,7 +2873,12 @@ function handleGuidedConversation(lead, inboundText, cName, settings = null) {
       Array.isArray(settings?.enabledCountries) && settings.enabledCountries.length > 0
         ? settings.enabledCountries
         : DEFAULT_AI_COUNTRIES;
-    for (const c of enabled) {
+    // 🌍 All-countries mode: also recognise any well-known destination name
+    const matchable =
+      settings?.allCountriesMode === true
+        ? [...new Set([...enabled, ...WORLD_STUDY_DESTINATIONS])]
+        : enabled;
+    for (const c of matchable) {
       const label = String(c || "").trim();
       if (label.length >= 3 && new RegExp(label.replace(/[^a-z ]/gi, ""), "i").test(text)) {
         return { reply: GUIDED_ASK_DETAILS, newState: "details_asked", country: label };
@@ -2926,6 +2938,19 @@ Return ONLY the JSON object, nothing else.`,
 const DEFAULT_AI_COUNTRIES = [
   "Georgia", "Azerbaijan", "Russia", "Turkey", "China",
   "United Kingdom", "United States", "Canada", "Australia", "Germany", "Hungary",
+];
+
+/** Recognised in the guided flow when "all countries" mode is on. */
+const WORLD_STUDY_DESTINATIONS = [
+  "Georgia", "Azerbaijan", "Russia", "Turkey", "China", "Kazakhstan", "Kyrgyzstan",
+  "Uzbekistan", "Belarus", "Ukraine", "United Kingdom", "UK", "United States", "USA",
+  "America", "Canada", "Australia", "New Zealand", "Germany", "France", "Italy",
+  "Spain", "Portugal", "Netherlands", "Belgium", "Sweden", "Norway", "Finland",
+  "Denmark", "Poland", "Hungary", "Czech", "Austria", "Switzerland", "Ireland",
+  "Greece", "Cyprus", "Malta", "Lithuania", "Latvia", "Estonia", "Romania",
+  "Bulgaria", "Malaysia", "Indonesia", "Thailand", "Philippines", "Japan",
+  "South Korea", "Korea", "Singapore", "UAE", "Dubai", "Qatar", "Saudi Arabia",
+  "Bahrain", "Kuwait", "Oman", "Egypt", "South Africa",
 ];
 
 const DEFAULT_FEE_FACTS = [
@@ -3160,9 +3185,16 @@ ${aiFactsText}
 - Apply link: ${applyUrl}
 - WhatsApp/Phone: ${correctPhone}
 
-COUNTRIES WE OFFER:
+${
+  settings?.allCountriesMode === true
+    ? `COUNTRIES: We process admissions for ALL study destinations worldwide.
+Popular choices: ${countries}
+- For ANY country the student asks about, answer helpfully and positively — we handle it.
+- Quote fees ONLY from "FEES YOU MAY QUOTE" above. For a country without listed fees, say the consultant will share exact fees for that country.`
+    : `COUNTRIES WE OFFER:
 ${countries}
-- If a student asks about a country NOT in this list: do not bluff and do not refuse rudely. Say our senior consultant personally advises on other destinations and offer to connect them (${correctPhone}).
+- If a student asks about a country NOT in this list: do not bluff and do not refuse rudely. Say our senior consultant personally advises on other destinations and offer to connect them (${correctPhone}).`
+}
 
 COURSES WE HANDLE:
 ${coursesOffered.join(", ")}
