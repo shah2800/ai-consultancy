@@ -1543,6 +1543,79 @@ const settingsSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+
+    /* ── AI knowledge (everything the AI states as fact lives HERE, not in code) ── */
+
+    /** Public link students are sent to when ready to apply. */
+    applyUrl: {
+      type: String,
+      default: "",
+    },
+
+    /** Fee table rows the AI may quote, e.g. {country:"Georgia", program:"MBBS", amount:"$2,500", period:"per semester"}. */
+    feeFacts: {
+      type: [
+        {
+          country: String,
+          program: String,
+          amount: String,
+          period: String,
+        },
+      ],
+      default: [],
+    },
+
+    /** Courses/programs this consultancy handles (AI hands anything else to a consultant). */
+    coursesOffered: {
+      type: [String],
+      default: [],
+    },
+
+    /** Exact policy text the AI may say about scholarships — prevents invented grants. */
+    scholarshipPolicy: {
+      type: String,
+      default: "",
+    },
+
+    /** Extra always-true facts, one per line (living costs, IELTS policy, recognitions...). */
+    aiFacts: {
+      type: String,
+      default: "",
+    },
+
+    /** Approx PKR per USD for rough conversions; 0 = AI must not convert to PKR. */
+    pkrPerUsd: {
+      type: Number,
+      default: 0,
+    },
+
+    /** Guided 1-5 welcome menu on first message (on/off + custom text). */
+    welcomeMenuEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    welcomeMenuText: {
+      type: String,
+      default: "",
+    },
+
+    /* ── Automated follow-ups ── */
+    followUpsEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    followUpMaxPerWait: {
+      type: Number,
+      default: 2,
+      min: 0,
+      max: 5,
+    },
+
+    /* ── Owner lead alerts on WhatsApp: all | new | off ── */
+    leadAlertMode: {
+      type: String,
+      default: "all",
+    },
   },
   { timestamps: true }
 );
@@ -2692,14 +2765,14 @@ Please share these quick details:
 
 That's it! Our consultant will contact you within *24 hours* 😊`;
 
-const GUIDED_THANKYOU = (name) => `Thank you *${name || ""}*! ✅ 🎉
+const GUIDED_THANKYOU = (name, applyUrl) => `Thank you *${name || ""}*! ✅ 🎉
 
 Your details have been saved!
 
 Our consultant will contact you on this WhatsApp number within *24 hours*.
 
 Meanwhile you can:
-📋 Fill full application: nextstepinternationals.com/apply.html
+📋 Fill full application: ${applyUrl || "https://www.nextstepinternationals.com/?apply=true"}
 ❓ Ask me anything about studying abroad!`;
 
 const GUIDED_REPROMPT = `Please reply with a number between *1 and 5* 😊
@@ -2710,16 +2783,29 @@ const GUIDED_REPROMPT = `Please reply with a number between *1 and 5* 😊
 4️⃣ Engineer
 5️⃣ I don't know yet 🤔`;
 
-function handleGuidedConversation(lead, inboundText, cName) {
+/** Build the "program shown" card from the workspace's fee table (falls back to code defaults). */
+function guidedProgramCard(programLabel, matcher, settings) {
+  const rows =
+    Array.isArray(settings?.feeFacts) && settings.feeFacts.length > 0
+      ? settings.feeFacts
+      : DEFAULT_FEE_FACTS;
+  const hits = rows.filter((f) => matcher.test(String(f.program || "")));
+  if (!hits.length) return null;
+  const lines = hits
+    .slice(0, 6)
+    .map((f) => `• *${f.country}* — ${f.amount} ${f.period || ""}`.trim())
+    .join("\n");
+  return `Great choice! *${programLabel}*\n\n${lines}\n\n✅ Affordable & recognised options\n✅ Our consultant guides you at every step\n\n*Which country interests you?*`;
+}
+
+function handleGuidedConversation(lead, inboundText, cName, settings = null) {
+  // Workspace can turn the guided 1-5 menu off entirely (AI answers from msg #1).
+  if (settings && settings.welcomeMenuEnabled === false) return null;
   const state  = String(lead.extractedData?.guidedState || "");
   const text   = inboundText.trim().toLowerCase();
   const numMatch = text.match(/^\s*([1-5])\b/);
   const num    = numMatch ? numMatch[1] : null;
   const isYes  = /^(yes|han|haan|ji|okay|ok|sure|interested|apply|want|chahta|chahti|bilkul|zaroor)\b/i.test(text);
-  const isGeorgia    = /georgia/i.test(text);
-  const isAzerbaijan = /azerbaijan|azarbaijan/i.test(text);
-  const isRussia     = /russia/i.test(text);
-  const isTurkey     = /turkey/i.test(text);
 
   // First ever message → welcome menu (user message already saved before this runs)
   // Never resend the welcome if one already went out in the last 24h — this is
@@ -2728,7 +2814,12 @@ function handleGuidedConversation(lead, inboundText, cName) {
   const lastWelcomeMs = Date.parse(String(lead.extractedData?.lastWelcomeAt || "")) || 0;
   const welcomeRecently = lastWelcomeMs && Date.now() - lastWelcomeMs < 24 * 60 * 60 * 1000;
   if (!state && userMsgCount <= 1 && !welcomeRecently) {
-    return { reply: guidedWelcome(cName), newState: "menu_sent", isWelcome: true };
+    const customWelcome = String(settings?.welcomeMenuText || "").trim();
+    return {
+      reply: customWelcome || guidedWelcome(cName),
+      newState: "menu_sent",
+      isWelcome: true,
+    };
   }
   // If no state but returning student says hi → let normal AI handle warmly
   // Only resend menu if student explicitly types "menu" or "start"
@@ -2737,12 +2828,12 @@ function handleGuidedConversation(lead, inboundText, cName) {
     return { reply: guidedWelcome(cName), newState: "menu_sent" };
   }
 
-  // Menu sent → handle 1-5 reply
+  // Menu sent → handle 1-5 reply (program cards come from the workspace fee table)
   if (state === "menu_sent") {
-    if (num === "1") return { reply: GUIDED_MBBS,    newState: "program_shown", course: "MBBS" };
-    if (num === "2") return { reply: GUIDED_BBA,     newState: "program_shown", course: "BBA/MBA" };
-    if (num === "3") return { reply: GUIDED_IT,      newState: "program_shown", course: "IT" };
-    if (num === "4") return { reply: GUIDED_ENG,     newState: "program_shown", course: "Engineering" };
+    if (num === "1") return { reply: guidedProgramCard("MBBS — Become a Doctor! 🏥", /mbbs|clinical|medic/i, settings) || GUIDED_MBBS, newState: "program_shown", course: "MBBS" };
+    if (num === "2") return { reply: guidedProgramCard("BBA / MBA — Business Degree! 💼", /bba|mba|business/i, settings) || GUIDED_BBA, newState: "program_shown", course: "BBA/MBA" };
+    if (num === "3") return { reply: guidedProgramCard("IT / Computer Science! 💻", /it|computer|cs|software/i, settings) || GUIDED_IT, newState: "program_shown", course: "IT" };
+    if (num === "4") return { reply: guidedProgramCard("Engineering! ⚙️", /engineer/i, settings) || GUIDED_ENG, newState: "program_shown", course: "Engineering" };
     if (num === "5") return { reply: GUIDED_UNKNOWN, newState: "subject_asked" };
     return { reply: GUIDED_REPROMPT, newState: "menu_sent" };
   }
@@ -2755,13 +2846,19 @@ function handleGuidedConversation(lead, inboundText, cName) {
     return { reply: GUIDED_CONSULTANT, newState: "details_asked" };
   }
 
-  // Program shown → country or yes/interested
+  // Program shown → country or yes/interested (matches ANY enabled country)
   if (state === "program_shown") {
-    if (isGeorgia)    return { reply: GUIDED_ASK_DETAILS, newState: "details_asked", country: "Georgia" };
-    if (isAzerbaijan) return { reply: GUIDED_ASK_DETAILS, newState: "details_asked", country: "Azerbaijan" };
-    if (isRussia)     return { reply: GUIDED_ASK_DETAILS, newState: "details_asked", country: "Russia" };
-    if (isTurkey)     return { reply: GUIDED_ASK_DETAILS, newState: "details_asked", country: "Turkey" };
-    if (isYes)        return { reply: GUIDED_ASK_DETAILS, newState: "details_asked" };
+    const enabled =
+      Array.isArray(settings?.enabledCountries) && settings.enabledCountries.length > 0
+        ? settings.enabledCountries
+        : DEFAULT_AI_COUNTRIES;
+    for (const c of enabled) {
+      const label = String(c || "").trim();
+      if (label.length >= 3 && new RegExp(label.replace(/[^a-z ]/gi, ""), "i").test(text)) {
+        return { reply: GUIDED_ASK_DETAILS, newState: "details_asked", country: label };
+      }
+    }
+    if (isYes) return { reply: GUIDED_ASK_DETAILS, newState: "details_asked" };
     return null; // Let AI answer questions freely
   }
 
@@ -2809,6 +2906,36 @@ Return ONLY the JSON object, nothing else.`,
     return null;
   }
 }
+
+/* ── Default AI knowledge (used only when a workspace hasn't configured its own
+      in CRM Settings → AI Knowledge). Every tenant can fully override these. ── */
+const DEFAULT_AI_COUNTRIES = [
+  "Georgia", "Azerbaijan", "Russia", "Turkey", "China",
+  "United Kingdom", "United States", "Canada", "Australia", "Germany", "Hungary",
+];
+
+const DEFAULT_FEE_FACTS = [
+  { country: "Georgia", program: "MBBS", amount: "$2,500", period: "per semester" },
+  { country: "Georgia", program: "BBA/MBA", amount: "$1,750", period: "per semester" },
+  { country: "Georgia", program: "IT/CS", amount: "$1,500", period: "per semester" },
+  { country: "Azerbaijan", program: "MBBS", amount: "$3,000", period: "per semester" },
+  { country: "Russia", program: "MBBS", amount: "$3,500", period: "per semester" },
+  { country: "Turkey", program: "MBBS", amount: "$4,000", period: "per semester" },
+];
+
+const DEFAULT_COURSES_OFFERED = ["MBBS", "BBA / MBA", "IT / Computer Science", "Engineering"];
+
+const DEFAULT_AI_FACTS = [
+  "Living cost Georgia: $250-350 per month",
+  "MBBS duration: 5-6 years",
+  "No IELTS required for Georgia",
+  "PMC recognised: Yes for Georgia, Azerbaijan, Russia",
+].join("\n");
+
+const DEFAULT_SCHOLARSHIP_POLICY =
+  "Scholarships are possible at some partner universities depending on the student's academic record. NEVER promise, guarantee, or name a specific scholarship or grant. Say a consultant will check real options after seeing their documents.";
+
+const DEFAULT_APPLY_URL = "https://www.nextstepinternationals.com/?apply=true";
 
 async function askAI(history, userId, lead = null) {
   const extractedName = extractConfirmedStudentName(history);
@@ -2864,13 +2991,38 @@ async function askAI(history, userId, lead = null) {
     Array.isArray(settings?.enabledCountries) &&
     settings.enabledCountries.length > 0
       ? settings.enabledCountries
-      : [
-      "Georgia",
-      "Turkey",
-      "China",
-    ];
+      : DEFAULT_AI_COUNTRIES;
 
   const countries = countryList.join(", ");
+
+  // ── Settings-driven AI knowledge (dashboard-editable; defaults if unset) ──
+  const feeRows =
+    Array.isArray(settings?.feeFacts) && settings.feeFacts.length > 0
+      ? settings.feeFacts
+      : DEFAULT_FEE_FACTS;
+  const feeLines = feeRows
+    .filter((f) => String(f?.amount || "").trim())
+    .slice(0, 30)
+    .map(
+      (f) =>
+        `- ${[f.program, f.country].filter(Boolean).join(" ")}: ${f.amount} ${f.period || ""}`.trim()
+    )
+    .join("\n");
+
+  const coursesOffered =
+    Array.isArray(settings?.coursesOffered) && settings.coursesOffered.length > 0
+      ? settings.coursesOffered
+      : DEFAULT_COURSES_OFFERED;
+
+  const aiFactsText = String(settings?.aiFacts || "").trim() || DEFAULT_AI_FACTS;
+  const scholarshipPolicy =
+    String(settings?.scholarshipPolicy || "").trim() || DEFAULT_SCHOLARSHIP_POLICY;
+  const applyUrl = String(settings?.applyUrl || "").trim() || DEFAULT_APPLY_URL;
+  const pkrPerUsd = Number(settings?.pkrPerUsd || 0);
+  const pkrRule =
+    pkrPerUsd > 0
+      ? `PKR conversions: use approx rate 1 USD = ${pkrPerUsd} PKR, always say "approximately" and that the consultant will confirm the exact PKR amount.`
+      : `PKR conversions: NEVER convert fees to PKR yourself — say the consultant will confirm the exact PKR amount at today's rate.`;
   const customRules = settings?.customRules || "";
   const canSay = settings?.canSay || "";
   const cannotSay = settings?.cannotSay || "";
@@ -2977,7 +3129,7 @@ async function askAI(history, userId, lead = null) {
     ? `\nSMART CONTEXT RULES (follow these carefully):\n${smartRules.map((r, i) => `${i + 1}. ${r}`).join("\n")}`
     : "";
 
-  const correctPhone = "+92 314 2638901";
+  const correctPhone = bizPhone || "+92 314 2638901";
   const correctWebsite = webUrl || "nextstepinternationals.com";
 
   const prompt = `
@@ -2985,23 +3137,25 @@ You are a friendly, smart study abroad consultant for ${name}. You talk like a r
 
 Tone: ${tone}
 
-STRICTLY CORRECT FACTS (never change these numbers):
-- MBBS Georgia: $2,500 per semester (NOT $4000, NOT $8000)
-- BBA/MBA Georgia: $1,750 per semester
-- IT/CS Georgia: $1,500 per semester
-- MBBS Azerbaijan: $3,000 per semester
-- MBBS Russia: $3,500 per semester
-- MBBS Turkey: $4,000 per semester
-- Living cost Georgia: $250-350 per month
-- MBBS duration: 5-6 years
-- No IELTS required for Georgia
-- PMC recognised: Yes for Georgia, Azerbaijan, Russia
+FEES YOU MAY QUOTE (ONLY these numbers — never invent or change fees):
+${feeLines || "- No fee table configured — never quote exact fees; say the consultant will share exact fees."}
+
+OTHER CONFIRMED FACTS:
+${aiFactsText}
 - Website: ${correctWebsite}
-- Apply link: ${correctWebsite}/apply.html
+- Apply link: ${applyUrl}
 - WhatsApp/Phone: ${correctPhone}
 
-COUNTRIES WE OFFER (ONLY these — do NOT mention other countries):
-Georgia 🇬🇪 (most popular), Azerbaijan 🇦🇿, Russia 🇷🇺, Turkey 🇹🇷
+COUNTRIES WE OFFER:
+${countries}
+- If a student asks about a country NOT in this list: do not bluff and do not refuse rudely. Say our senior consultant personally advises on other destinations and offer to connect them (${correctPhone}).
+
+COURSES WE HANDLE:
+${coursesOffered.join(", ")}
+- If a student wants a different course (LLB, PhD, nursing, etc.) OR a university transfer / migration case: this is a SPECIAL CASE — do not improvise details. Say our senior consultant handles these personally and will contact them, then ask for their name and city if unknown.
+
+SCHOLARSHIP POLICY (the ONLY thing you may say about scholarships):
+${scholarshipPolicy}
 
 CONSULTANCY CONTACT (share when student asks):
 - Phone/WhatsApp: ${correctPhone}
@@ -3015,14 +3169,14 @@ ${profileBlock}${smartRulesBlock}
 CORE RULES:
 - Max 80 words per reply
 - WhatsApp style — short, friendly, emojis
-- Ask only 1 question at a time
-- NEVER mention countries we don't offer (no China, no UK, no Malaysia etc.)
-- NEVER give wrong fees — use STRICTLY CORRECT FACTS above
-- NEVER invent university names unless you are 100% sure
+- VALUE FIRST: lead with a useful fact or answer. Do NOT end every message with a question — at most one short question, and only when you truly need the answer. Vary your closings; never interrogate.
+- ${pkrRule}
+- NEVER give wrong fees — quote only FEES YOU MAY QUOTE above
+- NEVER invent university names, grant names, or success stories
 - NEVER promise visa approval or guaranteed admission
-- If student asks about universities → say "we have partnered universities in Georgia, our consultant will share details"
+- If student asks about specific universities → mention we have partnered universities in the country they asked about, consultant shares the full list
 - After 5-6 messages suggest free consultation: WhatsApp ${correctPhone}
-- If student seems ready → guide to apply: ${correctWebsite}/apply.html
+- If student seems ready → guide to apply: ${applyUrl} and tell them a consultant will also call them
 
 BUSINESS ALLOWED:
 ${canSay || "consultation support and process guidance only"}
@@ -3034,7 +3188,7 @@ CUSTOM RULES:
 ${customRules || "none"}
 
 FAQ KNOWLEDGE:
-${faqText || "No FAQs added yet — use STRICTLY CORRECT FACTS above."}
+${faqText || "No FAQs added yet — use the confirmed facts above."}
 ${universitiesSection}
 `;
 
@@ -3048,7 +3202,7 @@ ${universitiesSection}
       ...history.slice(-8),
     ],
     temperature: 0.7,
-    max_tokens: 120,
+    max_tokens: 170,
   });
 
   return sanitizeReplyNameUsage(reply, confirmedStudentName, history);
@@ -3376,11 +3530,12 @@ async function runInactivityFollowupSweep() {
       const studentRepliedSinceReminder =
         lastUserAtMs && lastReminderAtMs && lastUserAtMs > lastReminderAtMs;
 
-      // Cap: at most FOLLOWUP_MAX_PER_WAIT reminders until the student replies.
+      // Reminders sent since the student's last reply (tenant-level cap applied
+      // after settings load below; hard ceiling of 5 regardless).
       const reminderCount = studentRepliedSinceReminder
         ? 0
         : Number(lead.extractedData?.autoReminderCount || 0);
-      if (reminderCount >= FOLLOWUP_MAX_PER_WAIT) {
+      if (reminderCount >= 5) {
         continue;
       }
 
@@ -3403,6 +3558,13 @@ async function runInactivityFollowupSweep() {
       const st = settingsByUser.get(uid);
       if (!st) continue;
       if (st.aiAutoReplyEnabled === false) continue;
+      if (st.followUpsEnabled === false) continue;
+
+      // Per-workspace follow-up cap (0 disables, default 2, max 5)
+      const tenantMaxFollowups = Number.isFinite(Number(st.followUpMaxPerWait))
+        ? Math.min(5, Math.max(0, Math.floor(Number(st.followUpMaxPerWait))))
+        : FOLLOWUP_MAX_PER_WAIT;
+      if (tenantMaxFollowups === 0 || reminderCount >= tenantMaxFollowups) continue;
 
       const phoneNumberId =
         String(st.whatsappPhoneNumberId || "").trim() ||
@@ -3851,6 +4013,73 @@ setInterval(() => {
     if (now - ts > WA_MSG_DEDUP_TTL_MS) _processedWaMsgIds.delete(id);
   }
 }, 60_000);
+
+/* ── Owner WhatsApp alerts: new lead / lead replied / HOT lead ── */
+const _leadAlertRecently = new Map(); // leadId -> last alert ts (throttle)
+const LEAD_ALERT_THROTTLE_MS = 30 * 60 * 1000;
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, ts] of _leadAlertRecently) {
+    if (now - ts > LEAD_ALERT_THROTTLE_MS * 2) _leadAlertRecently.delete(k);
+  }
+}, 10 * 60_000);
+
+/** Student intent that means "call this person NOW". */
+function detectHotIntent(text) {
+  const t = String(text || "").toLowerCase();
+  return /\b(ready to apply|apply now|yes apply|i want to apply|want admission|start my application|apply karna|apply krna|admission lena|admission le|kab se start|payment kaise|fees jama|paise kaise|documents? (are )?ready|abhi apply|abhi admission|sign ?up kar|राज़ी|تیار)\b/i.test(
+    t
+  );
+}
+
+/**
+ * WhatsApp alert to the workspace owner about lead activity.
+ * Modes (Settings.leadAlertMode): "all" (default) | "new" (new leads only) | "off".
+ * Message alerts are throttled to 1 per lead per 30 min; NEW + HOT always send.
+ */
+async function notifyOwnerOfLeadActivity({ settings, lead, inboundText, isNew, isHot }) {
+  try {
+    const mode = String(settings?.leadAlertMode || "all").toLowerCase();
+    if (mode === "off") return;
+    if (!isNew && !isHot && mode === "new") return;
+
+    const to = normalizePhoneKey(String(settings?.websiteApplyAlertWhatsApp || ""));
+    if (to.length < 10) return; // no alert number configured
+
+    const key = String(lead._id);
+    const now = Date.now();
+    if (!isNew && !isHot) {
+      const last = _leadAlertRecently.get(key) || 0;
+      if (now - last < LEAD_ALERT_THROTTLE_MS) return;
+    }
+    _leadAlertRecently.set(key, now);
+
+    const nm = String(lead.name || "").trim() || "Unknown";
+    const ph = normalizePhoneKey(lead.phone);
+    const snippet = String(inboundText || "").replace(/\s+/g, " ").slice(0, 140);
+    const course = String(lead.courseInterest || "").trim();
+    const country = String(lead.countryInterest || "").trim();
+    const interest = [course, country].filter(Boolean).join(" · ");
+
+    let text;
+    if (isHot) {
+      text = `🔥 HOT LEAD — call now!\n${nm} (+${ph})${interest ? `\n${interest}` : ""}\n"${snippet}"`;
+    } else if (isNew) {
+      text = `🆕 New WhatsApp lead\n${nm} (+${ph})\n"${snippet}"`;
+    } else {
+      text = `💬 ${nm} replied (+${ph})\n"${snippet}"`;
+    }
+
+    await sendWhatsAppCloudText({
+      phoneNumberId: resolveWhatsAppPhoneNumberId(settings),
+      to,
+      text,
+    });
+  } catch (e) {
+    console.log("lead alert:", e?.message || e);
+  }
+}
 
 /**
  * Leads that received the welcome menu very recently (in-memory).
@@ -4762,6 +4991,7 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
           /* --- Find existing lead: exact phone first, then fuzzy (last 8 digits) --- */
           /* Wrapped in withLeadLock to prevent race-condition duplicates from concurrent webhook deliveries */
           const lockKey = `${String(accountSettings.userId)}:${fromPhone}`;
+          let wasNewLead = false;
           let lead = await withLeadLock(lockKey, async () => {
             let _lead = await Lead.findOne({
               phone: fromPhone,
@@ -4801,6 +5031,7 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
                 messages: [],
                 lastActivity: new Date(),
               });
+              wasNewLead = true;
             } else if (!_lead.name && (profileName || introName)) {
               _lead.name = String(profileName || introName || "").trim();
             }
@@ -4930,7 +5161,8 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
             } else {
               // ── Guided conversation flow ──
               const cName = String(accountSettings?.consultancyName || "NextStep International");
-              let guidedResult = handleGuidedConversation(lead, inboundText, cName);
+              const applyUrlForGuided = String(accountSettings?.applyUrl || "").trim() || DEFAULT_APPLY_URL;
+              let guidedResult = handleGuidedConversation(lead, inboundText, cName, accountSettings);
 
               // Welcome-menu race guard: if a parallel webhook already sent the
               // welcome seconds ago, don't send it again — let the AI answer.
@@ -4988,12 +5220,12 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
                         lead.importantDetails = (lead.importantDetails ? lead.importantDetails + " | " : "") + extras.join(" | ");
                         lead.markModified("importantDetails");
                       }
-                      aiReply = GUIDED_THANKYOU(details.name);
+                      aiReply = GUIDED_THANKYOU(details.name, applyUrlForGuided);
                     } else {
-                      aiReply = GUIDED_THANKYOU("");
+                      aiReply = GUIDED_THANKYOU("", applyUrlForGuided);
                     }
                   } catch (_) {
-                    aiReply = GUIDED_THANKYOU("");
+                    aiReply = GUIDED_THANKYOU("", applyUrlForGuided);
                   }
                 } else {
                   aiReply = guidedResult.reply || "";
@@ -5084,6 +5316,15 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
             );
           }
 
+          // HOT intent: student says they're ready → flag for immediate human call
+          const isHotNow =
+            summary.kind === "text" &&
+            detectHotIntent(inboundText) &&
+            !["converted", "lost", "hot", "ready"].includes(String(lead.status || ""));
+          if (isHotNow) {
+            lead.status = "hot";
+          }
+
           lead.lastActivity = new Date();
           await lead.save();
           markWaMsgProcessed(inboundMessageId);
@@ -5095,6 +5336,15 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
             `New WhatsApp message from ${lead.name || fromPhone}`,
             lead._id
           );
+
+          // Owner WhatsApp alert (new lead / reply / HOT) — never blocks the webhook
+          notifyOwnerOfLeadActivity({
+            settings: accountSettings,
+            lead,
+            inboundText: summary.kind === "text" ? inboundText : summary.content,
+            isNew: wasNewLead,
+            isHot: isHotNow,
+          }).catch(() => {});
         }
       }
     }

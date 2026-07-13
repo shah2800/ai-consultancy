@@ -5,6 +5,7 @@ import DeferUntilInView from "../components/DeferUntilInView";
 import SkeletonPulse from "../components/SkeletonPulse";
 import PasswordField from "../components/PasswordField";
 import OnboardingChecklist from "../components/OnboardingChecklist";
+import AiKnowledgeSettings from "../components/AiKnowledgeSettings";
 import { roleFromToken } from "../utils/jwt";
 import { COUNTRIES } from "../utils/countries";
 
@@ -115,6 +116,19 @@ export default function Settings() {
     canSay: "",
     cannotSay: "",
     faqs: [],
+    // AI knowledge & automation (dashboard-controlled AI facts)
+    feeFacts: [],
+    coursesOffered: [],
+    scholarshipPolicy: "",
+    aiFacts: "",
+    applyUrl: "",
+    pkrPerUsd: 0,
+    welcomeMenuEnabled: true,
+    welcomeMenuText: "",
+    followUpsEnabled: true,
+    followUpMaxPerWait: 2,
+    leadAlertMode: "all",
+    websiteApplyAlertWhatsApp: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -896,6 +910,14 @@ export default function Settings() {
           </button>
         )}
       </div>
+
+      {/* AI Knowledge & Automation (fees, courses, policy, welcome, follow-ups, alerts) */}
+      <AiKnowledgeSettings
+        settings={settings}
+        setSettings={setSettings}
+        orgLocked={orgLocked}
+        SectionHeader={SectionHeader}
+      />
 
       {/* Account password */}
       <div id="settings-account" className="settings-card" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "22px 24px", marginBottom: 20 }}>
