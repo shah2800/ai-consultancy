@@ -1208,6 +1208,20 @@ const leadSchema = new mongoose.Schema(
     },
     mergedAt: Date,
 
+    /* ── VIP takeover: pause the AI for this lead and (optionally) relay the
+          conversation to a consultant's personal WhatsApp. ── */
+    aiPaused: {
+      type: Boolean,
+      default: false,
+    },
+    /** Personal WhatsApp (digits only) that receives this lead's messages and can reply through the business number. */
+    relayToPhone: {
+      type: String,
+      default: "",
+    },
+    /** Stable #tag shown in relayed messages, e.g. 2 → "[#2 Qasim]". */
+    relayTag: Number,
+
     activityLog: [
       {
         type: {
@@ -3241,7 +3255,7 @@ async function sendWhatsAppCloudText({ phoneNumberId, to, text }) {
 
   const url = `https://graph.facebook.com/v25.0/${pid}/messages`;
   try {
-    await axios.post(
+    const resp = await axios.post(
       url,
       {
         messaging_product: "whatsapp",
@@ -3256,6 +3270,9 @@ async function sendWhatsAppCloudText({ phoneNumberId, to, text }) {
         },
       }
     );
+    // Callers may use the returned wamid (resp.data.messages[0].id) e.g. for
+    // relay quote-routing. Existing callers ignore the return value safely.
+    return resp?.data;
   } catch (err) {
     const meta = err?.response?.data?.error;
     if (meta?.code === 190) {
@@ -4079,6 +4096,196 @@ async function notifyOwnerOfLeadActivity({ settings, lead, inboundText, isNew, i
   } catch (e) {
     console.log("lead alert:", e?.message || e);
   }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   VIP RELAY — consultant talks to a lead from their PERSONAL
+   WhatsApp, through the business number. Lead sees one thread.
+   - lead.aiPaused = AI silent; lead.relayToPhone = operator phone
+   - Inbound lead msg  → forwarded to operator as "[#N Name]: ..."
+   - Operator replies  → routed back to the lead (quote / #tag / sticky)
+   ══════════════════════════════════════════════════════════════ */
+const _relayForwardIndex = new Map(); // forwarded wamid -> { leadId, ts } (for swipe-reply routing)
+const _relaySticky = new Map(); // operatorPhone -> { leadId, ts } (plain replies go here)
+const RELAY_INDEX_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _relayForwardIndex) {
+    if (now - v.ts > RELAY_INDEX_TTL_MS) _relayForwardIndex.delete(k);
+  }
+  for (const [k, v] of _relaySticky) {
+    if (now - v.ts > RELAY_INDEX_TTL_MS) _relaySticky.delete(k);
+  }
+}, 30 * 60_000);
+
+/** Next free #tag in this workspace (stable per lead once assigned). */
+async function assignRelayTag(userId, lead) {
+  if (lead.relayTag) return lead.relayTag;
+  const top = await Lead.findOne({ userId, relayTag: { $gt: 0 } })
+    .sort({ relayTag: -1 })
+    .select("relayTag")
+    .lean();
+  const tag = (Number(top?.relayTag) || 0) + 1;
+  await Lead.updateOne({ _id: lead._id }, { $set: { relayTag: tag } });
+  lead.relayTag = tag;
+  return tag;
+}
+
+function relayLeadLabel(lead) {
+  const nm = String(lead.name || "").trim() || `+${normalizePhoneKey(lead.phone)}`;
+  return `[#${lead.relayTag || "?"} ${nm}]`;
+}
+
+/** Forward a lead's inbound message to the bound operator's personal WhatsApp. */
+async function forwardLeadMessageToOperator({ settings, lead, content }) {
+  try {
+    const to = normalizePhoneKey(lead.relayToPhone);
+    if (to.length < 10) return;
+    const resp = await sendWhatsAppCloudText({
+      phoneNumberId: resolveWhatsAppPhoneNumberId(settings),
+      to,
+      text: `${relayLeadLabel(lead)}: ${String(content || "").slice(0, 3800)}`,
+    });
+    const wamid = resp?.messages?.[0]?.id;
+    if (wamid) {
+      _relayForwardIndex.set(String(wamid), { leadId: String(lead._id), ts: Date.now() });
+    }
+  } catch (e) {
+    console.log("relay forward:", e?.message || e);
+  }
+}
+
+/**
+ * Handle a message coming FROM an operator's personal phone.
+ * Returns true when handled (webhook must not treat it as a lead message).
+ */
+async function handleRelayOperatorMessage({ settings, operatorLeads, fromKey, msg, summary }) {
+  const send = (text) =>
+    sendWhatsAppCloudText({
+      phoneNumberId: resolveWhatsAppPhoneNumberId(settings),
+      to: fromKey,
+      text,
+    }).catch(() => {});
+
+  const roster = () =>
+    operatorLeads
+      .map((l) => {
+        const label = `#${l.relayTag || "?"} ${String(l.name || "").trim() || "+" + normalizePhoneKey(l.phone)}`;
+        const lastAt = l.lastActivity ? formatRelayAgo(l.lastActivity) : "";
+        return `${label}${lastAt ? ` — last msg ${lastAt}` : ""}`;
+      })
+      .join("\n");
+
+  if (summary.kind !== "text") {
+    await send("⚠️ Only text can be relayed right now. Send documents/media from the CRM chat page.");
+    return true;
+  }
+
+  const raw = String(summary.content || "").trim();
+  if (!raw) return true;
+
+  // "list" → roster + current sticky
+  if (/^(list|leads|who)$/i.test(raw)) {
+    const sticky = _relaySticky.get(fromKey);
+    const cur = sticky ? operatorLeads.find((l) => String(l._id) === sticky.leadId) : null;
+    await send(
+      `Your VIP leads:\n${roster()}\n\n👉 Currently chatting with: ${cur ? `#${cur.relayTag} ${cur.name || ""}` : "none — swipe-reply or send #N to pick"}`
+    );
+    return true;
+  }
+
+  // Resolve target: 1) quoted forwarded message  2) "#N ..."  3) sticky  4) most recent
+  let target = null;
+  let text = raw;
+
+  const quotedId = String(msg?.context?.id || "").trim();
+  if (quotedId && _relayForwardIndex.has(quotedId)) {
+    const hit = _relayForwardIndex.get(quotedId);
+    target = operatorLeads.find((l) => String(l._id) === hit.leadId) || null;
+  }
+
+  if (!target) {
+    const tagMatch = raw.match(/^#(\d{1,4})\b\s*(.*)$/s);
+    if (tagMatch) {
+      const tag = Number(tagMatch[1]);
+      target = operatorLeads.find((l) => Number(l.relayTag) === tag) || null;
+      text = String(tagMatch[2] || "").trim();
+      if (!target) {
+        await send(`❌ No VIP lead with tag #${tag}.\n\nYour VIP leads:\n${roster()}`);
+        return true;
+      }
+      if (!text) {
+        // bare "#2" = switch sticky only
+        _relaySticky.set(fromKey, { leadId: String(target._id), ts: Date.now() });
+        await send(`✓ Now chatting with #${target.relayTag} ${target.name || ""}. Just type normally.`);
+        return true;
+      }
+    }
+  }
+
+  if (!target) {
+    const sticky = _relaySticky.get(fromKey);
+    if (sticky) target = operatorLeads.find((l) => String(l._id) === sticky.leadId) || null;
+  }
+
+  if (!target && operatorLeads.length === 1) target = operatorLeads[0];
+
+  if (!target) {
+    // most recently active lead
+    target = [...operatorLeads].sort(
+      (a, b) => new Date(b.lastActivity || 0) - new Date(a.lastActivity || 0)
+    )[0] || null;
+  }
+
+  if (!target) {
+    await send(`No VIP lead is bound to your number yet. Open a lead in the CRM and set "Relay to" to your WhatsApp.`);
+    return true;
+  }
+
+  // Send to the lead through the business number
+  try {
+    await sendWhatsAppCloudText({
+      phoneNumberId: resolveWhatsAppPhoneNumberId(settings),
+      to: String(target.phone).trim(),
+      text,
+    });
+  } catch (e) {
+    await send(`❌ Could not deliver to ${target.name || "lead"}: ${whatsAppSendErrorMessage(e)}`);
+    return true;
+  }
+
+  // Record in CRM as a human (admin) message so the AI knows what you promised
+  await Lead.updateOne(
+    { _id: target._id },
+    {
+      $push: {
+        messages: {
+          role: "admin",
+          content: text,
+          whatsappDeliveryChannel: "whatsapp",
+          whatsappDeliveryStatus: "sent",
+          whatsappDeliveredAt: new Date(),
+          at: new Date(),
+        },
+      },
+      $set: { lastActivity: new Date() },
+    }
+  );
+
+  _relaySticky.set(fromKey, { leadId: String(target._id), ts: Date.now() });
+  await send(`✓ Sent to #${target.relayTag || "?"} ${target.name || "+" + normalizePhoneKey(target.phone)}`);
+  return true;
+}
+
+function formatRelayAgo(d) {
+  const ms = Date.now() - new Date(d).getTime();
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hr ago`;
+  return `${Math.floor(hrs / 24)} day(s) ago`;
 }
 
 /**
@@ -4983,6 +5190,30 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
 
           const summary = summarizeInboundWhatsAppMessage(msg || {});
 
+          // ── VIP relay: is this message from a bound operator's personal phone? ──
+          // If yes, it's a consultant REPLY/command — route it, never treat as a lead.
+          const operatorLeads = await Lead.find({
+            userId: accountSettings.userId,
+            isMerged: { $ne: true },
+            aiPaused: true,
+            relayToPhone: normalizePhoneKey(fromPhone),
+          })
+            .select("_id name phone relayTag lastActivity")
+            .sort({ lastActivity: -1 })
+            .limit(25)
+            .lean();
+          if (operatorLeads.length > 0) {
+            markWaMsgProcessed(inboundMessageId);
+            await handleRelayOperatorMessage({
+              settings: accountSettings,
+              operatorLeads,
+              fromKey: normalizePhoneKey(fromPhone),
+              msg: parsedInbound.data,
+              summary,
+            });
+            continue;
+          }
+
           const introName =
             summary.kind === "text"
               ? extractNameFromMessage(summary.content)
@@ -5096,6 +5327,32 @@ app.post("/webhooks/whatsapp", webhookLimiter, async (req, res) => {
 
           let aiReply = "";
           const inboundText = String(summary.content || "");
+
+          // ── VIP takeover: AI is paused for this lead — stay silent, forward
+          // the message to the bound consultant's personal WhatsApp instead. ──
+          if (lead.aiPaused) {
+            if (normalizePhoneKey(lead.relayToPhone).length >= 10) {
+              if (!lead.relayTag) {
+                try { await assignRelayTag(accountSettings.userId, lead); } catch (_) {}
+              }
+              forwardLeadMessageToOperator({
+                settings: accountSettings,
+                lead,
+                content: summary.kind === "text" ? inboundText : summary.content,
+              }).catch(() => {});
+            }
+            lead.lastActivity = new Date();
+            await lead.save();
+            markWaMsgProcessed(inboundMessageId);
+            await createNotification(
+              accountSettings.userId,
+              "new_message",
+              `New WhatsApp message from ${lead.name || fromPhone} (AI paused — manual mode)`,
+              lead._id
+            );
+            continue;
+          }
+
           const explicitRegisterId = summary.kind === "text" ? extractRegisterIdFromText(inboundText) : "";
           if (explicitRegisterId) {
             const studentLead = await findWebsiteLeadForTrackQuery(explicitRegisterId);
@@ -6559,6 +6816,55 @@ app.delete(
   }
 );
 
+/**
+ * PATCH /admin/leads/:id/ai-takeover — VIP takeover controls for one lead.
+ * Body: { aiPaused?: boolean, relayToPhone?: string }
+ * Pausing assigns a stable relay #tag; resuming keeps the tag for next time.
+ */
+app.patch(
+  "/admin/leads/:id/ai-takeover",
+  auth,
+  requireRoles("admin", "manager", "staff"),
+  validateId,
+  async (req, res) => {
+    try {
+      const $set = { lastActivity: new Date() };
+      if (Object.prototype.hasOwnProperty.call(req.body, "aiPaused")) {
+        $set.aiPaused = req.body.aiPaused === true;
+      }
+      if (Object.prototype.hasOwnProperty.call(req.body, "relayToPhone")) {
+        const ph = normalizePhoneKey(String(req.body.relayToPhone || ""));
+        if (ph && ph.length < 10) {
+          return res.status(400).json({ error: "Relay number looks too short — use full international digits, e.g. 923001234567" });
+        }
+        $set.relayToPhone = ph;
+      }
+
+      const lead = await Lead.findOneAndUpdate(
+        { _id: req.params.id, userId: tenantUserId(req) },
+        { $set },
+        { new: true }
+      );
+      if (!lead) return res.status(404).json({ error: "Lead not found" });
+
+      // Assign a stable tag as soon as a relay pairing exists
+      if (lead.aiPaused && lead.relayToPhone && !lead.relayTag) {
+        await assignRelayTag(tenantUserId(req), lead);
+      }
+
+      res.json({
+        ok: true,
+        aiPaused: lead.aiPaused === true,
+        relayToPhone: lead.relayToPhone || "",
+        relayTag: lead.relayTag || null,
+      });
+    } catch (err) {
+      console.error("ai-takeover:", err?.message || err);
+      res.status(500).json({ error: "Failed to update takeover settings" });
+    }
+  }
+);
+
 app.patch(
   "/admin/leads/:id/status",
   auth,
@@ -7329,7 +7635,7 @@ const LEADS_LIST_SELECT = {
   priorityScore: 1, countryInterest: 1, courseInterest: 1, budget: 1,
   lastActivity: 1, createdAt: 1, updatedAt: 1, followUpDate: 1,
   assignedTo: 1, assignedCollaborators: 1, userId: 1, isMerged: 1,
-  tags: 1,
+  tags: 1, aiPaused: 1,
   "admissionProfile.processStage": 1,
   "admissionProfile.registrationId": 1,
   "admissionProfile.uploadsMeta": 1,

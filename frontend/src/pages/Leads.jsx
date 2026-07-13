@@ -541,6 +541,14 @@ export default function Leads() {
                       <span className="leads-name" style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", fontFamily: "var(--font-heading)" }}>
                         {lead.name || "WhatsApp User"}
                       </span>
+                      {lead.aiPaused ? (
+                        <span
+                          title="AI paused — manual/VIP mode"
+                          style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 999, background: "#fffbeb", color: "#b45309", border: "1px solid #fcd34d" }}
+                        >
+                          👤 Manual
+                        </span>
+                      ) : null}
                       {assignedSame ? (
                         <span
                           className="chip"

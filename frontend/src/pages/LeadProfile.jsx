@@ -590,6 +590,88 @@ function chatMessageRenderSignature(msg) {
   ].join("|");
 }
 
+/** VIP takeover: pause the AI for this lead + relay chat to a personal WhatsApp. */
+function AiTakeoverCard({ lead, setLead }) {
+  const [saving, setSaving] = useState(false);
+  const [relayDraft, setRelayDraft] = useState(lead.relayToPhone || "");
+  const [err, setErr] = useState("");
+
+  const paused = lead.aiPaused === true;
+
+  const update = async (body) => {
+    setSaving(true);
+    setErr("");
+    try {
+      const res = await api.patch(`/admin/leads/${lead._id}/ai-takeover`, body);
+      setLead((prev) => ({
+        ...prev,
+        aiPaused: res.data.aiPaused,
+        relayToPhone: res.data.relayToPhone,
+        relayTag: res.data.relayTag,
+      }));
+    } catch (e) {
+      setErr(e?.response?.data?.error || "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ border: `1.5px solid ${paused ? "#f59e0b" : "var(--border)"}`, borderRadius: 12, padding: "14px 16px", marginBottom: 14, background: paused ? "#fffbeb" : "var(--surface)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase", color: paused ? "#b45309" : "var(--text-2)" }}>
+          {paused ? "👤 Manual mode — AI paused" : "🤖 AI auto-reply"}
+        </div>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 7, cursor: saving ? "wait" : "pointer", fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>
+          <input
+            type="checkbox"
+            checked={!paused}
+            disabled={saving}
+            onChange={(e) => update({ aiPaused: !e.target.checked })}
+            style={{ accentColor: "var(--accent)", width: 16, height: 16 }}
+          />
+          AI {paused ? "OFF" : "ON"}
+        </label>
+      </div>
+
+      {paused ? (
+        <div>
+          <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8, lineHeight: 1.5 }}>
+            AI stays silent for this lead. Reply from the chat box below, or relay to a personal WhatsApp:
+            messages arrive as {lead.relayTag ? `[#${lead.relayTag} ${lead.name || "lead"}]` : "[#tag name]"} — swipe-reply or send #tag to answer.
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              value={relayDraft}
+              onChange={(e) => setRelayDraft(e.target.value)}
+              placeholder="Relay to WhatsApp e.g. 923001234567"
+              style={{ flex: 1, padding: "8px 10px", fontSize: 12.5, border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)", color: "var(--text)", fontFamily: "ui-monospace, monospace" }}
+            />
+            <button
+              type="button"
+              disabled={saving || (relayDraft || "") === (lead.relayToPhone || "")}
+              onClick={() => update({ relayToPhone: relayDraft })}
+              style={{ padding: "8px 14px", fontSize: 12, fontWeight: 700, background: "var(--accent-light)", color: "var(--accent)", border: "1px solid var(--accent)", borderRadius: 8, cursor: "pointer", fontFamily: "var(--font-body)" }}
+            >
+              {saving ? "…" : "Save"}
+            </button>
+          </div>
+          {lead.relayToPhone ? (
+            <div style={{ fontSize: 11, color: "#b45309", marginTop: 7 }}>
+              📲 Relaying to +{lead.relayToPhone}{lead.relayTag ? ` as #${lead.relayTag}` : ""}. Send "list" to the business number from that phone to see your VIP leads.
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <div style={{ fontSize: 11, color: "var(--text-3)", lineHeight: 1.5 }}>
+          Turn OFF to take over personally (VIP mode) — the AI goes silent and you can relay the chat to your own WhatsApp.
+        </div>
+      )}
+      {err ? <div style={{ fontSize: 11, color: "#b91c1c", marginTop: 6 }}>{err}</div> : null}
+    </div>
+  );
+}
+
 /** WhatsApp-style day grouping: "Today", "Yesterday", weekday, then dd/mm/yyyy. */
 function chatDayKey(at) {
   const d = at ? new Date(at) : null;
@@ -1799,6 +1881,7 @@ export default function LeadProfile() {
                 </Link>
               </div>
             ) : null}
+            <AiTakeoverCard lead={lead} setLead={setLead} />
             <AdmissionPanel lead={lead} onSaved={() => load({ silent: true })} />
             <InfoRow label="Messages" value={messages.length} />
             <InfoRow label="Last Active" value={lead.lastActivity ? formatLastActivity(lead.lastActivity) : "Never"} />
